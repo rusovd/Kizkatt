@@ -1,0 +1,143 @@
+export type Tool =
+  | "lock"
+  | "hand"
+  | "select"
+  | "rectangle"
+  | "diamond"
+  | "ellipse"
+  | "arrow"
+  | "line"
+  | "draw"
+  | "text"
+  | "image"
+  | "eraser";
+
+export type ElementType =
+  | "rectangle"
+  | "diamond"
+  | "ellipse"
+  | "arrow"
+  | "line"
+  | "draw"
+  | "text"
+  | "image";
+
+export type Point = {
+  x: number;
+  y: number;
+};
+
+export type ResizeHandle = "nw" | "ne" | "se" | "sw";
+
+export type KizkattElement = {
+  id: string;
+  type: ElementType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  angle: number;
+  strokeColor: string;
+  backgroundColor: string;
+  fillStyle?: "hachure" | "crossHatch" | "solid";
+  fillWeight?: number;
+  strokeWidth: number;
+  strokeStyle: "solid" | "dashed" | "dotted";
+  edgeStyle?: "sharp" | "round";
+  sloppiness?: "architect" | "artist" | "cartoonist" | "double";
+  sloppinessGap?: number;
+  opacity: number;
+  text?: string;
+  src?: string;
+  bends?: Point[];
+  curve?: Point;
+  points?: Point[];
+};
+
+export type CanvasState = {
+  elements: KizkattElement[];
+  selectedIds: string[];
+};
+
+export type Interaction =
+  | {
+      type: "create";
+      current: Point;
+      hasMoved: boolean;
+      elementId: string;
+      origin: Point;
+      startedAt: number;
+    }
+  | {
+      type: "move";
+      start: Point;
+      originalElements: KizkattElement[];
+    }
+  | {
+      type: "resize";
+      originalBounds: Bounds;
+      originalElements: KizkattElement[];
+      selectedIds: string[];
+      start: Point;
+      handle?: ResizeHandle;
+    }
+  | {
+      type: "rotate";
+      center: Point;
+      originalElements: KizkattElement[];
+      selectedIds: string[];
+    }
+  | {
+      type: "bend";
+      bendIndex: number;
+      elementId: string;
+      originalBends: Point[];
+      originalElement: KizkattElement;
+      start: Point;
+    }
+  | {
+      type: "pan";
+      start: Point;
+      originalPan: Point;
+    }
+  | {
+      type: "selectArea";
+      current: Point;
+      origin: Point;
+    };
+
+export type ContextMenuState = {
+  x: number;
+  y: number;
+};
+
+export type Bounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type StyleState = Pick<
+  KizkattElement,
+  | "backgroundColor"
+  | "edgeStyle"
+  | "fillStyle"
+  | "fillWeight"
+  | "opacity"
+  | "sloppiness"
+  | "sloppinessGap"
+  | "strokeColor"
+  | "strokeStyle"
+  | "strokeWidth"
+>;
+
+export type ColorTarget = "strokeColor" | "backgroundColor";
+
+export type ColorPopoverState = {
+  paletteId?: string;
+  shadeBaseColor?: string;
+  target: ColorTarget;
+};
+
+export type KizkattTheme = "dark" | "light";
