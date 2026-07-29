@@ -1,0 +1,36 @@
+.kizkatt-text,
+.kizkatt-placeholder-text {
+  font-family: "Virgil", "Segoe UI", system-ui, sans-serif;
+  font-size: 26px;
+  pointer-events: none;
+}
+
+.kizkatt-placeholder-text {
+  fill: #8d8d99;
+  font-size: 18px;
+}
+
+.kizkatt-text-editor {
+  position: absolute;
+  z-index: 3;
+  min-width: 128px;
+  min-height: 36px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--kizkatt-selection);
+  outline: 1px solid var(--kizkatt-selection-strong);
+  background: transparent;
+  font-family: "Virgil", "Segoe UI", system-ui, sans-serif;
+  font-size: 26px;
+  line-height: 1.3;
+  resize: none;
+}
+
+.kizkatt-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}

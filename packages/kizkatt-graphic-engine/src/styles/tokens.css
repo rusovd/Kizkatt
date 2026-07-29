@@ -1,0 +1,41 @@
+.kizkatt-board {
+  --kizkatt-active: #4f4d87;
+  --kizkatt-border: #2f2f3b;
+  --kizkatt-canvas-grid: rgba(255, 255, 255, 0.1);
+  --kizkatt-control-bg: #23232d;
+  --kizkatt-control-bg-hover: #31303f;
+  --kizkatt-divider: #343441;
+  --kizkatt-handle-bg: #121212;
+  --kizkatt-muted-text: #9f9fab;
+  --kizkatt-panel-label: #c9c9d3;
+  --kizkatt-selection: #6965db;
+  --kizkatt-selection-strong: #8f8cf6;
+  --kizkatt-shadow: rgba(0, 0, 0, 0.28);
+  --kizkatt-text: #f5f5f8;
+  --kizkatt-text-secondary: #d6d6df;
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #121212;
+  color: var(--kizkatt-text);
+  user-select: none;
+}
+
+.kizkatt-board--light {
+  --kizkatt-active: #e0dfff;
+  --kizkatt-border: #d7d7df;
+  --kizkatt-canvas-grid: rgba(30, 30, 40, 0.12);
+  --kizkatt-control-bg: #ffffff;
+  --kizkatt-control-bg-hover: #f1f1f7;
+  --kizkatt-divider: #d7d7df;
+  --kizkatt-handle-bg: #ffffff;
+  --kizkatt-muted-text: #6f6f7a;
+  --kizkatt-panel-label: #2c2c36;
+  --kizkatt-selection: #6965db;
+  --kizkatt-selection-strong: #5753d9;
+  --kizkatt-shadow: rgba(22, 22, 28, 0.16);
+  --kizkatt-text: #1e1e28;
+  --kizkatt-text-secondary: #34343f;
+  background: #f8f8fb;
+}
