@@ -1,7 +1,7 @@
-import React, { StrictMode } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import "kizkatt-graphic-engine/styles.css";
+import "./graphic-editor/styles.css";
 import "./styles.css";
 
 import { installCompatibilityPatches } from "./browser/installCompatibilityPatches";

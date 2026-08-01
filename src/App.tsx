@@ -1,4 +1,4 @@
-import { KizkattGraphicEditor } from "kizkatt-graphic-engine";
+import { KizkattGraphicEditor } from "./graphic-editor";
 
 export function App() {
   return (
