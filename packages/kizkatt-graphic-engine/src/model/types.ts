@@ -27,10 +27,11 @@ export type Point = {
   y: number;
 };
 
-export type ResizeHandle = "nw" | "ne" | "se" | "sw";
+export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
 export type KizkattElement = {
   id: string;
+  groupId?: string;
   type: ElementType;
   x: number;
   y: number;
@@ -84,8 +85,11 @@ export type Interaction =
   | {
       type: "rotate";
       center: Point;
+      currentAngle: number;
+      handleRadius: number;
       originalElements: KizkattElement[];
       selectedIds: string[];
+      startAngle: number;
     }
   | {
       type: "bend";

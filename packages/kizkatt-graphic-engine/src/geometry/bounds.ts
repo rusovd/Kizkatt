@@ -3,6 +3,8 @@ import { getElementBends, getLinearElementPoints } from "./linearElements";
 import {
   getBoundsFromPointList,
   getBoundsFromPoints,
+  getElementAxes,
+  getElementCenter,
   getElementEnd
 } from "./primitives";
 
@@ -42,19 +44,51 @@ export function getElementBounds(element: KizkattElement) {
   };
 }
 
-export function selectionBounds(elements: KizkattElement[]) {
+export function getElementTransformedBounds(element: KizkattElement) {
+  const bounds = getElementBounds(element);
+
+  if (element.angle === 0) {
+    return bounds;
+  }
+
+  const center = getElementCenter(element);
+  const { xAxis, yAxis } = getElementAxes(element.angle);
+  const localCorners = [
+    { x: bounds.x - center.x, y: bounds.y - center.y },
+    { x: bounds.x + bounds.width - center.x, y: bounds.y - center.y },
+    {
+      x: bounds.x + bounds.width - center.x,
+      y: bounds.y + bounds.height - center.y
+    },
+    { x: bounds.x - center.x, y: bounds.y + bounds.height - center.y }
+  ];
+  const transformedCorners = localCorners.map((corner) => ({
+    x: center.x + corner.x * xAxis.x + corner.y * yAxis.x,
+    y: center.y + corner.x * xAxis.y + corner.y * yAxis.y
+  }));
+
+  return getBoundsFromPointList(transformedCorners) ?? bounds;
+}
+
+export function selectionBounds(
+  elements: KizkattElement[],
+  options: { includeRotation?: boolean } = {}
+) {
   if (elements.length === 0) {
     return null;
   }
 
-  const firstBounds = getElementBounds(elements[0]);
+  const getBounds = options.includeRotation
+    ? getElementTransformedBounds
+    : getElementBounds;
+  const firstBounds = getBounds(elements[0]);
   let minX = firstBounds.x;
   let minY = firstBounds.y;
   let maxX = firstBounds.x + firstBounds.width;
   let maxY = firstBounds.y + firstBounds.height;
 
   for (let index = 1; index < elements.length; index += 1) {
-    const bounds = getElementBounds(elements[index]);
+    const bounds = getBounds(elements[index]);
     minX = Math.min(minX, bounds.x);
     minY = Math.min(minY, bounds.y);
     maxX = Math.max(maxX, bounds.x + bounds.width);

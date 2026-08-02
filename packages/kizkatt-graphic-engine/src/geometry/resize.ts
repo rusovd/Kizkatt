@@ -14,8 +14,8 @@ import {
 
 type ResizeHandleConfig = {
   id: ResizeHandle;
-  sx: -1 | 1;
-  sy: -1 | 1;
+  sx: -1 | 0 | 1;
+  sy: -1 | 0 | 1;
 };
 
 const DEFAULT_RESIZE_HANDLE = RESIZE_HANDLES[2];
@@ -49,8 +49,8 @@ function scaleLocalPoint(point: Point, scaleX: number, scaleY: number) {
 
 function getElementCornerPoint(
   element: KizkattElement,
-  sx: -1 | 1,
-  sy: -1 | 1
+  sx: -1 | 0 | 1,
+  sy: -1 | 0 | 1
 ) {
   const center = getElementCenter(element);
   const { xAxis, yAxis } = getElementAxes(element.angle);
@@ -86,7 +86,7 @@ export function getResizeAnchorPoint(
 ) {
   const { sx, sy } = getResizeHandle(handle);
 
-  return getElementCornerPoint(element, -sx as -1 | 1, -sy as -1 | 1);
+  return getElementCornerPoint(element, -sx as -1 | 0 | 1, -sy as -1 | 0 | 1);
 }
 
 export function resizeElementFromHandle(
@@ -99,14 +99,14 @@ export function resizeElementFromHandle(
   const { xAxis, yAxis } = getElementAxes(element.angle);
   const dx = point.x - anchor.x;
   const dy = point.y - anchor.y;
-  const nextWidth = Math.max(
-    MIN_ELEMENT_SIZE,
-    sx * (dx * xAxis.x + dy * xAxis.y)
-  );
-  const nextHeight = Math.max(
-    MIN_ELEMENT_SIZE,
-    sy * (dx * yAxis.x + dy * yAxis.y)
-  );
+  const nextWidth =
+    sx === 0
+      ? element.width
+      : Math.max(MIN_ELEMENT_SIZE, sx * (dx * xAxis.x + dy * xAxis.y));
+  const nextHeight =
+    sy === 0
+      ? element.height
+      : Math.max(MIN_ELEMENT_SIZE, sy * (dx * yAxis.x + dy * yAxis.y));
   const center = {
     x:
       anchor.x +
@@ -121,11 +121,15 @@ export function resizeElementFromHandle(
   const scaleY = nextHeight / Math.max(MIN_ELEMENT_SIZE, Math.abs(element.height));
   const scaleElementLocalPoint = (localPoint: Point) => ({
     x:
-      sx === 1
+      sx === 0
+        ? localPoint.x
+        : sx === 1
         ? localPoint.x * scaleX
         : nextWidth - (element.width - localPoint.x) * scaleX,
     y:
-      sy === 1
+      sy === 0
+        ? localPoint.y
+        : sy === 1
         ? localPoint.y * scaleY
         : nextHeight - (element.height - localPoint.y) * scaleY
   });
@@ -155,22 +159,48 @@ export function resizeElementsFromSelectionHandle(
   const selectedIdSet = new Set(selectedIds);
   const { sx, sy } = getResizeHandle(handle);
   const anchor = {
-    x: sx === 1 ? originalBounds.x : originalBounds.x + originalBounds.width,
-    y: sy === 1 ? originalBounds.y : originalBounds.y + originalBounds.height
+    x:
+      sx === 0
+        ? originalBounds.x + originalBounds.width / 2
+        : sx === 1
+        ? originalBounds.x
+        : originalBounds.x + originalBounds.width,
+    y:
+      sy === 0
+        ? originalBounds.y + originalBounds.height / 2
+        : sy === 1
+        ? originalBounds.y
+        : originalBounds.y + originalBounds.height
   };
-  const nextWidth = Math.max(
-    MIN_ELEMENT_SIZE,
-    sx === 1 ? point.x - anchor.x : anchor.x - point.x
-  );
-  const nextHeight = Math.max(
-    MIN_ELEMENT_SIZE,
-    sy === 1 ? point.y - anchor.y : anchor.y - point.y
-  );
+  const nextWidth =
+    sx === 0
+      ? originalBounds.width
+      : Math.max(
+          MIN_ELEMENT_SIZE,
+          sx === 1 ? point.x - anchor.x : anchor.x - point.x
+        );
+  const nextHeight =
+    sy === 0
+      ? originalBounds.height
+      : Math.max(
+          MIN_ELEMENT_SIZE,
+          sy === 1 ? point.y - anchor.y : anchor.y - point.y
+        );
   const nextBounds = {
     height: nextHeight,
     width: nextWidth,
-    x: sx === 1 ? anchor.x : anchor.x - nextWidth,
-    y: sy === 1 ? anchor.y : anchor.y - nextHeight
+    x:
+      sx === 0
+        ? originalBounds.x
+        : sx === 1
+        ? anchor.x
+        : anchor.x - nextWidth,
+    y:
+      sy === 0
+        ? originalBounds.y
+        : sy === 1
+        ? anchor.y
+        : anchor.y - nextHeight
   };
   const scaleX = nextWidth / Math.max(MIN_ELEMENT_SIZE, originalBounds.width);
   const scaleY = nextHeight / Math.max(MIN_ELEMENT_SIZE, originalBounds.height);

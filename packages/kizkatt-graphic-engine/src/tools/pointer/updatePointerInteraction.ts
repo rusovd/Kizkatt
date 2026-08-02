@@ -179,14 +179,19 @@ export function updatePointerInteraction(
       worldPoint.y - activeInteraction.center.y,
       worldPoint.x - activeInteraction.center.x
     );
+    const angleDelta = currentAngle - activeInteraction.startAngle;
 
+    updateInteraction({
+      ...activeInteraction,
+      currentAngle
+    });
     replaceActiveState({
       ...activeCanvasState,
       elements: rotateElementsAroundPoint(
         activeInteraction.originalElements,
         activeInteraction.selectedIds,
         activeInteraction.center,
-        currentAngle + Math.PI / 2
+        angleDelta
       )
     });
   }

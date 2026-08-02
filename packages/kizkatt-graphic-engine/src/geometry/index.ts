@@ -1,4 +1,8 @@
-export { getElementBounds, selectionBounds } from "./bounds";
+export {
+  getElementBounds,
+  getElementTransformedBounds,
+  selectionBounds
+} from "./bounds";
 export { isHexColor } from "./colors";
 export { findElementAtPoint } from "./hitTesting";
 export { reorderElementsByLayerAction } from "./layers";
@@ -13,6 +17,7 @@ export {
   getDistance,
   getElementCenter,
   getElementLocalVector,
+  rotatePointAroundPoint,
   getSegmentMidpoint
 } from "./primitives";
 export {

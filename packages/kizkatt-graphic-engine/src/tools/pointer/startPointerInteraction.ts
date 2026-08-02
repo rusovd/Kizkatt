@@ -15,7 +15,18 @@ import {
   isHandleTarget,
   isResizeHandle
 } from "./pointerTargets";
+import {
+  expandElementIdsToGroups,
+  getNextSelectedIdsForHit
+} from "../../model/groups";
 import type { PointerHandlerContext } from "./types";
+
+function getHandleWorldPoint(target: Element | null, fallback: { x: number; y: number }) {
+  const x = Number(target?.getAttribute("data-handle-world-x"));
+  const y = Number(target?.getAttribute("data-handle-world-y"));
+
+  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : fallback;
+}
 
 export function startPointerInteraction(
   event: PointerEvent<SVGSVGElement>,
@@ -43,7 +54,9 @@ export function startPointerInteraction(
   closeContextMenu();
 
   if (target && isHandleTarget(target, "resize")) {
-    const bounds = selectionBounds(selectedElements);
+    const bounds = selectionBounds(selectedElements, {
+      includeRotation: selectedElements.length > 1
+    });
     const resizeHandle = target.getAttribute("data-resize-handle");
     const handle = isResizeHandle(resizeHandle) ? resizeHandle : undefined;
 
@@ -103,19 +116,33 @@ export function startPointerInteraction(
   }
 
   if (isHandleTarget(target, "rotate")) {
-    const bounds = selectionBounds(selectedElements);
+    const bounds = selectionBounds(selectedElements, {
+      includeRotation: selectedElements.length > 1
+    });
+    const handlePoint = getHandleWorldPoint(target, worldPoint);
 
     if (bounds) {
       const center = {
-        x: bounds.x + bounds.width / 2,
-        y: bounds.y + bounds.height / 2
-      };
+          x: bounds.x + bounds.width / 2,
+          y: bounds.y + bounds.height / 2
+        };
+      const startAngle = Math.atan2(
+        handlePoint.y - center.y,
+        handlePoint.x - center.x
+      );
+      const handleRadius = Math.max(
+        24,
+        Math.hypot(handlePoint.x - center.x, handlePoint.y - center.y)
+      );
 
       updateInteraction({
         type: "rotate",
         center,
+        currentAngle: startAngle,
+        handleRadius,
         originalElements: canvasState.elements,
-        selectedIds: canvasState.selectedIds
+        selectedIds: canvasState.selectedIds,
+        startAngle
       });
     }
 
@@ -135,9 +162,22 @@ export function startPointerInteraction(
     const hitElement = findElementAtPoint(canvasState.elements, worldPoint);
 
     if (hitElement) {
-      const selectedIds = canvasState.selectedIds.includes(hitElement.id)
-        ? canvasState.selectedIds
-        : [hitElement.id];
+      const selectionMode = event.shiftKey
+        ? "add"
+        : event.ctrlKey
+        ? "remove"
+        : "replace";
+      const selectedIds = getNextSelectedIdsForHit(
+        canvasState.elements,
+        canvasState.selectedIds,
+        hitElement.id,
+        selectionMode
+      );
+
+      if (event.shiftKey || event.ctrlKey) {
+        replaceActiveState({ ...canvasState, selectedIds });
+        return;
+      }
 
       replaceActiveState({ ...canvasState, selectedIds });
       updateInteraction({
@@ -146,6 +186,7 @@ export function startPointerInteraction(
         originalElements: canvasState.elements
       });
     } else {
+      replaceActiveState({ ...canvasState, selectedIds: [] });
       updateInteraction({
         type: "selectArea",
         current: worldPoint,
@@ -160,9 +201,13 @@ export function startPointerInteraction(
     const hitElement = findElementAtPoint(canvasState.elements, worldPoint);
 
     if (hitElement) {
+      const erasedIds = new Set(
+        expandElementIdsToGroups(canvasState.elements, [hitElement.id])
+      );
+
       commitState({
         elements: canvasState.elements.filter(
-          (element) => element.id !== hitElement.id
+          (element) => !erasedIds.has(element.id)
         ),
         selectedIds: []
       });

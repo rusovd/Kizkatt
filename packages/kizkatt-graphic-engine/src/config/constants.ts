@@ -5,10 +5,17 @@ export const CANVAS_BACKGROUND_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-
 export const CUSTOM_CANVAS_BACKGROUND_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:custom-canvas-background`;
 export const GRID_COLOR_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:grid-color`;
 export const THEME_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:theme`;
+export const UI_SCALE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:ui-scale`;
+export const CANVAS_STATE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:canvas-state`;
+export const QUICK_SAVE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:quick-save`;
 export const HISTORY_LIMIT = 100;
 export const MIN_ELEMENT_SIZE = 10;
 export const MIN_CREATE_DRAG_DISTANCE = 6;
 export const MIN_SELECT_DRAG_DISTANCE = 4;
+export const DEFAULT_UI_SCALE = 1;
+export const MIN_UI_SCALE = 0.7;
+export const MAX_UI_SCALE = 1.2;
+export const UI_SCALE_STEP = 0.05;
 
 export const DEFAULT_CANVAS_BACKGROUND = "#fdf8f6";
 export const DEFAULT_GRID_COLOR = "rgba(255, 255, 255, 0.1)";
@@ -265,11 +272,15 @@ export const GRID_COLORS_BY_THEME: Record<KizkattTheme, string[]> = {
 
 export const RESIZE_HANDLES: Array<{
   id: ResizeHandle;
-  sx: -1 | 1;
-  sy: -1 | 1;
+  sx: -1 | 0 | 1;
+  sy: -1 | 0 | 1;
 }> = [
   { id: "nw", sx: -1, sy: -1 },
+  { id: "n", sx: 0, sy: -1 },
   { id: "ne", sx: 1, sy: -1 },
+  { id: "e", sx: 1, sy: 0 },
   { id: "se", sx: 1, sy: 1 },
-  { id: "sw", sx: -1, sy: 1 }
+  { id: "s", sx: 0, sy: 1 },
+  { id: "sw", sx: -1, sy: 1 },
+  { id: "w", sx: -1, sy: 0 }
 ];

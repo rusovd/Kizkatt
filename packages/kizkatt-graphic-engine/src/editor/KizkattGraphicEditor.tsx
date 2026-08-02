@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ComponentType, CSSProperties, ReactNode } from "react";
 import type {
   ChangeEvent,
   ClipboardEvent,
@@ -9,23 +9,16 @@ import type {
 } from "react";
 
 import { DEFAULT_ELEMENT_STYLE_BY_THEME } from "../config/constants";
-import { CanvasContextMenu } from "../ui/menus/CanvasContextMenu";
-import {
-  CanvasGrid,
-  getCanvasCursor,
-  SelectedBounds,
-  SelectionArea,
-  renderElement,
-  serializeSvg
-} from "../ui/canvas";
-import { FooterControls } from "../ui/controls/FooterControls";
-import { MainMenu } from "../ui/menus/MainMenu";
-import { StylePanel } from "../ui/panels/StylePanel";
-import { Toolbar } from "../ui/controls/Toolbar";
 import { createElement, createId } from "../model/element";
 import {
-  reorderElementsByLayerAction,
-} from "../geometry";
+  canGroupSelection,
+  canUngroupSelection,
+  cloneElementsWithFreshIdsAndGroups,
+  expandElementIdsToGroups,
+  groupSelectedElements,
+  ungroupSelectedElements
+} from "../model/groups";
+import { reorderElementsByLayerAction } from "../geometry";
 import {
   isAllowedEditingShortcut,
   isEditableKeyboardTarget,
@@ -33,19 +26,25 @@ import {
 } from "../platform/keyboard";
 import { useCanvasHistory } from "../hooks/useCanvasHistory";
 import {
-  getStoredTheme,
   getStoredCanvasBackgroundColor,
+  getStoredCanvasState,
   getStoredCustomCanvasBackgroundColor,
   getStoredGridColor,
+  getStoredQuickCanvasState,
+  getStoredTheme,
+  getStoredUiScale,
   storeCanvasBackgroundColor,
+  storeCanvasState,
   storeCustomCanvasBackgroundColor,
   storeGridColor,
-  storeTheme
+  storeQuickCanvasState,
+  storeTheme,
+  storeUiScale
 } from "../platform/storage";
-import { STYLE_TOOLS } from "../tools/toolRegistry";
 import { useToolPointerHandlers } from "../tools/pointer";
 import type {
   ContextMenuState,
+  Interaction,
   KizkattElement,
   Point,
   StyleState,
@@ -55,6 +54,148 @@ import type {
 
 type EyeDropperConstructor = new () => {
   open: () => Promise<{ sRGBHex: string }>;
+};
+
+const DEFAULT_IMAGE_SIZE = {
+  height: 160,
+  width: 240
+};
+const MAX_PASTED_IMAGE_SIZE = {
+  height: 360,
+  width: 480
+};
+
+function getFittedImageSize(width: number, height: number) {
+  if (width <= 0 || height <= 0) {
+    return DEFAULT_IMAGE_SIZE;
+  }
+
+  const scale = Math.min(
+    1,
+    MAX_PASTED_IMAGE_SIZE.width / width,
+    MAX_PASTED_IMAGE_SIZE.height / height
+  );
+
+  return {
+    height: Math.max(1, Math.round(height * scale)),
+    width: Math.max(1, Math.round(width * scale))
+  };
+}
+
+export type KizkattRenderElementOptions = {
+  showLinearBendHandles?: boolean;
+  showRotateHandle?: boolean;
+  showSelectionBounds?: boolean;
+};
+
+export type ToolbarProps = {
+  activeTool: Tool;
+  onActivateTool: (tool: Tool) => void;
+};
+
+export type CanvasContextMenuProps = {
+  arrowBinding: boolean;
+  canGroup: boolean;
+  canUngroup: boolean;
+  contextMenu: ContextMenuState | null;
+  onCloseAndRun: (action: () => void | Promise<void>) => void;
+  onCopyPng: () => Promise<void>;
+  onCopySvg: () => Promise<void>;
+  onGroup: () => void;
+  onPaste: () => void;
+  onSelectAll: () => void;
+  onUngroup: () => void;
+  setArrowBinding: (updater: (value: boolean) => boolean) => void;
+  setShowGrid: (updater: (value: boolean) => boolean) => void;
+  setSnapToMidpoints: (updater: (value: boolean) => boolean) => void;
+  setSnapToObjects: (updater: (value: boolean) => boolean) => void;
+  setViewMode: (updater: (value: boolean) => boolean) => void;
+  setZenMode: (updater: (value: boolean) => boolean) => void;
+  showGrid: boolean;
+  snapToMidpoints: boolean;
+  snapToObjects: boolean;
+  viewMode: boolean;
+  zenMode: boolean;
+};
+
+export type MainMenuProps = {
+  canvasBackgroundColor: string;
+  customCanvasBackgroundColor: string;
+  gridColor: string;
+  menuOpen: boolean;
+  onCanvasBackgroundChange: (color: string) => void;
+  onExport: () => void;
+  onGridColorChange: (color: string) => void;
+  onOpen: () => void;
+  onPickCanvasBackground: () => void;
+  onMenuOpenChange: (open: boolean) => void;
+  onResetCanvas: () => void;
+  onThemeChange: (theme: KizkattTheme) => void;
+  onUiScaleChange: (scale: number) => void;
+  theme: KizkattTheme;
+  uiScale: number;
+};
+
+export type StylePanelProps = {
+  onAction: (action: "delete" | "duplicate" | "link") => void;
+  onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
+  onStyleChange: (patch: Partial<StyleState>) => void;
+  style: StyleState;
+  theme: KizkattTheme;
+};
+
+export type TextEditorProps = {
+  element: KizkattElement;
+  onBlur: () => void;
+  onChange: (text: string) => void;
+  pan: Point;
+  zoom: number;
+};
+
+export type KizkattGraphicEditorComponents = {
+  CanvasContextMenu: ComponentType<CanvasContextMenuProps>;
+  CanvasGrid: ComponentType<{ pan: Point; visible: boolean; zoom: number }>;
+  FooterControls: ComponentType<{
+    canRedo: boolean;
+    canUndo: boolean;
+    onRedo: () => void;
+    onUndo: () => void;
+    onZoomIn: () => void;
+    onZoomOut: () => void;
+    zoom: number;
+  }>;
+  MainMenu: ComponentType<MainMenuProps>;
+  SelectedBounds: ComponentType<{
+    elements: KizkattElement[];
+    interaction: Interaction | null;
+  }>;
+  SelectionArea: ComponentType<{ interaction: Interaction | null }>;
+  StylePanel: ComponentType<StylePanelProps>;
+  TextEditor: ComponentType<TextEditorProps>;
+  Toolbar: ComponentType<ToolbarProps>;
+};
+
+export type KizkattGraphicEditorProps = {
+  arrowMarkerId?: string;
+  boardAriaLabel?: string;
+  boardClassName?: string;
+  boardThemeClassName?: (theme: KizkattTheme) => string;
+  canvasAriaLabel?: string;
+  canvasClassName?: string;
+  components: KizkattGraphicEditorComponents;
+  defaultElementStyleByTheme?: Record<KizkattTheme, StyleState>;
+  fileInputClassName?: string;
+  getCanvasCursor: (state: { isPanning: boolean; tool: Tool }) => string;
+  renderElement: (
+    element: KizkattElement,
+    selected: boolean,
+    options?: KizkattRenderElementOptions
+  ) => ReactNode;
+  serializeSvg: (svg: SVGSVGElement) => string;
+  shouldShowStylePanel: (state: {
+    activeTool: Tool;
+    selectedElements: KizkattElement[];
+  }) => boolean;
 };
 
 function isSameStyle(firstStyle: StyleState, secondStyle: StyleState) {
@@ -72,40 +213,39 @@ function isSameStyle(firstStyle: StyleState, secondStyle: StyleState) {
   );
 }
 
-export {
-  DEFAULT_CANVAS_BACKGROUND,
-  DEFAULT_GRID_COLOR
-} from "../config/constants";
-export {
-  findElementAtPoint,
-  getElementIdsInSelectionArea,
-  getResizeAnchorPoint,
-  getResizeCursor,
-  reorderElementsByLayerAction,
-  resizeElementFromHandle,
-  resizeElementsFromSelectionHandle,
-  rotateElementsAroundPoint
-} from "../geometry";
-export { stopDrawingEngineShortcuts } from "../platform/keyboard";
-export {
-  getStoredCanvasBackgroundColor,
-  getStoredCustomCanvasBackgroundColor,
-  getStoredGridColor,
-  getStoredTheme,
-  storeCanvasBackgroundColor,
-  storeCustomCanvasBackgroundColor,
-  storeGridColor,
-  storeTheme
-} from "../platform/storage";
-export type { ResizeHandle } from "../model/types";
-
-export function KizkattGraphicEditor() {
+export function KizkattGraphicEditor({
+  arrowMarkerId = "kizkatt-arrow",
+  boardAriaLabel = "Kizkatt diagram canvas",
+  boardClassName = "kizkatt-board",
+  boardThemeClassName = (theme) => `kizkatt-board--${theme}`,
+  canvasAriaLabel = "Drawing canvas",
+  canvasClassName = "kizkatt-canvas",
+  components,
+  defaultElementStyleByTheme = DEFAULT_ELEMENT_STYLE_BY_THEME,
+  fileInputClassName = "kizkatt-file-input",
+  getCanvasCursor,
+  renderElement,
+  serializeSvg,
+  shouldShowStylePanel
+}: KizkattGraphicEditorProps) {
+  const {
+    CanvasContextMenu,
+    CanvasGrid,
+    FooterControls,
+    MainMenu,
+    SelectedBounds,
+    SelectionArea,
+    StylePanel,
+    TextEditor,
+    Toolbar
+  } = components;
   const svgRef = useRef<SVGSVGElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const clipboardRef = useRef<KizkattElement[]>([]);
   const [tool, setTool] = useState<Tool>("select");
   const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState<KizkattTheme>(() => getStoredTheme());
+  const [uiScale, setUiScale] = useState(() => getStoredUiScale());
   const [canvasBackgroundColor, setCanvasBackgroundColor] = useState(() =>
     getStoredCanvasBackgroundColor(getStoredTheme())
   );
@@ -117,7 +257,11 @@ export function KizkattGraphicEditor() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [style, setStyle] = useState<StyleState>(
-    () => DEFAULT_ELEMENT_STYLE_BY_THEME[getStoredTheme()]
+    () => defaultElementStyleByTheme[getStoredTheme()]
+  );
+  const initialCanvasState = useMemo(
+    () => getStoredCanvasState() ?? { elements: [], selectedIds: [] },
+    []
   );
   const {
     canvasState,
@@ -127,7 +271,7 @@ export function KizkattGraphicEditor() {
     redo,
     replaceActiveState,
     undo
-  } = useCanvasHistory({ elements: [], selectedIds: [] });
+  } = useCanvasHistory(initialCanvasState);
   const [editingTextElementId, setEditingTextElementId] = useState<
     string | null
   >(null);
@@ -142,6 +286,9 @@ export function KizkattGraphicEditor() {
 
   const canvasStateRef = useRef(canvasState);
   canvasStateRef.current = canvasState;
+  useEffect(() => {
+    storeCanvasState(canvasState);
+  }, [canvasState]);
   const selectedElements = useMemo(
     () =>
       canvasState.elements.filter((element) =>
@@ -167,7 +314,19 @@ export function KizkattGraphicEditor() {
       }
     : style;
   const showStylePanel =
-    !menuOpen && (selectedElements.length > 0 || STYLE_TOOLS.has(tool));
+    !menuOpen &&
+    shouldShowStylePanel({
+      activeTool: tool,
+      selectedElements
+    });
+  const canGroup = canGroupSelection(
+    canvasState.elements,
+    canvasState.selectedIds
+  );
+  const canUngroup = canUngroupSelection(
+    canvasState.elements,
+    canvasState.selectedIds
+  );
 
   const selectAll = useCallback(() => {
     replaceActiveState({
@@ -185,12 +344,10 @@ export function KizkattGraphicEditor() {
       return;
     }
 
-    const pastedElements = clipboardRef.current.map((element) => ({
-      ...element,
-      id: createId(),
-      x: element.x + 24,
-      y: element.y + 24
-    }));
+    const pastedElements = cloneElementsWithFreshIdsAndGroups(
+      clipboardRef.current,
+      createId
+    );
 
     commitState({
       elements: [...canvasState.elements, ...pastedElements],
@@ -203,12 +360,10 @@ export function KizkattGraphicEditor() {
       return;
     }
 
-    const duplicatedElements = selectedElements.map((element) => ({
-      ...element,
-      id: createId(),
-      x: element.x + 24,
-      y: element.y + 24
-    }));
+    const duplicatedElements = cloneElementsWithFreshIdsAndGroups(
+      selectedElements,
+      createId
+    );
 
     commitState({
       elements: [...canvasState.elements, ...duplicatedElements],
@@ -270,20 +425,43 @@ export function KizkattGraphicEditor() {
   const insertPastedImage = useCallback(
     (src: string) => {
       const pastePoint = getPastePoint();
-      const nextElement: KizkattElement = {
+      const baseElement: KizkattElement = {
         ...createElement("image", pastePoint, style),
         backgroundColor: "transparent",
-        height: 160,
+        height: DEFAULT_IMAGE_SIZE.height,
         src,
-        width: 240
+        width: DEFAULT_IMAGE_SIZE.width
+      };
+      let committed = false;
+      const commitImage = (size = DEFAULT_IMAGE_SIZE) => {
+        if (committed) {
+          return;
+        }
+
+        committed = true;
+        const nextElement = { ...baseElement, ...size };
+
+        commitState({
+          elements: [...canvasStateRef.current.elements, nextElement],
+          selectedIds: [nextElement.id]
+        });
+        setPendingImageSrc(null);
+        setTool("select");
       };
 
-      commitState({
-        elements: [...canvasStateRef.current.elements, nextElement],
-        selectedIds: [nextElement.id]
-      });
-      setPendingImageSrc(null);
-      setTool("select");
+      const image = new Image();
+      image.onload = () => {
+        commitImage(getFittedImageSize(image.naturalWidth, image.naturalHeight));
+      };
+      image.onerror = () => {
+        commitImage();
+      };
+      image.src = src;
+
+      if (image.complete && image.naturalWidth > 0) {
+        commitImage(getFittedImageSize(image.naturalWidth, image.naturalHeight));
+      }
+      window.setTimeout(() => commitImage(), 250);
     },
     [commitState, getPastePoint, style]
   );
@@ -325,6 +503,42 @@ export function KizkattGraphicEditor() {
       `kizkatt://selection/${canvasState.selectedIds.join(",")}`
     );
   }, [canvasState.selectedIds]);
+
+  const groupSelected = useCallback(() => {
+    if (!canGroup) {
+      return;
+    }
+
+    const selectedIds = expandElementIdsToGroups(
+      canvasState.elements,
+      canvasState.selectedIds
+    );
+
+    commitState({
+      elements: groupSelectedElements(
+        canvasState.elements,
+        selectedIds,
+        createId()
+      ),
+      selectedIds
+    });
+  }, [canGroup, canvasState, commitState]);
+
+  const ungroupSelected = useCallback(() => {
+    if (!canUngroup) {
+      return;
+    }
+
+    const selectedIds = expandElementIdsToGroups(
+      canvasState.elements,
+      canvasState.selectedIds
+    );
+
+    commitState({
+      elements: ungroupSelectedElements(canvasState.elements, selectedIds),
+      selectedIds
+    });
+  }, [canUngroup, canvasState, commitState]);
 
   const copySvgToClipboard = async () => {
     const svg = svgRef.current;
@@ -437,6 +651,25 @@ export function KizkattGraphicEditor() {
     setMenuOpen(false);
   };
 
+  const quickSaveCanvas = () => {
+    storeQuickCanvasState(canvasStateRef.current);
+    setMenuOpen(false);
+  };
+
+  const quickLoadCanvas = () => {
+    const storedState = getStoredQuickCanvasState() ?? getStoredCanvasState();
+
+    if (!storedState) {
+      setMenuOpen(false);
+      return;
+    }
+
+    commitState(storedState);
+    setEditingTextElementId(null);
+    setTool("select");
+    setMenuOpen(false);
+  };
+
   const setStoredTheme = (nextTheme: KizkattTheme) => {
     const previousTheme = theme;
 
@@ -447,11 +680,15 @@ export function KizkattGraphicEditor() {
     );
     setGridColor(getStoredGridColor(nextTheme));
     setStyle((previousStyle) =>
-      isSameStyle(previousStyle, DEFAULT_ELEMENT_STYLE_BY_THEME[previousTheme])
-        ? DEFAULT_ELEMENT_STYLE_BY_THEME[nextTheme]
+      isSameStyle(previousStyle, defaultElementStyleByTheme[previousTheme])
+        ? defaultElementStyleByTheme[nextTheme]
         : previousStyle
     );
     storeTheme(nextTheme);
+  };
+  const setStoredUiScale = (scale: number) => {
+    setUiScale(scale);
+    storeUiScale(scale);
   };
 
   const setStoredCanvasBackground = (color: string) => {
@@ -636,8 +873,9 @@ export function KizkattGraphicEditor() {
   });
   return (
     <section
-      className={`kizkatt-board kizkatt-board--${theme}`}
-      aria-label="Kizkatt diagram canvas"
+      className={`${boardClassName} ${boardThemeClassName(theme)}`}
+      aria-label={boardAriaLabel}
+      style={{ "--kizkatt-ui-scale": uiScale } as CSSProperties}
       tabIndex={0}
       onKeyDownCapture={onBoardKeyDown}
       onPaste={onBoardPaste}
@@ -647,7 +885,7 @@ export function KizkattGraphicEditor() {
 
       <input
         ref={imageInputRef}
-        className="kizkatt-file-input"
+        className={fileInputClassName}
         type="file"
         accept="image/*"
         aria-label="Choose image"
@@ -656,12 +894,16 @@ export function KizkattGraphicEditor() {
 
       <CanvasContextMenu
         arrowBinding={arrowBinding}
+        canGroup={canGroup}
+        canUngroup={canUngroup}
         contextMenu={contextMenu}
         onCloseAndRun={runContextMenuAction}
         onCopyPng={copyPngToClipboard}
         onCopySvg={copySvgToClipboard}
+        onGroup={groupSelected}
         onPaste={pasteSelected}
         onSelectAll={selectAll}
+        onUngroup={ungroupSelected}
         setArrowBinding={setArrowBinding}
         setShowGrid={setShowGrid}
         setSnapToMidpoints={setSnapToMidpoints}
@@ -680,15 +922,17 @@ export function KizkattGraphicEditor() {
         customCanvasBackgroundColor={customCanvasBackgroundColor}
         gridColor={gridColor}
         menuOpen={menuOpen}
-        onExport={() => void copyPngToClipboard()}
-        onOpen={() => {}}
+        onExport={quickSaveCanvas}
+        onOpen={quickLoadCanvas}
         onCanvasBackgroundChange={setStoredCanvasBackground}
         onGridColorChange={setStoredGridColor}
         onMenuOpenChange={setMenuOpen}
         onPickCanvasBackground={() => void pickCanvasBackground()}
         onResetCanvas={resetCanvas}
         onThemeChange={setStoredTheme}
+        onUiScaleChange={setStoredUiScale}
         theme={theme}
+        uiScale={uiScale}
       />
       {showStylePanel && (
         <StylePanel
@@ -700,31 +944,20 @@ export function KizkattGraphicEditor() {
         />
       )}
       {editingTextElement && (
-        <textarea
-          aria-label="Edit text"
-          autoFocus
-          className="kizkatt-text-editor"
+        <TextEditor
+          element={editingTextElement}
           onBlur={() => setEditingTextElementId(null)}
-          onChange={(event) =>
-            updateTextElement(editingTextElement.id, event.target.value)
-          }
-          style={{
-            color: editingTextElement.strokeColor,
-            height: Math.max(36, editingTextElement.height * zoom),
-            left: pan.x + editingTextElement.x * zoom,
-            opacity: editingTextElement.opacity / 100,
-            top: pan.y + editingTextElement.y * zoom,
-            width: Math.max(128, editingTextElement.width * zoom)
-          }}
-          value={editingTextElement.text}
+          onChange={(text) => updateTextElement(editingTextElement.id, text)}
+          pan={pan}
+          zoom={zoom}
         />
       )}
 
       <svg
         ref={svgRef}
-        className="kizkatt-canvas"
+        className={canvasClassName}
         role="application"
-        aria-label="Drawing canvas"
+        aria-label={canvasAriaLabel}
         style={
           {
             "--kizkatt-canvas-grid": gridColor,
@@ -740,7 +973,7 @@ export function KizkattGraphicEditor() {
         <CanvasGrid pan={pan} visible={showGrid} zoom={zoom} />
         <defs>
           <marker
-            id="kizkatt-arrow"
+            id={arrowMarkerId}
             viewBox="0 0 10 10"
             refX="8"
             refY="5"
@@ -767,18 +1000,20 @@ export function KizkattGraphicEditor() {
             const isCreatingElement =
               interaction?.type === "create" &&
               interaction.elementId === element.id;
+            const isRotatingSelection = interaction?.type === "rotate";
 
             return renderElement(
               element,
               showElementSelection && !isDrawingFreehand,
               {
                 showLinearBendHandles: !isCreatingLinearElement,
-                showRotateHandle: !isCreatingElement
+                showRotateHandle: !isCreatingElement,
+                showSelectionBounds: !isRotatingSelection
               }
             );
           })}
           <SelectionArea interaction={interaction} />
-          <SelectedBounds elements={selectedElements} />
+          <SelectedBounds elements={selectedElements} interaction={interaction} />
         </g>
       </svg>
 

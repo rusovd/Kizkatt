@@ -112,6 +112,22 @@ export function getElementLocalVector(element: KizkattElement, vector: Point) {
   };
 }
 
+export function rotatePointAroundPoint(
+  point: Point,
+  center: Point,
+  angle: number
+) {
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+
+  return {
+    x: center.x + dx * cos - dy * sin,
+    y: center.y + dx * sin + dy * cos
+  };
+}
+
 export function getSegmentMidpoint(start: Point, end: Point) {
   return {
     x: (start.x + end.x) / 2,

@@ -1,4 +1,5 @@
 import type { KizkattElement, Point } from "../model/types";
+import { expandElementIdsToGroups } from "../model/groups";
 import { getElementBounds } from "./bounds";
 import { boundsIntersect, getBoundsFromPoints } from "./primitives";
 
@@ -16,5 +17,5 @@ export function getElementIdsInSelectionArea(
     }
   }
 
-  return selectedIds;
+  return expandElementIdsToGroups(elements, selectedIds);
 }
