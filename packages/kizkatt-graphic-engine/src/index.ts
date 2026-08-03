@@ -4,6 +4,7 @@ export * from "./geometry";
 export * from "./hooks/useCanvasHistory";
 export * from "./model/element";
 export * from "./model/groups";
+export * from "./model/naming";
 export type * from "./model/types";
 export * from "./platform/keyboard";
 export * from "./platform/storage";

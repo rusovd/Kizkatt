@@ -32,6 +32,8 @@ export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 export type KizkattElement = {
   id: string;
   groupId?: string;
+  groupName?: string;
+  name?: string;
   type: ElementType;
   x: number;
   y: number;
@@ -51,12 +53,17 @@ export type KizkattElement = {
   text?: string;
   src?: string;
   bends?: Point[];
+  closed?: boolean;
   curve?: Point;
   points?: Point[];
 };
 
 export type CanvasState = {
   elements: KizkattElement[];
+  selectedBend?: {
+    bendIndex: number;
+    elementId: string;
+  };
   selectedIds: string[];
 };
 

@@ -33,6 +33,7 @@ export function finishPointerInteraction(
 
     replaceActiveState({
       ...activeCanvasState,
+      selectedBend: undefined,
       selectedIds: shouldSelect
         ? getElementIdsInSelectionArea(
             activeCanvasState.elements,
@@ -59,6 +60,7 @@ export function finishPointerInteraction(
         elements: activeCanvasState.elements.filter(
           (item) => item.id !== activeInteraction.elementId
         ),
+        selectedBend: undefined,
         selectedIds: []
       });
       updateInteraction(null);

@@ -2,6 +2,7 @@ import type { Dispatch, PointerEvent, RefObject, SetStateAction } from "react";
 
 import type {
   CanvasState,
+  ElementType,
   Interaction,
   KizkattElement,
   Point,
@@ -14,6 +15,11 @@ export type UseToolPointerHandlersArgs = {
   canvasStateRef: RefObject<CanvasState>;
   closeContextMenu: () => void;
   commitState: (nextState: CanvasState) => void;
+  createElementName: (
+    type: ElementType,
+    elements: readonly KizkattElement[]
+  ) => string;
+  getToolForSelectedElement?: (element: KizkattElement) => Tool | null;
   pan: Point;
   pendingImageSrc: string | null;
   replaceActiveState: (nextState: CanvasState) => void;

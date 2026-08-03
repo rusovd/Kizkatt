@@ -1,4 +1,9 @@
-import type { KizkattTheme, ResizeHandle, StyleState } from "../model/types";
+import type {
+  ElementType,
+  KizkattTheme,
+  ResizeHandle,
+  StyleState
+} from "../model/types";
 
 export const KIZKATT_STORAGE_PREFIX = "kizkatt";
 export const CANVAS_BACKGROUND_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:canvas-background`;
@@ -12,6 +17,107 @@ export const HISTORY_LIMIT = 100;
 export const MIN_ELEMENT_SIZE = 10;
 export const MIN_CREATE_DRAG_DISTANCE = 6;
 export const MIN_SELECT_DRAG_DISTANCE = 4;
+export const MIN_PIXEL_SIZE = 1;
+export const TEXT_ELEMENT_DEFAULT_WIDTH = 128;
+export const TEXT_ELEMENT_DEFAULT_HEIGHT = 36;
+export const TEXT_ELEMENT_DEFAULT_CONTENT = "Text";
+export const PASTED_TEXT_LINE_HEIGHT = 28;
+export const PASTED_TEXT_CHARACTER_WIDTH = 12;
+export const PASTED_TEXT_MAX_WIDTH = 520;
+export const PATH_CLOSED_ENDPOINT_TOLERANCE = 4;
+export const PERCENT_MAX_VALUE = 100;
+export const MIN_ZOOM = 0.25;
+export const MAX_ZOOM = 4;
+export const ZOOM_STEP = 0.1;
+export const DEFAULT_ZOOM = 1;
+export const INITIAL_PAN = { x: 0, y: 0 };
+export const VIEWPORT_CENTER_DIVISOR = 2;
+export const HALF_DIVISOR = 2;
+export const DUPLICATED_ELEMENT_OFFSET = 24;
+export const ROTATE_HANDLE_MIN_RADIUS = 24;
+export const DEFAULT_IMAGE_SIZE = {
+  height: 160,
+  width: 240
+};
+export const MAX_PASTED_IMAGE_SIZE = {
+  height: 360,
+  width: 480
+};
+export const IMAGE_LOAD_FALLBACK_TIMEOUT_MS = 250;
+export const DEFAULT_BOARD_ARIA_LABEL = "Kizkatt diagram canvas";
+export const DEFAULT_CANVAS_ARIA_LABEL = "Drawing canvas";
+export const DEFAULT_IMAGE_INPUT_ARIA_LABEL = "Choose image";
+export const EXPORT_CANVAS_IMAGE_ERROR_MESSAGE =
+  "Unable to export canvas image.";
+export const IMAGE_FILE_ACCEPT = "image/*";
+export const SVG_IMAGE_MIME_TYPE = "image/svg+xml;charset=utf-8";
+export const PNG_IMAGE_MIME_TYPE = "image/png";
+export const PLAIN_TEXT_MIME_TYPE = "text/plain";
+export const EMPTY_INPUT_VALUE = "";
+export const EDITABLE_KEYBOARD_TARGET_SELECTORS = [
+  "input",
+  "textarea",
+  "select",
+  "[contenteditable='true']",
+  "[contenteditable='']",
+  "[role='textbox']"
+];
+export const DEFAULT_ARROW_MARKER_ID = "kizkatt-arrow";
+export const ARROW_MARKER_VIEW_BOX = "0 0 10 10";
+export const ARROW_MARKER_REF_X = 8;
+export const ARROW_MARKER_REF_Y = 5;
+export const ARROW_MARKER_WIDTH = 8;
+export const ARROW_MARKER_HEIGHT = 8;
+export const ARROW_MARKER_ORIENT = "auto-start-reverse";
+export const ARROW_MARKER_PATH = "M 0 0 L 10 5 L 0 10 z";
+export const CANVAS_TAB_INDEX = 0;
+export const DEFAULT_GROUP_NAME = "Group";
+export const DEFAULT_ELEMENT_NAME_BY_TYPE: Record<ElementType, string> = {
+  arrow: "Arrow",
+  diamond: "Diamond",
+  draw: "Draw",
+  ellipse: "Ellipse",
+  image: "Image",
+  line: "Line",
+  rectangle: "Rectangle",
+  text: "Text"
+};
+export const TRANSPARENT_COLOR = "transparent";
+export const DEFAULT_EDGE_STYLE = "round";
+export const DEFAULT_FILL_STYLE = "solid";
+export const DEFAULT_FILL_WEIGHT = 1;
+export const DEFAULT_SLOPPINESS = "architect";
+export const DEFAULT_SELECTED_SLOPPINESS = "artist";
+export const DEFAULT_SLOPPINESS_GAP = 16;
+export const DEFAULT_STROKE_STYLE = "solid";
+export const DEFAULT_STROKE_WIDTH = 10;
+export const DEFAULT_OPACITY = PERCENT_MAX_VALUE;
+export const IMAGE_MIME_TYPE_PREFIX = "image/";
+export const SELECTION_LINK_PREFIX = "kizkatt://selection/";
+export const ID_RANDOM_RADIX = 36;
+export const ID_RANDOM_SLICE_START = 2;
+export const EMPTY_COLLECTION_LENGTH = 0;
+export const SINGLE_SELECTION_COUNT = 1;
+export const FIRST_ARRAY_INDEX = 0;
+export const NEXT_ARRAY_INDEX_OFFSET = 1;
+export const DEFAULT_SELECT_TOOL = "select";
+export const LOCK_TOOL = "lock";
+export const TEXT_TOOL = "text";
+export const DEFAULT_LOCK_TOOL_ELEMENT_TYPE = "rectangle";
+export const DEFAULT_IMAGE_ELEMENT_TYPE = "image";
+export const EMPTY_PATH_DATA = "";
+export const SVG_MOVE_COMMAND = "M";
+export const SVG_LINE_COMMAND = "L";
+export const SVG_CUBIC_COMMAND = "C";
+export const SVG_COMMAND_SEPARATOR = " ";
+export const LINEAR_PATH_MIN_POINT_COUNT = 1;
+export const LINEAR_PATH_STRAIGHT_POINT_COUNT = 2;
+export const CUBIC_CONTROL_POINT_DIVISOR = 6;
+export const SHARP_EDGE_STYLE = "sharp";
+export const NO_ROTATION_ANGLE = 0;
+export const DRAW_ELEMENT_TYPE = "draw";
+export const LINE_ELEMENT_TYPE = "line";
+export const ARROW_ELEMENT_TYPE = "arrow";
 export const DEFAULT_UI_SCALE = 1;
 export const MIN_UI_SCALE = 0.7;
 export const MAX_UI_SCALE = 1.2;
@@ -227,14 +333,14 @@ export const LIGHT_THEME_BACKGROUND_COLORS = [
 ];
 
 const DEFAULT_STYLE_BASE = {
-  edgeStyle: "round",
-  fillStyle: "solid",
-  fillWeight: 1,
-  sloppiness: "architect",
-  sloppinessGap: 16,
-  strokeWidth: 10,
-  strokeStyle: "solid",
-  opacity: 100
+  edgeStyle: DEFAULT_EDGE_STYLE,
+  fillStyle: DEFAULT_FILL_STYLE,
+  fillWeight: DEFAULT_FILL_WEIGHT,
+  sloppiness: DEFAULT_SLOPPINESS,
+  sloppinessGap: DEFAULT_SLOPPINESS_GAP,
+  strokeWidth: DEFAULT_STROKE_WIDTH,
+  strokeStyle: DEFAULT_STROKE_STYLE,
+  opacity: DEFAULT_OPACITY
 } as const;
 
 export const DEFAULT_ELEMENT_STYLE_BY_THEME: Record<KizkattTheme, StyleState> = {

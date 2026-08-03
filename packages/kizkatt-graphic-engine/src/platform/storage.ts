@@ -14,6 +14,8 @@ import {
   MIN_UI_SCALE,
   UI_SCALE_STORAGE_KEY
 } from "../config/constants";
+import { getElementBends } from "../geometry/linearElements";
+import { normalizeElementNames } from "../model/naming";
 import type { CanvasState, KizkattElement, KizkattTheme } from "../model/types";
 
 function isTheme(value: unknown): value is KizkattTheme {
@@ -216,11 +218,25 @@ function normalizeStoredCanvasState(value: unknown): CanvasState | null {
     return null;
   }
 
-  const elements = state.elements.filter(isStoredElement);
+  const elements = normalizeElementNames(state.elements.filter(isStoredElement));
   const elementIds = new Set(elements.map((element) => element.id));
+  const selectedBendElement =
+    state.selectedBend &&
+    typeof state.selectedBend === "object" &&
+    typeof state.selectedBend.elementId === "string" &&
+    typeof state.selectedBend.bendIndex === "number" &&
+    elementIds.has(state.selectedBend.elementId)
+      ? elements.find((element) => element.id === state.selectedBend?.elementId)
+      : undefined;
+  const selectedBend =
+    selectedBendElement &&
+    getElementBends(selectedBendElement)[state.selectedBend?.bendIndex ?? -1]
+      ? state.selectedBend
+      : undefined;
 
   return {
     elements,
+    selectedBend,
     selectedIds: state.selectedIds.filter(
       (id): id is string => typeof id === "string" && elementIds.has(id)
     )

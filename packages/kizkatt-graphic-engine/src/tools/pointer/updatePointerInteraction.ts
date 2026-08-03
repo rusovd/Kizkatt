@@ -169,7 +169,11 @@ export function updatePointerInteraction(
               curve: undefined
             }
           : element
-      )
+      ),
+      selectedBend: {
+        bendIndex: activeInteraction.bendIndex,
+        elementId: activeInteraction.elementId
+      }
     });
     return;
   }

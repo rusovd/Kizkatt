@@ -1,24 +1,40 @@
-import { MIN_ELEMENT_SIZE } from "../config/constants";
+import {
+  ID_RANDOM_RADIX,
+  ID_RANDOM_SLICE_START,
+  MIN_ELEMENT_SIZE,
+  MIN_PIXEL_SIZE,
+  PATH_CLOSED_ENDPOINT_TOLERANCE,
+  TEXT_ELEMENT_DEFAULT_CONTENT,
+  TEXT_ELEMENT_DEFAULT_HEIGHT,
+  TEXT_ELEMENT_DEFAULT_WIDTH
+} from "../config/constants";
 import type { ElementType, KizkattElement, Point, StyleState } from "./types";
+import { createElementName } from "./naming";
+import type { ElementNamingConfig } from "./naming";
 
 export function createId() {
-  return globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+  return (
+    globalThis.crypto?.randomUUID?.() ??
+    Math.random().toString(ID_RANDOM_RADIX).slice(ID_RANDOM_SLICE_START)
+  );
 }
 
 export function createElement(
   type: ElementType,
   point: Point,
-  style: StyleState
+  style: StyleState,
+  naming?: ElementNamingConfig
 ): KizkattElement {
   return {
     id: createId(),
+    name: createElementName(type, [], naming),
     type,
     x: point.x,
     y: point.y,
-    width: type === "text" ? 128 : 1,
-    height: type === "text" ? 36 : 1,
+    width: type === "text" ? TEXT_ELEMENT_DEFAULT_WIDTH : MIN_PIXEL_SIZE,
+    height: type === "text" ? TEXT_ELEMENT_DEFAULT_HEIGHT : MIN_PIXEL_SIZE,
     angle: 0,
-    text: type === "text" ? "Text" : undefined,
+    text: type === "text" ? TEXT_ELEMENT_DEFAULT_CONTENT : undefined,
     points: type === "draw" ? [{ x: 0, y: 0 }] : undefined,
     ...style
   };
@@ -76,4 +92,79 @@ export function normalizeElement(element: KizkattElement): KizkattElement {
   next.height = Math.max(MIN_ELEMENT_SIZE, next.height);
 
   return next;
+}
+
+export function getElementPathEndpoints(element: KizkattElement) {
+  if (element.type === "line" || element.type === "arrow") {
+    return {
+      end: {
+        x: element.x + element.width,
+        y: element.y + element.height
+      },
+      start: {
+        x: element.x,
+        y: element.y
+      }
+    };
+  }
+
+  if (element.type === "draw") {
+    const points = element.points ?? [];
+    const firstPoint = points[0];
+    const lastPoint = points[points.length - 1];
+
+    if (!firstPoint || !lastPoint) {
+      return null;
+    }
+
+    return {
+      end: {
+        x: element.x + lastPoint.x,
+        y: element.y + lastPoint.y
+      },
+      start: {
+        x: element.x + firstPoint.x,
+        y: element.y + firstPoint.y
+      }
+    };
+  }
+
+  return null;
+}
+
+export function isElementPathClosed(element: KizkattElement) {
+  if (element.type !== "line" && element.type !== "draw") {
+    return false;
+  }
+
+  if (element.closed) {
+    return true;
+  }
+
+  const endpoints = getElementPathEndpoints(element);
+
+  if (!endpoints) {
+    return false;
+  }
+
+  if (element.type === "line" && (element.bends?.length ?? 0) === 0) {
+    return false;
+  }
+
+  return Math.hypot(
+    endpoints.end.x - endpoints.start.x,
+    endpoints.end.y - endpoints.start.y
+  ) <= PATH_CLOSED_ENDPOINT_TOLERANCE;
+}
+
+export function canElementUseBackground(element: KizkattElement) {
+  if (element.type === "arrow" || element.type === "image") {
+    return false;
+  }
+
+  if (element.type === "line" || element.type === "draw") {
+    return isElementPathClosed(element);
+  }
+
+  return true;
 }

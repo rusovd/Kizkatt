@@ -1,6 +1,19 @@
 import type { PointerEvent } from "react";
 
 import {
+  DEFAULT_IMAGE_ELEMENT_TYPE,
+  DEFAULT_IMAGE_SIZE,
+  DEFAULT_LOCK_TOOL_ELEMENT_TYPE,
+  DEFAULT_SELECT_TOOL,
+  HALF_DIVISOR,
+  LOCK_TOOL,
+  NEXT_ARRAY_INDEX_OFFSET,
+  ROTATE_HANDLE_MIN_RADIUS,
+  SINGLE_SELECTION_COUNT,
+  TEXT_TOOL,
+  TRANSPARENT_COLOR
+} from "../../config/constants";
+import {
   findElementAtPoint,
   getClientPoint,
   getElementBends,
@@ -36,7 +49,9 @@ export function startPointerInteraction(
     canvasState,
     closeContextMenu,
     commitState,
+    createElementName,
     getPointerWorldPoint,
+    getToolForSelectedElement,
     pan,
     pendingImageSrc,
     replaceActiveState,
@@ -55,7 +70,7 @@ export function startPointerInteraction(
 
   if (target && isHandleTarget(target, "resize")) {
     const bounds = selectionBounds(selectedElements, {
-      includeRotation: selectedElements.length > 1
+      includeRotation: selectedElements.length > SINGLE_SELECTION_COUNT
     });
     const resizeHandle = target.getAttribute("data-resize-handle");
     const handle = isResizeHandle(resizeHandle) ? resizeHandle : undefined;
@@ -88,7 +103,7 @@ export function startPointerInteraction(
           : Number(bendIndexAttribute);
       const bendMidpoint = getSegmentMidpoint(
         linePoints[bendIndex],
-        linePoints[bendIndex + 1]
+        linePoints[bendIndex + NEXT_ARRAY_INDEX_OFFSET]
       );
       const originalBends =
         bendIndexAttribute === null
@@ -101,6 +116,15 @@ export function startPointerInteraction(
               ...existingBends.slice(bendIndex)
             ]
           : existingBends;
+
+      replaceActiveState({
+        ...canvasState,
+        selectedBend: {
+          bendIndex,
+          elementId: element.id
+        },
+        selectedIds: [element.id]
+      });
 
       updateInteraction({
         type: "bend",
@@ -117,21 +141,21 @@ export function startPointerInteraction(
 
   if (isHandleTarget(target, "rotate")) {
     const bounds = selectionBounds(selectedElements, {
-      includeRotation: selectedElements.length > 1
+      includeRotation: selectedElements.length > SINGLE_SELECTION_COUNT
     });
     const handlePoint = getHandleWorldPoint(target, worldPoint);
 
     if (bounds) {
       const center = {
-          x: bounds.x + bounds.width / 2,
-          y: bounds.y + bounds.height / 2
+          x: bounds.x + bounds.width / HALF_DIVISOR,
+          y: bounds.y + bounds.height / HALF_DIVISOR
         };
       const startAngle = Math.atan2(
         handlePoint.y - center.y,
         handlePoint.x - center.x
       );
       const handleRadius = Math.max(
-        24,
+        ROTATE_HANDLE_MIN_RADIUS,
         Math.hypot(handlePoint.x - center.x, handlePoint.y - center.y)
       );
 
@@ -175,18 +199,37 @@ export function startPointerInteraction(
       );
 
       if (event.shiftKey || event.ctrlKey) {
-        replaceActiveState({ ...canvasState, selectedIds });
+        replaceActiveState({
+          ...canvasState,
+          selectedBend: undefined,
+          selectedIds
+        });
         return;
       }
 
-      replaceActiveState({ ...canvasState, selectedIds });
+      replaceActiveState({
+        ...canvasState,
+        selectedBend: undefined,
+        selectedIds
+      });
+      if (!hitElement.groupId) {
+        const selectedTool = getToolForSelectedElement?.(hitElement);
+
+        if (selectedTool) {
+          setTool(selectedTool);
+        }
+      }
       updateInteraction({
         type: "move",
         start: worldPoint,
         originalElements: canvasState.elements
       });
     } else {
-      replaceActiveState({ ...canvasState, selectedIds: [] });
+      replaceActiveState({
+        ...canvasState,
+        selectedBend: undefined,
+        selectedIds: []
+      });
       updateInteraction({
         type: "selectArea",
         current: worldPoint,
@@ -209,6 +252,7 @@ export function startPointerInteraction(
         elements: canvasState.elements.filter(
           (element) => !erasedIds.has(element.id)
         ),
+        selectedBend: undefined,
         selectedIds: []
       });
     }
@@ -222,30 +266,34 @@ export function startPointerInteraction(
     }
 
     const nextElement: KizkattElement = {
-      ...createElement("image", worldPoint, style),
-      backgroundColor: "transparent",
-      height: 160,
+      ...createElement(DEFAULT_IMAGE_ELEMENT_TYPE, worldPoint, style),
+      backgroundColor: TRANSPARENT_COLOR,
+      height: DEFAULT_IMAGE_SIZE.height,
+      name: createElementName(DEFAULT_IMAGE_ELEMENT_TYPE, canvasState.elements),
       src: pendingImageSrc,
-      width: 240
+      width: DEFAULT_IMAGE_SIZE.width
     };
 
     commitState({
       elements: [...canvasState.elements, nextElement],
+      selectedBend: undefined,
       selectedIds: [nextElement.id]
     });
     setPendingImageSrc(null);
-    setTool("select");
+    setTool(DEFAULT_SELECT_TOOL);
     return;
   }
 
   const nextElement = createElement(
-    tool === "lock" ? "rectangle" : tool,
+    tool === LOCK_TOOL ? DEFAULT_LOCK_TOOL_ELEMENT_TYPE : tool,
     worldPoint,
     style
   );
+  nextElement.name = createElementName(nextElement.type, canvasState.elements);
 
   commitState({
     elements: [...canvasState.elements, nextElement],
+    selectedBend: undefined,
     selectedIds: [nextElement.id]
   });
   updateInteraction({
@@ -257,9 +305,9 @@ export function startPointerInteraction(
     startedAt: Date.now()
   });
 
-  if (tool === "text") {
+  if (tool === TEXT_TOOL) {
     setEditingTextElementId(nextElement.id);
-    setTool("select");
+    setTool(DEFAULT_SELECT_TOOL);
     updateInteraction(null);
   }
 }

@@ -1,3 +1,12 @@
+import {
+  ARROW_ELEMENT_TYPE,
+  DRAW_ELEMENT_TYPE,
+  EMPTY_COLLECTION_LENGTH,
+  FIRST_ARRAY_INDEX,
+  LINE_ELEMENT_TYPE,
+  NEXT_ARRAY_INDEX_OFFSET,
+  NO_ROTATION_ANGLE
+} from "../config/constants";
 import type { KizkattElement } from "../model/types";
 import { getElementBends, getLinearElementPoints } from "./linearElements";
 import {
@@ -9,7 +18,11 @@ import {
 } from "./primitives";
 
 export function getElementBounds(element: KizkattElement) {
-  if (element.type === "draw" && element.points && element.points.length > 0) {
+  if (
+    element.type === DRAW_ELEMENT_TYPE &&
+    element.points &&
+    element.points.length > EMPTY_COLLECTION_LENGTH
+  ) {
     return (
       getBoundsFromPointList(
         element.points.map((point) => ({
@@ -22,8 +35,8 @@ export function getElementBounds(element: KizkattElement) {
   }
 
   if (
-    (element.type === "line" || element.type === "arrow") &&
-    getElementBends(element).length > 0
+    (element.type === LINE_ELEMENT_TYPE || element.type === ARROW_ELEMENT_TYPE) &&
+    getElementBends(element).length > EMPTY_COLLECTION_LENGTH
   ) {
     return (
       getBoundsFromPointList(getLinearElementPoints(element), true) ??
@@ -47,7 +60,7 @@ export function getElementBounds(element: KizkattElement) {
 export function getElementTransformedBounds(element: KizkattElement) {
   const bounds = getElementBounds(element);
 
-  if (element.angle === 0) {
+  if (element.angle === NO_ROTATION_ANGLE) {
     return bounds;
   }
 
@@ -74,20 +87,24 @@ export function selectionBounds(
   elements: KizkattElement[],
   options: { includeRotation?: boolean } = {}
 ) {
-  if (elements.length === 0) {
+  if (elements.length === EMPTY_COLLECTION_LENGTH) {
     return null;
   }
 
   const getBounds = options.includeRotation
     ? getElementTransformedBounds
     : getElementBounds;
-  const firstBounds = getBounds(elements[0]);
+  const firstBounds = getBounds(elements[FIRST_ARRAY_INDEX]);
   let minX = firstBounds.x;
   let minY = firstBounds.y;
   let maxX = firstBounds.x + firstBounds.width;
   let maxY = firstBounds.y + firstBounds.height;
 
-  for (let index = 1; index < elements.length; index += 1) {
+  for (
+    let index = NEXT_ARRAY_INDEX_OFFSET;
+    index < elements.length;
+    index += NEXT_ARRAY_INDEX_OFFSET
+  ) {
     const bounds = getBounds(elements[index]);
     minX = Math.min(minX, bounds.x);
     minY = Math.min(minY, bounds.y);
