@@ -6,9 +6,16 @@ import {
   selectionBounds
 } from "../../geometry";
 import type { KizkattElement } from "../../model/types";
+import {
+  HALF_DIVISOR,
+  ROTATE_HANDLE_OFFSET,
+  ROTATE_HANDLE_RADIUS,
+  SELECTION_HANDLE_ALIGNMENT_OFFSET,
+  SELECTION_HANDLE_SIZE,
+  SVG_FILL_NONE
+} from "./renderingConstants";
 
-const HANDLE_SIZE = 8.5;
-const HALF_HANDLE_SIZE = HANDLE_SIZE / 2;
+const HALF_HANDLE_SIZE = SELECTION_HANDLE_SIZE / HALF_DIVISOR;
 
 export function ElementOverlay({
   element,
@@ -26,8 +33,8 @@ export function ElementOverlay({
   }
 
   const rotateHandle = {
-    x: bounds.x + bounds.width / 2,
-    y: bounds.y - 24
+    x: bounds.x + bounds.width / HALF_DIVISOR,
+    y: bounds.y - ROTATE_HANDLE_OFFSET
   };
   const rotateHandleWorldPoint = rotatePointAroundPoint(
     rotateHandle,
@@ -44,7 +51,7 @@ export function ElementOverlay({
             y={bounds.y}
             width={bounds.width}
             height={bounds.height}
-            fill="none"
+            fill={SVG_FILL_NONE}
           />
           {RESIZE_HANDLES.map(({ id, sx, sy }) => (
             <rect
@@ -53,10 +60,20 @@ export function ElementOverlay({
               data-handle="resize"
               data-resize-handle={id}
               style={{ cursor: getResizeCursor(element.angle, id) }}
-              x={bounds.x + ((sx + 1) * bounds.width) / 2 - HALF_HANDLE_SIZE}
-              y={bounds.y + ((sy + 1) * bounds.height) / 2 - HALF_HANDLE_SIZE}
-              width={HANDLE_SIZE}
-              height={HANDLE_SIZE}
+              x={
+                bounds.x +
+                ((sx + SELECTION_HANDLE_ALIGNMENT_OFFSET) * bounds.width) /
+                  HALF_DIVISOR -
+                HALF_HANDLE_SIZE
+              }
+              y={
+                bounds.y +
+                ((sy + SELECTION_HANDLE_ALIGNMENT_OFFSET) * bounds.height) /
+                  HALF_DIVISOR -
+                HALF_HANDLE_SIZE
+              }
+              width={SELECTION_HANDLE_SIZE}
+              height={SELECTION_HANDLE_SIZE}
             />
           ))}
         </>
@@ -69,7 +86,7 @@ export function ElementOverlay({
           data-handle-world-y={rotateHandleWorldPoint.y}
           cx={rotateHandle.x}
           cy={rotateHandle.y}
-          r={5}
+          r={ROTATE_HANDLE_RADIUS}
         />
       )}
     </g>

@@ -138,6 +138,27 @@
   color: var(--kizkatt-panel-label);
 }
 
+.kizkatt-language-row {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 7px;
+  color: var(--kizkatt-panel-label);
+}
+
+.kizkatt-language-row select {
+  min-width: 92px;
+  height: 26px;
+  padding: 0 24px 0 8px;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 6px;
+  background: var(--kizkatt-control-bg-hover);
+  color: var(--kizkatt-text-primary);
+  font: inherit;
+}
+
 .kizkatt-ui-scale-input {
   box-sizing: border-box;
   width: calc(100% - 14px);

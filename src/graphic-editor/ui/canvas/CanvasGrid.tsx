@@ -1,7 +1,13 @@
+import {
+  GRID_CELL_SIZE,
+  GRID_CROSS_CELL_RATIO,
+  GRID_CROSS_MAX_SIZE,
+  GRID_CROSS_MIN_SIZE,
+  GRID_FIRST_MINOR_INDEX,
+  GRID_MAJOR_CELLS,
+  SVG_FULL_SIZE
+} from "../../config/constants";
 import type { Point } from "../../model/types";
-
-const GRID_CELL_SIZE = 24;
-const GRID_MAJOR_CELLS = 5;
 
 function getPatternOffset(value: number, size: number) {
   return ((value % size) + size) % size;
@@ -10,8 +16,16 @@ function getPatternOffset(value: number, size: number) {
 function getMinorCrossPath(cellSize: number, crossSize: number) {
   const commands: string[] = [];
 
-  for (let column = 1; column < GRID_MAJOR_CELLS; column += 1) {
-    for (let row = 1; row < GRID_MAJOR_CELLS; row += 1) {
+  for (
+    let column = GRID_FIRST_MINOR_INDEX;
+    column < GRID_MAJOR_CELLS;
+    column += GRID_FIRST_MINOR_INDEX
+  ) {
+    for (
+      let row = GRID_FIRST_MINOR_INDEX;
+      row < GRID_MAJOR_CELLS;
+      row += GRID_FIRST_MINOR_INDEX
+    ) {
       const x = column * cellSize;
       const y = row * cellSize;
 
@@ -36,7 +50,10 @@ export function CanvasGrid({
 }) {
   const cellSize = GRID_CELL_SIZE * zoom;
   const majorSize = cellSize * GRID_MAJOR_CELLS;
-  const crossSize = Math.min(3, Math.max(1.25, cellSize * 0.11));
+  const crossSize = Math.min(
+    GRID_CROSS_MAX_SIZE,
+    Math.max(GRID_CROSS_MIN_SIZE, cellSize * GRID_CROSS_CELL_RATIO)
+  );
   const majorOffsetX = getPatternOffset(pan.x, majorSize);
   const majorOffsetY = getPatternOffset(pan.y, majorSize);
   const minorCrossPath = getMinorCrossPath(cellSize, crossSize);
@@ -72,10 +89,14 @@ export function CanvasGrid({
         <>
           <rect
             className="kizkatt-grid kizkatt-grid-corners"
-            width="100%"
-            height="100%"
+            width={SVG_FULL_SIZE}
+            height={SVG_FULL_SIZE}
           />
-          <rect className="kizkatt-grid-major" width="100%" height="100%" />
+          <rect
+            className="kizkatt-grid-major"
+            width={SVG_FULL_SIZE}
+            height={SVG_FULL_SIZE}
+          />
         </>
       )}
     </>

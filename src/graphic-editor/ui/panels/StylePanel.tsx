@@ -3,15 +3,29 @@ import type { CSSProperties } from "react";
 
 import {
   COLOR_PALETTES,
+  COLOR_PANEL_COLUMN_COUNT,
   DARK_THEME_BACKGROUND_COLORS,
   DARK_THEME_STROKE_COLORS,
+  DEFAULT_FILL_STYLE,
+  DEFAULT_FILL_WEIGHT,
+  DEFAULT_OPACITY,
+  DEFAULT_SELECTED_SLOPPINESS,
+  DEFAULT_SLOPPINESS_GAP,
+  DEFAULT_STROKE_STYLE,
+  DEFAULT_STROKE_WIDTH,
+  EMPTY_COLLECTION_LENGTH,
+  FIRST_ARRAY_INDEX,
   LIGHT_THEME_BACKGROUND_COLORS,
-  LIGHT_THEME_STROKE_COLORS
+  LIGHT_THEME_STROKE_COLORS,
+  TRANSPARENT_COLOR
 } from "../../config/constants";
 import { isHexColor } from "../../geometry";
+import { canElementUseBackground } from "../../model/element";
+import { useI18n } from "../../i18n";
 import {
   BringForwardIcon,
   BringToFrontIcon,
+  ClosedPathIcon,
   DuplicateIcon,
   EdgeRoundIcon,
   EdgeSharpIcon,
@@ -33,11 +47,18 @@ import {
   TrashIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
+import {
+  closeOtherFloatingPanels,
+  useActiveFloatingPanel,
+  useCloseOtherFloatingPanels
+} from "../overlays/floatingPanels";
 import type {
   ColorPopoverState,
   ColorTarget,
+  KizkattElement,
   KizkattTheme,
-  StyleState
+  StyleState,
+  Tool
 } from "../../model/types";
 
 type ColorPalette = (typeof COLOR_PALETTES)[number];
@@ -46,18 +67,65 @@ type EyeDropperConstructor = new () => {
 };
 
 type StylePanelProps = {
+  activeTool: Tool;
+  canToggleClosedPath: boolean;
+  closedPath: boolean;
   colorColumnCount?: number;
   onAction: (action: "delete" | "duplicate" | "link") => void;
+  onClosedPathChange: (closed: boolean) => void;
   onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
   onStyleChange: (patch: Partial<StyleState>) => void;
+  selectedElements: KizkattElement[];
   style: StyleState;
   theme: KizkattTheme;
 };
 
 const QUICK_SWATCH_COUNT = 5;
+const QUICK_CUSTOM_FALLBACK_OFFSET = 1;
+const COLOR_CHANNEL_RADIX = 16;
+const HEX_BYTE_LENGTH = 2;
+const HEX_FULL_LENGTH = 6;
+const HEX_PREFIX = "#";
+const HEX_PREFIX_PATTERN = /^#/;
+const HEX_COLOR_CHARACTER_PATTERN = /[^0-9a-f]/gi;
+const EMPTY_HEX_DRAFT = "";
+const BLACK_HEX_COLOR = "#000000";
+const WHITE_HEX_COLOR = "#ffffff";
+const DEFAULT_POPOVER_PALETTE_ID = "violet";
+const DEFAULT_POPOVER_PALETTE_INDEX = 0;
+const DARK_BACKGROUND_SHADE_INDEX = 2;
+const LIGHT_BACKGROUND_SHADE_INDEX = 13;
+const STROKE_COLOR_INDEX = {
+  blue: 3,
+  gray: 0,
+  green: 2,
+  red: 1,
+  violet: 5,
+  yellow: 4
+} as const;
+const RGB_CHANNEL = {
+  blueEnd: 6,
+  blueStart: 4,
+  greenEnd: 4,
+  greenStart: 2,
+  redEnd: 2,
+  redStart: 0
+} as const;
+const DARK_SHADE_MIXES = [0.82, 0.7, 0.58, 0.46, 0.34, 0.22, 0.1, 0];
+const LIGHT_SHADE_MIXES = [0.12, 0.24, 0.36, 0.48, 0.6, 0.72, 0.84];
 const DEFAULT_POPOVER_PALETTE =
-  COLOR_PALETTES.find((palette) => palette.id === "violet") ??
-  COLOR_PALETTES[0];
+  COLOR_PALETTES.find((palette) => palette.id === DEFAULT_POPOVER_PALETTE_ID) ??
+  COLOR_PALETTES[DEFAULT_POPOVER_PALETTE_INDEX];
+const FILL_STYLE_OPTIONS = ["solid", "hachure", "crossHatch"] as const;
+const STROKE_STYLE_OPTIONS = ["solid", "dashed", "dotted"] as const;
+const SLOPPINESS_OPTIONS = [
+  "architect",
+  "artist",
+  "cartoonist",
+  "double"
+] as const;
+const EDGE_STYLE_OPTIONS = ["sharp", "round"] as const;
+const SHARP_EDGE_OPTION = EDGE_STYLE_OPTIONS[0];
 const STROKE_STYLE_ICONS = {
   dashed: StrokeStyleDashedIcon,
   dotted: StrokeStyleDottedIcon,
@@ -78,36 +146,51 @@ const SLOPPINESS_ICONS = {
   cartoonist: SloppinessCartoonistIcon,
   double: SloppinessDoubleIcon
 } as const;
+const FILL_STYLE_LABEL_KEYS = {
+  crossHatch: "fillCrossHatch",
+  hachure: "fillHachure",
+  solid: "fillSolid"
+} as const;
+const STROKE_STYLE_LABEL_KEYS = {
+  dashed: "strokeStyleDashed",
+  dotted: "strokeStyleDotted",
+  solid: "strokeStyleSolid"
+} as const;
+const SLOPPINESS_LABEL_KEYS = {
+  architect: "sloppinessArchitect",
+  artist: "sloppinessArtist",
+  cartoonist: "sloppinessCartoonist",
+  double: "sloppinessDouble"
+} as const;
 const LAYER_ACTIONS = [
-  { action: "back", ariaLabel: "Send to back", icon: SendToBackIcon },
-  { action: "backward", ariaLabel: "Send backward", icon: SendBackwardIcon },
-  { action: "forward", ariaLabel: "Bring forward", icon: BringForwardIcon },
-  { action: "front", ariaLabel: "Bring to front", icon: BringToFrontIcon }
+  { action: "back", labelKey: "sendToBack", icon: SendToBackIcon },
+  { action: "backward", labelKey: "sendBackward", icon: SendBackwardIcon },
+  { action: "forward", labelKey: "bringForward", icon: BringForwardIcon },
+  { action: "front", labelKey: "bringToFront", icon: BringToFrontIcon }
 ] as const;
 const ELEMENT_ACTIONS = [
-  { action: "duplicate", ariaLabel: "Duplicate", icon: DuplicateIcon },
-  { action: "delete", ariaLabel: "Delete", icon: TrashIcon },
-  { action: "link", ariaLabel: "Link", icon: LinkIcon }
+  { action: "duplicate", labelKey: "duplicate", icon: DuplicateIcon },
+  { action: "delete", labelKey: "delete", icon: TrashIcon },
+  { action: "link", labelKey: "link", icon: LinkIcon }
 ] as const;
 const MIN_STROKE_WIDTH = 0;
 const MAX_STROKE_WIDTH = 50;
-const DEFAULT_FILL_WEIGHT = 1;
 const MIN_FILL_WEIGHT = 0.25;
 const MAX_FILL_WEIGHT = 6;
 const FILL_WEIGHT_STEP = 0.25;
-const DEFAULT_SLOPPINESS_GAP = 16;
 const MIN_SLOPPINESS_GAP = 0;
 const MAX_SLOPPINESS_GAP = 80;
 const MIN_OPACITY = 0;
-const MAX_OPACITY = 100;
+const MAX_OPACITY = DEFAULT_OPACITY;
 const DARK_THEME_STROKE_SOURCE_BY_PALETTE_ID: Record<string, string> = {
-  blue: DARK_THEME_STROKE_COLORS[3],
-  gray: DARK_THEME_STROKE_COLORS[0],
-  green: DARK_THEME_STROKE_COLORS[2],
-  red: DARK_THEME_STROKE_COLORS[1],
-  violet: DARK_THEME_STROKE_COLORS[5],
-  yellow: DARK_THEME_STROKE_COLORS[4]
+  blue: DARK_THEME_STROKE_COLORS[STROKE_COLOR_INDEX.blue],
+  gray: DARK_THEME_STROKE_COLORS[STROKE_COLOR_INDEX.gray],
+  green: DARK_THEME_STROKE_COLORS[STROKE_COLOR_INDEX.green],
+  red: DARK_THEME_STROKE_COLORS[STROKE_COLOR_INDEX.red],
+  violet: DARK_THEME_STROKE_COLORS[STROKE_COLOR_INDEX.violet],
+  yellow: DARK_THEME_STROKE_COLORS[STROKE_COLOR_INDEX.yellow]
 };
+const STYLE_PANEL_FLOATING_PANEL_SOURCE = "style-panel";
 
 function getPalettePrimaryColor(palette: ColorPalette): string {
   return palette.color;
@@ -130,12 +213,21 @@ function getDarkThemeStrokeSourceColor(palette: ColorPalette) {
 }
 
 function hexToRgb(color: string) {
-  const hex = color.slice(1);
+  const hex = color.slice(HEX_PREFIX.length);
 
   return {
-    b: Number.parseInt(hex.slice(4, 6), 16),
-    g: Number.parseInt(hex.slice(2, 4), 16),
-    r: Number.parseInt(hex.slice(0, 2), 16)
+    b: Number.parseInt(
+      hex.slice(RGB_CHANNEL.blueStart, RGB_CHANNEL.blueEnd),
+      COLOR_CHANNEL_RADIX
+    ),
+    g: Number.parseInt(
+      hex.slice(RGB_CHANNEL.greenStart, RGB_CHANNEL.greenEnd),
+      COLOR_CHANNEL_RADIX
+    ),
+    r: Number.parseInt(
+      hex.slice(RGB_CHANNEL.redStart, RGB_CHANNEL.redEnd),
+      COLOR_CHANNEL_RADIX
+    )
   };
 }
 
@@ -158,7 +250,9 @@ function getQuickColors(target: ColorTarget, theme: KizkattTheme) {
 function rgbToHex({ b, g, r }: { b: number; g: number; r: number }) {
   return `#${[r, g, b]
     .map((value) =>
-      Math.round(value).toString(16).padStart(2, "0")
+      Math.round(value)
+        .toString(COLOR_CHANNEL_RADIX)
+        .padStart(HEX_BYTE_LENGTH, "0")
     )
     .join("")}`;
 }
@@ -179,12 +273,13 @@ function buildShadesFromColor(color: string) {
     return [];
   }
 
-  const darkMixes = [0.82, 0.7, 0.58, 0.46, 0.34, 0.22, 0.1, 0];
-  const lightMixes = [0.12, 0.24, 0.36, 0.48, 0.6, 0.72, 0.84];
-
   return [
-    ...darkMixes.map((amount) => mixHexColor(color, "#000000", amount)),
-    ...lightMixes.map((amount) => mixHexColor(color, "#ffffff", amount))
+    ...DARK_SHADE_MIXES.map((amount) =>
+      mixHexColor(color, BLACK_HEX_COLOR, amount)
+    ),
+    ...LIGHT_SHADE_MIXES.map((amount) =>
+      mixHexColor(color, WHITE_HEX_COLOR, amount)
+    )
   ];
 }
 
@@ -197,11 +292,17 @@ function getPaletteColorForTarget(
   const darkStrokeSourceColor = getDarkThemeStrokeSourceColor(palette);
 
   if (target === "backgroundColor" && theme === "dark") {
-    return buildShadesFromColor(darkStrokeSourceColor)[2] ?? baseColor;
+    return (
+      buildShadesFromColor(darkStrokeSourceColor)[DARK_BACKGROUND_SHADE_INDEX] ??
+      baseColor
+    );
   }
 
   if (target === "backgroundColor" && theme === "light") {
-    return buildShadesFromColor(darkStrokeSourceColor)[13] ?? baseColor;
+    return (
+      buildShadesFromColor(darkStrokeSourceColor)[LIGHT_BACKGROUND_SHADE_INDEX] ??
+      baseColor
+    );
   }
 
   if (target === "strokeColor" && theme === "light") {
@@ -230,16 +331,18 @@ function findPaletteForTargetColor(
 
 function completeHexDraft(rawValue: string) {
   const value = rawValue
-    .replace(/^#/, "")
-    .replace(/[^0-9a-f]/gi, "")
-    .slice(0, 6)
+    .replace(HEX_PREFIX_PATTERN, EMPTY_HEX_DRAFT)
+    .replace(HEX_COLOR_CHARACTER_PATTERN, EMPTY_HEX_DRAFT)
+    .slice(0, HEX_FULL_LENGTH)
     .toLowerCase();
 
-  if (value.length === 0) {
-    return "";
+  if (value.length === EMPTY_COLLECTION_LENGTH) {
+    return EMPTY_HEX_DRAFT;
   }
 
-  return `#${value.repeat(Math.ceil(6 / value.length)).slice(0, 6)}`;
+  return `${HEX_PREFIX}${value
+    .repeat(Math.ceil(HEX_FULL_LENGTH / value.length))
+    .slice(FIRST_ARRAY_INDEX, HEX_FULL_LENGTH)}`;
 }
 
 function getSwatchClassName({
@@ -252,7 +355,7 @@ function getSwatchClassName({
   isCustomSwatch?: boolean;
 }) {
   return [
-    color === "transparent" ? "transparent" : "",
+    color === TRANSPARENT_COLOR ? TRANSPARENT_COLOR : EMPTY_HEX_DRAFT,
     active ? "is-active" : "",
     isCustomSwatch ? "kizkatt-custom-color-swatch" : ""
   ]
@@ -306,16 +409,49 @@ function normalizeOpacity(value: string) {
   return Math.min(MAX_OPACITY, Math.max(MIN_OPACITY, numericValue));
 }
 
+function isBackgroundControlDisabled(
+  activeTool: Tool,
+  selectedElements: readonly KizkattElement[]
+) {
+  if (selectedElements.length > EMPTY_COLLECTION_LENGTH) {
+    return selectedElements.some((element) => !canElementUseBackground(element));
+  }
+
+  return (
+    activeTool === "arrow" ||
+    activeTool === "draw" ||
+    activeTool === "image" ||
+    activeTool === "line"
+  );
+}
+
 export function StylePanel({
-  colorColumnCount = 5,
+  activeTool,
+  canToggleClosedPath,
+  closedPath,
+  colorColumnCount = COLOR_PANEL_COLUMN_COUNT,
   onAction,
+  onClosedPathChange,
   onLayerAction,
   onStyleChange,
+  selectedElements,
   style,
   theme
 }: StylePanelProps) {
+  const { strings } = useI18n();
+  const tooltips = strings.stylePanel.tooltips;
   const [colorPopover, setColorPopover] = useState<ColorPopoverState | null>(
     null
+  );
+  const [activeFloatingPanel, setActiveFloatingPanelSource] = useState<
+    string | null
+  >(null);
+  const closeColorPopover = () => setColorPopover(null);
+
+  useActiveFloatingPanel(setActiveFloatingPanelSource);
+  useCloseOtherFloatingPanels(
+    STYLE_PANEL_FLOATING_PANEL_SOURCE,
+    closeColorPopover
   );
 
   const applyColor = (
@@ -344,12 +480,17 @@ export function StylePanel({
   };
 
   const openColorPopover = (target: ColorTarget, color = style[target]) => {
+    if (target === "backgroundColor" && backgroundControlDisabled) {
+      return;
+    }
+
     const palette = findPaletteForTargetColor(color, target, theme);
     const paletteColor = palette
       ? getPaletteColorForTarget(palette, target, theme)
       : undefined;
 
     applyColor(target, color);
+    closeOtherFloatingPanels(STYLE_PANEL_FLOATING_PANEL_SOURCE);
 
     setColorPopover({
       paletteId:
@@ -394,70 +535,114 @@ export function StylePanel({
   const updateOpacity = (value: string) => {
     onStyleChange({ opacity: normalizeOpacity(value) });
   };
+  const backgroundControlDisabled = isBackgroundControlDisabled(
+    activeTool,
+    selectedElements
+  );
+
+  if (activeFloatingPanel === "toolbar") {
+    return null;
+  }
 
   return (
     <DraggablePanel id="style-panel">
-      <aside className="kizkatt-style-panel" aria-label="Element style">
-      <label>Background</label>
-      <ColorSwatches
-        activeColor={style.backgroundColor}
-        colors={getQuickColors("backgroundColor", theme)}
-        label="Background"
-        onNativeColorSelect={(color) => applyCustomColor("backgroundColor", color)}
-        onColorSelect={(color) => {
-          applyColor("backgroundColor", color);
-          setColorPopover(null);
-        }}
-        onCustomColorOpen={(color) => openColorPopover("backgroundColor", color)}
-      />
-      <label>Stroke</label>
-      <ColorSwatches
-        activeColor={style.strokeColor}
-        colors={getQuickColors("strokeColor", theme)}
-        label="Stroke"
-        onNativeColorSelect={(color) => applyCustomColor("strokeColor", color)}
-        onColorSelect={(color) => {
-          applyColor("strokeColor", color);
-          setColorPopover(null);
-        }}
-        onCustomColorOpen={(color) => openColorPopover("strokeColor", color)}
-      />
-      {colorPopover && (
-        <ColorPopover
-          activeColor={style[colorPopover.target]}
-          activePaletteId={colorPopover.paletteId}
-          colorColumnCount={colorColumnCount}
-          shadeBaseColor={colorPopover.shadeBaseColor}
-          target={colorPopover.target}
-          theme={theme}
-          onColorSelect={(target, color) => {
-            applyColor(target, color);
+      <aside
+        className="kizkatt-style-panel"
+        aria-label={strings.stylePanel.elementStyle}
+      >
+        <label>{strings.stylePanel.background}</label>
+        <ColorSwatches
+          activeColor={style.backgroundColor}
+          colors={getQuickColors("backgroundColor", theme)}
+          disabled={backgroundControlDisabled}
+          label={strings.stylePanel.background}
+          onNativeColorSelect={(color) =>
+            applyCustomColor("backgroundColor", color)
+          }
+          onColorSelect={(color) => {
+            applyColor("backgroundColor", color);
+            setColorPopover(null);
           }}
-          onPaletteColorSelect={(target, color, paletteId) => {
-            applyColor(target, color);
-            setColorPopover({ paletteId, shadeBaseColor: color, target });
-          }}
-          onHexColorChange={updateHexColor}
-          onPickColorFromScreen={pickColorFromScreen}
+          onCustomColorOpen={(color) =>
+            openColorPopover("backgroundColor", color)
+          }
         />
-      )}
-      <label>Fill</label>
-      <div className="kizkatt-fill-control">
+        <label>{strings.stylePanel.stroke}</label>
+        <ColorSwatches
+          activeColor={style.strokeColor}
+          colors={getQuickColors("strokeColor", theme)}
+          label={strings.stylePanel.stroke}
+          onNativeColorSelect={(color) => applyCustomColor("strokeColor", color)}
+          onColorSelect={(color) => {
+            applyColor("strokeColor", color);
+            setColorPopover(null);
+          }}
+          onCustomColorOpen={(color) => openColorPopover("strokeColor", color)}
+        />
+        {colorPopover &&
+          !(
+            colorPopover.target === "backgroundColor" &&
+            backgroundControlDisabled
+          ) && (
+            <ColorPopover
+              activeColor={style[colorPopover.target]}
+              activePaletteId={colorPopover.paletteId}
+              colorColumnCount={colorColumnCount}
+              shadeBaseColor={colorPopover.shadeBaseColor}
+              target={colorPopover.target}
+              theme={theme}
+              onColorSelect={(target, color) => {
+                applyColor(target, color);
+              }}
+              onPaletteColorSelect={(target, color, paletteId) => {
+                applyColor(target, color);
+                setColorPopover({ paletteId, shadeBaseColor: color, target });
+              }}
+              onHexColorChange={updateHexColor}
+              onPickColorFromScreen={pickColorFromScreen}
+            />
+          )}
+      <label>{strings.stylePanel.fill}</label>
+      <div
+        className={[
+          "kizkatt-fill-control",
+          canToggleClosedPath ? "kizkatt-fill-control--with-path" : ""
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <div className="kizkatt-segmented kizkatt-icon-segmented">
-          {(["solid", "hachure", "crossHatch"] as const).map((value) => (
+          {FILL_STYLE_OPTIONS.map((value) => (
             <button
               key={value}
               type="button"
-              aria-label={`Fill ${value}`}
-              className={(style.fillStyle ?? "solid") === value ? "is-active" : undefined}
+              aria-label={strings.stylePanel[FILL_STYLE_LABEL_KEYS[value]]}
+              title={tooltips[FILL_STYLE_LABEL_KEYS[value]]}
+              className={
+                (style.fillStyle ?? DEFAULT_FILL_STYLE) === value
+                  ? "is-active"
+                  : undefined
+              }
               onClick={() => onStyleChange({ fillStyle: value })}
             >
               {FILL_STYLE_ICONS[value]}
             </button>
           ))}
         </div>
+        {canToggleClosedPath && (
+          <button
+            type="button"
+            className={closedPath ? "is-active" : undefined}
+            aria-label={strings.stylePanel.closePath}
+            title={tooltips.closePath}
+            onClick={() => onClosedPathChange(!closedPath)}
+          >
+            {ClosedPathIcon}
+          </button>
+        )}
         <input
-          aria-label="Fill weight"
+          aria-label={strings.stylePanel.fillWeight}
+          title={tooltips.fillWeight}
           type="number"
           min={MIN_FILL_WEIGHT}
           max={MAX_FILL_WEIGHT}
@@ -466,49 +651,61 @@ export function StylePanel({
           onChange={(event) => updateFillWeight(event.target.value)}
         />
       </div>
-      <label htmlFor="stroke-width">Stroke width</label>
+      <label htmlFor="stroke-width">{strings.stylePanel.strokeWidth}</label>
       <div className="kizkatt-numeric-slider-control">
         <input
           id="stroke-width"
           type="range"
+          title={tooltips.strokeWidth}
           min={MIN_STROKE_WIDTH}
           max={MAX_STROKE_WIDTH}
-          value={style.strokeWidth}
+          value={style.strokeWidth ?? DEFAULT_STROKE_WIDTH}
           onChange={(event) => updateStrokeWidth(event.target.value)}
         />
         <input
-          aria-label="Stroke width value"
+          aria-label={strings.stylePanel.strokeWidthValue}
+          title={tooltips.strokeWidthValue}
           type="number"
           min={MIN_STROKE_WIDTH}
           max={MAX_STROKE_WIDTH}
-          value={style.strokeWidth}
+          value={style.strokeWidth ?? DEFAULT_STROKE_WIDTH}
           onChange={(event) => updateStrokeWidth(event.target.value)}
         />
       </div>
-      <label>Stroke style</label>
+      <label>{strings.stylePanel.strokeStyle}</label>
       <div className="kizkatt-segmented kizkatt-icon-segmented">
-        {(["solid", "dashed", "dotted"] as const).map((value) => (
+        {STROKE_STYLE_OPTIONS.map((value) => (
           <button
             key={value}
             type="button"
-            aria-label={value}
-            className={style.strokeStyle === value ? "is-active" : undefined}
+            aria-label={strings.stylePanel[STROKE_STYLE_LABEL_KEYS[value]]}
+            title={tooltips[STROKE_STYLE_LABEL_KEYS[value]]}
+            className={
+              (style.strokeStyle ?? DEFAULT_STROKE_STYLE) === value
+                ? "is-active"
+                : undefined
+            }
             onClick={() => onStyleChange({ strokeStyle: value })}
           >
             {STROKE_STYLE_ICONS[value]}
           </button>
         ))}
       </div>
-      <label>Sloppiness</label>
+      <label>{strings.stylePanel.sloppiness}</label>
       <div className="kizkatt-sloppiness-control">
         <div className="kizkatt-segmented kizkatt-four-segmented kizkatt-icon-segmented">
-          {(["architect", "artist", "cartoonist", "double"] as const).map(
+          {SLOPPINESS_OPTIONS.map(
             (value) => (
               <button
                 key={value}
                 type="button"
-                aria-label={`Sloppiness ${value}`}
-                className={(style.sloppiness ?? "artist") === value ? "is-active" : undefined}
+                aria-label={strings.stylePanel[SLOPPINESS_LABEL_KEYS[value]]}
+                title={tooltips[SLOPPINESS_LABEL_KEYS[value]]}
+                className={
+                  (style.sloppiness ?? DEFAULT_SELECTED_SLOPPINESS) === value
+                    ? "is-active"
+                    : undefined
+                }
                 onClick={() => onStyleChange({ sloppiness: value })}
               >
                 {SLOPPINESS_ICONS[value]}
@@ -517,7 +714,8 @@ export function StylePanel({
           )}
         </div>
         <input
-          aria-label="Sloppiness gap"
+          aria-label={strings.stylePanel.sloppinessGap}
+          title={tooltips.sloppinessGap}
           type="number"
           min={MIN_SLOPPINESS_GAP}
           max={MAX_SLOPPINESS_GAP}
@@ -525,13 +723,22 @@ export function StylePanel({
           onChange={(event) => updateSloppinessGap(event.target.value)}
         />
       </div>
-      <label>Edges</label>
+      <label>{strings.stylePanel.edges}</label>
       <div className="kizkatt-segmented kizkatt-two-segmented kizkatt-edge-segmented">
-        {(["sharp", "round"] as const).map((value) => (
+        {EDGE_STYLE_OPTIONS.map((value) => (
           <button
             key={value}
             type="button"
-            aria-label={`Edges ${value}`}
+            aria-label={
+              value === SHARP_EDGE_OPTION
+                ? strings.stylePanel.edgeSharp
+                : strings.stylePanel.edgeRound
+            }
+            title={
+              value === SHARP_EDGE_OPTION
+                ? tooltips.edgeSharp
+                : tooltips.edgeRound
+            }
             className={style.edgeStyle === value ? "is-active" : undefined}
             onClick={() => onStyleChange({ edgeStyle: value })}
           >
@@ -539,45 +746,49 @@ export function StylePanel({
           </button>
         ))}
       </div>
-      <label htmlFor="opacity">Opacity</label>
+      <label htmlFor="opacity">{strings.stylePanel.opacity}</label>
       <div className="kizkatt-numeric-slider-control">
         <input
           id="opacity"
           type="range"
+          title={tooltips.opacity}
           min={MIN_OPACITY}
           max={MAX_OPACITY}
-          value={style.opacity}
+          value={style.opacity ?? DEFAULT_OPACITY}
           onChange={(event) => updateOpacity(event.target.value)}
         />
         <input
-          aria-label="Opacity value"
+          aria-label={strings.stylePanel.opacityValue}
+          title={tooltips.opacityValue}
           type="number"
           min={MIN_OPACITY}
           max={MAX_OPACITY}
-          value={style.opacity}
+          value={style.opacity ?? DEFAULT_OPACITY}
           onChange={(event) => updateOpacity(event.target.value)}
         />
       </div>
-      <label>Layers</label>
+      <label>{strings.stylePanel.layers}</label>
       <div className="kizkatt-segmented kizkatt-icon-segmented kizkatt-layer-controls">
-        {LAYER_ACTIONS.map(({ action, ariaLabel, icon }) => (
+        {LAYER_ACTIONS.map(({ action, labelKey, icon }) => (
           <button
             key={action}
             type="button"
-            aria-label={ariaLabel}
+            aria-label={strings.stylePanel[labelKey]}
+            title={tooltips[labelKey]}
             onClick={() => onLayerAction(action)}
           >
             {icon}
           </button>
         ))}
       </div>
-      <label>Actions</label>
+      <label>{strings.stylePanel.actions}</label>
       <div className="kizkatt-segmented kizkatt-icon-segmented kizkatt-action-controls">
-        {ELEMENT_ACTIONS.map(({ action, ariaLabel, icon }) => (
+        {ELEMENT_ACTIONS.map(({ action, labelKey, icon }) => (
           <button
             key={action}
             type="button"
-            aria-label={ariaLabel}
+            aria-label={strings.stylePanel[labelKey]}
+            title={tooltips[labelKey]}
             onClick={() => onAction(action)}
           >
             {icon}
@@ -592,6 +803,7 @@ export function StylePanel({
 function ColorSwatches({
   activeColor,
   colors,
+  disabled = false,
   label,
   onColorSelect,
   onCustomColorOpen,
@@ -599,20 +811,24 @@ function ColorSwatches({
 }: {
   activeColor: string;
   colors: readonly string[];
-  label: "Background" | "Stroke";
+  disabled?: boolean;
+  label: string;
   onColorSelect: (color: string) => void;
   onCustomColorOpen: (color: string) => void;
   onNativeColorSelect: (color: string) => void;
 }) {
+  const { strings } = useI18n();
+  const tooltips = strings.stylePanel.tooltips;
   const quickColors = colors.slice(0, QUICK_SWATCH_COUNT);
   const fallbackCustomColor =
-    quickColors[QUICK_SWATCH_COUNT - 1] ?? quickColors[0];
+    quickColors[QUICK_SWATCH_COUNT - QUICK_CUSTOM_FALLBACK_OFFSET] ??
+    quickColors[FIRST_ARRAY_INDEX];
   const customColor =
-    activeColor === "transparent" ? fallbackCustomColor : activeColor;
+    activeColor === TRANSPARENT_COLOR ? fallbackCustomColor : activeColor;
   const customAriaLabel = quickColors.includes(customColor)
     ? `${label} custom ${customColor}`
     : `${label} ${customColor}`;
-  const nativeColor = isHexColor(customColor) ? customColor : "#000000";
+  const nativeColor = isHexColor(customColor) ? customColor : BLACK_HEX_COLOR;
 
   return (
     <div className="kizkatt-swatches kizkatt-quick-swatches">
@@ -621,19 +837,31 @@ function ColorSwatches({
           key={color}
           type="button"
           aria-label={`${label} ${color}`}
+          title={`${
+            label === strings.stylePanel.stroke
+              ? tooltips.strokeColor
+              : tooltips.backgroundColor
+          } ${color}`}
+          disabled={disabled}
           className={getSwatchClassName({
             active: activeColor === color,
             color
           })}
           style={{
-            backgroundColor: color === "transparent" ? undefined : color
+            backgroundColor: color === TRANSPARENT_COLOR ? undefined : color
           }}
-          onClick={() => onColorSelect(color)}
+          onClick={() => {
+            if (!disabled) {
+              onColorSelect(color);
+            }
+          }}
         />
       ))}
       <button
         type="button"
         aria-label={customAriaLabel}
+        title={`${tooltips.customColor} ${label}`}
+        disabled={disabled}
         className={getSwatchClassName({
           active: !quickColors.includes(activeColor),
           color: customColor,
@@ -641,17 +869,28 @@ function ColorSwatches({
         })}
         style={{
           backgroundColor:
-            customColor === "transparent" ? undefined : customColor
+            customColor === TRANSPARENT_COLOR ? undefined : customColor
         }}
-        onClick={() => onCustomColorOpen(customColor)}
+        onClick={() => {
+          if (!disabled) {
+            onCustomColorOpen(customColor);
+          }
+        }}
       />
       <label
-        className="kizkatt-palette-swatch"
-        title={`${label} native color picker`}
+        className={[
+          "kizkatt-palette-swatch",
+          disabled ? "is-disabled" : ""
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        title={`${label} ${tooltips.nativeColorPicker}`}
       >
         {PaletteIcon}
         <input
-          aria-label={`${label} native color picker`}
+          aria-label={`${label} ${strings.stylePanel.nativeColorPicker}`}
+          title={`${label} ${tooltips.nativeColorPicker}`}
+          disabled={disabled}
           type="color"
           value={nativeColor}
           onChange={(event) => onNativeColorSelect(event.target.value)}
@@ -688,6 +927,8 @@ function ColorPopover({
   target: ColorTarget;
   theme: KizkattTheme;
 }) {
+  const { strings } = useI18n();
+  const tooltips = strings.stylePanel.tooltips;
   const selectedPalette = findPaletteById(activePaletteId);
   const shadePalette =
     selectedPalette ??
@@ -696,7 +937,7 @@ function ColorPopover({
   const resolvedShadeBaseColor =
     shadeBaseColor ?? getPaletteColorForTarget(shadePalette, target, theme);
   const [hexDraft, setHexDraft] = useState(
-    isHexColor(activeColor) ? activeColor.slice(1) : ""
+    isHexColor(activeColor) ? activeColor.slice(HEX_PREFIX.length) : EMPTY_HEX_DRAFT
   );
   const [draftShadeBaseColor, setDraftShadeBaseColor] = useState(
     resolvedShadeBaseColor
@@ -708,7 +949,11 @@ function ColorPopover({
       return;
     }
 
-    setHexDraft(isHexColor(activeColor) ? activeColor.slice(1) : "");
+        setHexDraft(
+          isHexColor(activeColor)
+            ? activeColor.slice(HEX_PREFIX.length)
+            : EMPTY_HEX_DRAFT
+        );
   }, [activeColor, hexDraft]);
 
   useEffect(() => {
@@ -717,9 +962,9 @@ function ColorPopover({
 
   const updateHexDraft = (rawValue: string) => {
     const nextValue = rawValue
-      .replace(/^#/, "")
-      .replace(/[^0-9a-f]/gi, "")
-      .slice(0, 6);
+      .replace(HEX_PREFIX_PATTERN, EMPTY_HEX_DRAFT)
+      .replace(HEX_COLOR_CHARACTER_PATTERN, EMPTY_HEX_DRAFT)
+      .slice(FIRST_ARRAY_INDEX, HEX_FULL_LENGTH);
 
     setHexDraft(nextValue);
     const normalizedValue = completeHexDraft(nextValue);
@@ -735,14 +980,18 @@ function ColorPopover({
     <div
       className="kizkatt-color-popover"
       role="dialog"
-      aria-label={target === "strokeColor" ? "Stroke colors" : "Background colors"}
+      aria-label={
+        target === "strokeColor"
+          ? strings.stylePanel.strokeColors
+          : strings.stylePanel.backgroundColors
+      }
       style={
         {
           "--kizkatt-color-columns": colorColumnCount
         } as CSSProperties
       }
     >
-      <label>Colors</label>
+      <label>{strings.stylePanel.colors}</label>
       <div className="kizkatt-swatches kizkatt-color-grid">
         {COLOR_PALETTES.map((palette) => {
           const color = getPaletteColorForTarget(palette, target, theme);
@@ -752,12 +1001,13 @@ function ColorPopover({
               key={palette.id}
               type="button"
               aria-label={`${target} palette ${color}`}
+              title={`${tooltips.paletteColor} ${color}`}
               className={[
-                color === "transparent" ? "transparent" : "",
+                color === TRANSPARENT_COLOR ? TRANSPARENT_COLOR : EMPTY_HEX_DRAFT,
                 selectedPalette?.id === palette.id ? "is-active" : ""
               ].join(" ")}
               style={{
-                backgroundColor: color === "transparent" ? undefined : color
+                backgroundColor: color === TRANSPARENT_COLOR ? undefined : color
               }}
               onClick={() => {
                 onPaletteColorSelect(target, color, palette.id);
@@ -766,27 +1016,29 @@ function ColorPopover({
           );
         })}
       </div>
-      <label>Shades</label>
+      <label>{strings.stylePanel.shades}</label>
       <div className="kizkatt-swatches kizkatt-color-grid">
         {activeShades.map((color) => (
           <button
             key={color}
             type="button"
             aria-label={`${target} shade ${color}`}
+            title={`${tooltips.shadeColor} ${color}`}
             className={activeColor === color ? "is-active" : undefined}
             style={{ backgroundColor: color }}
             onClick={() => onColorSelect(target, color)}
           />
         ))}
       </div>
-      <label htmlFor="color-hex">Hex code</label>
+      <label htmlFor="color-hex">{strings.stylePanel.hexCode}</label>
       <div className="kizkatt-hex-input">
         <span>#</span>
         <input
           id="color-hex"
-          aria-label="Hex color"
-          maxLength={6}
-          placeholder="transparent"
+          aria-label={strings.stylePanel.hexColor}
+          title={tooltips.hexColor}
+          maxLength={HEX_FULL_LENGTH}
+          placeholder={strings.stylePanel.transparent}
           value={hexDraft}
           onChange={(event) => updateHexDraft(event.target.value)}
         />
@@ -794,7 +1046,8 @@ function ColorPopover({
       <div className="kizkatt-color-tools">
         <button
           type="button"
-          aria-label={`${target} eyedropper`}
+          aria-label={`${target} ${strings.stylePanel.eyedropper}`}
+          title={tooltips.eyedropper}
           onClick={() => void onPickColorFromScreen(target)}
         >
           {EyedropperIcon}

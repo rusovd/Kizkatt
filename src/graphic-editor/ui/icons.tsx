@@ -139,6 +139,17 @@ export const PaletteIcon = createIcon(
   </g>
 );
 
+export const ClosedPathIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M7 7h7l3 5 -3 5H7l-3 -5z" />
+    <circle cx="7" cy="7" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="14" cy="7" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="17" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="14" cy="17" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="7" cy="17" r="1.2" fill="currentColor" stroke="none" />
+  </g>
+);
+
 export const StrokeStyleSolidIcon = createIcon(
   <path
     d="M6 10H34"
@@ -349,6 +360,48 @@ export const SettingsIcon = createIcon(
   <g strokeWidth="1.5">
     <path d="M9.8 4.2 10.4 2h3.2l.6 2.2 1.5.6 2-1.1 2.3 2.3-1.1 2 .6 1.5 2.2.6v3.2l-2.2.6-.6 1.5 1.1 2-2.3 2.3-2-1.1-1.5.6-.6 2.2h-3.2l-.6-2.2-1.5-.6-2 1.1-2.3-2.3 1.1-2-.6-1.5-2.2-.6v-3.2l2.2-.6.6-1.5-1.1-2 2.3-2.3 2 1.1 1.5-.6Z" />
     <circle cx="12" cy="12" r="2.8" />
+  </g>
+);
+
+export const PinIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M9 4h6" />
+    <path d="M10 4v5l-3 3v2h10v-2l-3-3V4" />
+    <path d="M12 14v6" />
+  </g>
+);
+
+export const EyeIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+    <circle cx="12" cy="12" r="2.5" />
+  </g>
+);
+
+export const LayoutHorizontalIcon = createIcon(
+  <g strokeWidth="1.5">
+    <rect x="3.5" y="8" width="17" height="8" rx="2" />
+    <path d="M8 8v8" />
+    <path d="M16 8v8" />
+  </g>
+);
+
+export const LayoutVerticalIcon = createIcon(
+  <g strokeWidth="1.5">
+    <rect x="8" y="3.5" width="8" height="17" rx="2" />
+    <path d="M8 8h8" />
+    <path d="M8 16h8" />
+  </g>
+);
+
+export const LanguageIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M4 5h8" />
+    <path d="M8 3v2" />
+    <path d="M5 9c2.5 0 5-1.5 6-4" />
+    <path d="M6.5 7.5 11 12" />
+    <path d="M13 20l4-10 4 10" />
+    <path d="M14.3 17h5.4" />
   </g>
 );
 

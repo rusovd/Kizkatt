@@ -1,4 +1,5 @@
 import type { ContextMenuState } from "../../model/types";
+import { useI18n } from "../../i18n";
 
 type CanvasContextMenuProps = {
   arrowBinding: boolean;
@@ -49,6 +50,9 @@ export function CanvasContextMenu({
   viewMode,
   zenMode
 }: CanvasContextMenuProps) {
+  const { strings } = useI18n();
+  const tooltips = strings.contextMenu.tooltips;
+
   if (!contextMenu) {
     return null;
   }
@@ -57,26 +61,46 @@ export function CanvasContextMenu({
     <div
       className="kizkatt-context-menu"
       role="menu"
-      aria-label="Canvas context menu"
+      aria-label={strings.contextMenu.ariaLabel}
       style={{
         left: contextMenu.x,
         top: contextMenu.y
       }}
     >
-      <button type="button" role="menuitem" onClick={() => onCloseAndRun(onPaste)}>
-        <span>Paste</span>
+      <button
+        type="button"
+        role="menuitem"
+        title={tooltips.paste}
+        onClick={() => onCloseAndRun(onPaste)}
+      >
+        <span>{strings.contextMenu.paste}</span>
         <kbd>Ctrl+V</kbd>
       </button>
       <div className="kizkatt-context-divider" />
-      <button type="button" role="menuitem" onClick={() => onCloseAndRun(onCopyPng)}>
-        <span>Copy to clipboard as PNG</span>
+      <button
+        type="button"
+        role="menuitem"
+        title={tooltips.copyPng}
+        onClick={() => onCloseAndRun(onCopyPng)}
+      >
+        <span>{strings.contextMenu.copyPng}</span>
       </button>
-      <button type="button" role="menuitem" onClick={() => onCloseAndRun(onCopySvg)}>
-        <span>Copy to clipboard as SVG</span>
+      <button
+        type="button"
+        role="menuitem"
+        title={tooltips.copySvg}
+        onClick={() => onCloseAndRun(onCopySvg)}
+      >
+        <span>{strings.contextMenu.copySvg}</span>
       </button>
       <div className="kizkatt-context-divider" />
-      <button type="button" role="menuitem" onClick={() => onCloseAndRun(onSelectAll)}>
-        <span>Select all</span>
+      <button
+        type="button"
+        role="menuitem"
+        title={tooltips.selectAll}
+        onClick={() => onCloseAndRun(onSelectAll)}
+      >
+        <span>{strings.contextMenu.selectAll}</span>
         <kbd>Ctrl+A</kbd>
       </button>
       {(canGroup || canUngroup) && (
@@ -86,18 +110,20 @@ export function CanvasContextMenu({
             <button
               type="button"
               role="menuitem"
+              title={tooltips.group}
               onClick={() => onCloseAndRun(onGroup)}
             >
-              <span>Group</span>
+              <span>{strings.contextMenu.group}</span>
             </button>
           )}
           {canUngroup && (
             <button
               type="button"
               role="menuitem"
+              title={tooltips.ungroup}
               onClick={() => onCloseAndRun(onUngroup)}
             >
-              <span>Ungroup</span>
+              <span>{strings.contextMenu.ungroup}</span>
             </button>
           )}
         </>
@@ -107,49 +133,73 @@ export function CanvasContextMenu({
         type="button"
         role="menuitemcheckbox"
         aria-checked={showGrid}
+        title={tooltips.toggleGrid}
         onClick={() => onCloseAndRun(() => setShowGrid((value) => !value))}
       >
-        <span>{showGrid ? "✓ " : ""}Toggle grid</span>
+        <span>
+          {showGrid ? "✓ " : ""}
+          {strings.contextMenu.toggleGrid}
+        </span>
       </button>
       <button
         type="button"
         role="menuitemcheckbox"
         aria-checked={snapToObjects}
+        title={tooltips.snapToObjects}
         onClick={() => onCloseAndRun(() => setSnapToObjects((value) => !value))}
       >
-        <span>{snapToObjects ? "✓ " : ""}Snap to objects</span>
+        <span>
+          {snapToObjects ? "✓ " : ""}
+          {strings.contextMenu.snapToObjects}
+        </span>
       </button>
       <button
         type="button"
         role="menuitemcheckbox"
         aria-checked={arrowBinding}
+        title={tooltips.arrowBinding}
         onClick={() => onCloseAndRun(() => setArrowBinding((value) => !value))}
       >
-        <span>{arrowBinding ? "✓ " : ""}Arrow binding</span>
+        <span>
+          {arrowBinding ? "✓ " : ""}
+          {strings.contextMenu.arrowBinding}
+        </span>
       </button>
       <button
         type="button"
         role="menuitemcheckbox"
         aria-checked={snapToMidpoints}
+        title={tooltips.snapToMidpoints}
         onClick={() => onCloseAndRun(() => setSnapToMidpoints((value) => !value))}
       >
-        <span>{snapToMidpoints ? "✓ " : ""}Snap to midpoints</span>
+        <span>
+          {snapToMidpoints ? "✓ " : ""}
+          {strings.contextMenu.snapToMidpoints}
+        </span>
       </button>
       <button
         type="button"
         role="menuitemcheckbox"
         aria-checked={zenMode}
+        title={tooltips.zenMode}
         onClick={() => onCloseAndRun(() => setZenMode((value) => !value))}
       >
-        <span>{zenMode ? "✓ " : ""}Zen mode</span>
+        <span>
+          {zenMode ? "✓ " : ""}
+          {strings.contextMenu.zenMode}
+        </span>
       </button>
       <button
         type="button"
         role="menuitemcheckbox"
         aria-checked={viewMode}
+        title={tooltips.viewMode}
         onClick={() => onCloseAndRun(() => setViewMode((value) => !value))}
       >
-        <span>{viewMode ? "✓ " : ""}View mode</span>
+        <span>
+          {viewMode ? "✓ " : ""}
+          {strings.contextMenu.viewMode}
+        </span>
       </button>
     </div>
   );

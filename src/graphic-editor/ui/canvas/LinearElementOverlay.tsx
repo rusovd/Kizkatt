@@ -6,11 +6,19 @@ import {
   rotatePointAroundPoint
 } from "../../geometry";
 import type { KizkattElement } from "../../model/types";
+import {
+  LINE_BEND_HANDLE_RADIUS,
+  LINE_ENDPOINT_HANDLE_RADIUS,
+  LINE_INSERT_BEND_HANDLE_RADIUS,
+  ROTATE_HANDLE_OFFSET,
+  ROTATE_HANDLE_RADIUS
+} from "./renderingConstants";
 
 export function LinearElementOverlay({
   bends,
   element,
   linePoints,
+  selectedBendIndex,
   showBounds = true,
   showBendHandles = true,
   showRotateHandle = true
@@ -18,6 +26,7 @@ export function LinearElementOverlay({
   bends: ReturnType<typeof getElementBends>;
   element: KizkattElement;
   linePoints: ReturnType<typeof getLinearElementPoints>;
+  selectedBendIndex?: number;
   showBounds?: boolean;
   showBendHandles?: boolean;
   showRotateHandle?: boolean;
@@ -25,7 +34,7 @@ export function LinearElementOverlay({
   const center = getElementCenter(element);
   const rotateHandle = {
     x: center.x,
-    y: center.y - 24
+    y: center.y - ROTATE_HANDLE_OFFSET
   };
   const rotateHandleWorldPoint = rotatePointAroundPoint(
     rotateHandle,
@@ -41,26 +50,32 @@ export function LinearElementOverlay({
             className="kizkatt-endpoint-handle"
             cx={element.x}
             cy={element.y}
-            r={5}
+            r={LINE_ENDPOINT_HANDLE_RADIUS}
           />
           <circle
             className="kizkatt-endpoint-handle"
             data-handle="resize"
             cx={element.x + element.width}
             cy={element.y + element.height}
-            r={5}
+            r={LINE_ENDPOINT_HANDLE_RADIUS}
           />
           {showBendHandles && (
             <>
               {bends.map((bend, index) => (
                 <circle
                   key={`bend-${index}`}
-                  className="kizkatt-bend-point-handle"
+                  className={[
+                    "kizkatt-bend-point-handle",
+                    selectedBendIndex === index ? "is-selected" : ""
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   data-bend-index={index}
                   data-handle="bend"
+                  data-selected-bend={selectedBendIndex === index}
                   cx={element.x + bend.x}
                   cy={element.y + bend.y}
-                  r={8}
+                  r={LINE_BEND_HANDLE_RADIUS}
                 />
               ))}
               {linePoints.slice(0, -1).map((point, index) => {
@@ -74,7 +89,7 @@ export function LinearElementOverlay({
                     data-segment-index={index}
                     cx={midpoint.x}
                     cy={midpoint.y}
-                    r={6}
+                    r={LINE_INSERT_BEND_HANDLE_RADIUS}
                   />
                 );
               })}
@@ -90,7 +105,7 @@ export function LinearElementOverlay({
           data-handle-world-y={rotateHandleWorldPoint.y}
           cx={rotateHandle.x}
           cy={rotateHandle.y}
-          r={5}
+          r={ROTATE_HANDLE_RADIUS}
         />
       )}
     </g>

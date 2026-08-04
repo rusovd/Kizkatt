@@ -1,6 +1,7 @@
 import { MIN_SELECT_DRAG_DISTANCE } from "../../config/constants";
 import { getBoundsFromPoints, getDistance } from "../../geometry";
 import type { Interaction } from "../../model/types";
+import { SVG_FILL_NONE } from "./renderingConstants";
 
 export function SelectionArea({ interaction }: { interaction: Interaction | null }) {
   if (
@@ -19,7 +20,7 @@ export function SelectionArea({ interaction }: { interaction: Interaction | null
       y={bounds.y}
       width={bounds.width}
       height={bounds.height}
-      fill="none"
+      fill={SVG_FILL_NONE}
     />
   );
 }

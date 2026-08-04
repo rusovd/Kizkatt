@@ -4,45 +4,137 @@ import {
   getLinearElementPath,
   getLinearElementPoints
 } from "../../geometry";
+import { canElementUseBackground, isElementPathClosed } from "../../model/element";
 import type { KizkattElement } from "../../model/types";
+import { PERCENT_MAX_VALUE } from "../../config/constants";
 import { ElementGroup } from "./ElementGroup";
 import { ElementOverlay } from "./ElementOverlay";
 import { getElementShapeProps, getFreehandPath } from "./elementProps";
 import { LinearElementOverlay } from "./LinearElementOverlay";
+import {
+  ARROW_MARKER_URL,
+  ARTIST_FILTER_BASE_SCALE,
+  ARTIST_FILTER_MAX_SCALE,
+  ARTIST_FILTER_MIN_SCALE,
+  ARTIST_FILTER_STROKE_MULTIPLIER,
+  BASE_FILL_PATTERN_SIZE,
+  BASE_FILL_PATTERN_STROKE_WIDTH,
+  CARTOONIST_FILTER_BASE_SCALE,
+  CARTOONIST_FILTER_MAX_SCALE,
+  CARTOONIST_FILTER_MIN_SCALE,
+  CARTOONIST_FILTER_STROKE_MULTIPLIER,
+  CARTOONIST_FILTER_VARIANT,
+  CARTOONIST_FILTER_VARIANT_SEED_OFFSET,
+  DEFAULT_FILL_STYLE,
+  DEFAULT_FILL_WEIGHT,
+  DEFAULT_FILTER_VARIANT,
+  DEFAULT_SLOPPINESS,
+  DEFAULT_SLOPPINESS_GAP,
+  EMPTY_REPLACEMENT,
+  FILL_PATTERN_ID_PREFIX,
+  FILL_STYLE_CROSS_HATCH,
+  FILL_STYLE_HACHURE,
+  HACHURE_PATTERN_NEGATIVE_OFFSET_FACTOR,
+  HACHURE_PATTERN_POSITIVE_OFFSET_FACTOR,
+  HACHURE_PATTERN_TRAILING_END_FACTOR,
+  HACHURE_PATTERN_TRAILING_START_FACTOR,
+  HALF_DIVISOR,
+  LINEAR_ELEMENT_SIMPLE_POINT_COUNT,
+  MAX_FILL_WEIGHT,
+  MIN_DOUBLE_STROKE_GAP,
+  MIN_DOUBLE_STROKE_OFFSET,
+  MIN_FILL_WEIGHT,
+  MAX_FILL_PATTERN_STROKE_WIDTH,
+  MIN_FILL_PATTERN_STROKE_WIDTH,
+  MIN_RENDERED_STROKE_WIDTH,
+  MIN_SHAPE_SIZE_AFTER_INSET,
+  ROUNDED_EDGE_RADIUS,
+  SECONDARY_HAND_DRAWN_INSET_MULTIPLIER,
+  SECONDARY_SHAPE_MAX_INSET_MULTIPLIER,
+  SECONDARY_STROKE_OPACITY_MULTIPLIER,
+  SHARP_EDGE_RADIUS,
+  SLOPPY_FILTER_BASE_FREQUENCY,
+  SLOPPY_FILTER_BOUNDS,
+  SLOPPY_FILTER_ID_PREFIX,
+  SLOPPY_FILTER_NUM_OCTAVES,
+  SLOPPY_FILTER_RESULT_ID,
+  SLOPPY_FILTER_SIZE,
+  SLOPPY_HASH_INITIAL_VALUE,
+  SLOPPY_HASH_MODULUS,
+  SLOPPY_HASH_MULTIPLIER,
+  SLOPPINESS_ARTIST,
+  SLOPPINESS_CARTOONIST,
+  SLOPPINESS_DOUBLE,
+  SVG_CHANNEL_GREEN,
+  SVG_CHANNEL_RED,
+  SVG_COMMAND_SEPARATOR,
+  SVG_COORDINATE_SEPARATOR,
+  SVG_FILL_NONE,
+  SVG_FILTER_FRACTAL_NOISE,
+  SVG_FILTER_SOURCE_GRAPHIC,
+  SVG_ID_SAFE_PATTERN,
+  SVG_LINE_COMMAND,
+  SVG_LINECAP_ROUND,
+  SVG_MOVE_COMMAND,
+  SVG_PATH_CLOSE_COMMAND,
+  SVG_POINTER_EVENTS_NONE,
+  TEXT_BASELINE_OFFSET,
+  TRANSPARENT_COLOR,
+  ZERO_COORDINATE
+} from "./renderingConstants";
 import type { RenderElementOptions } from "./types";
 
 function hashElementId(id: string) {
   return id.split("").reduce((hash, character) => {
-    return (hash * 31 + character.charCodeAt(0)) % 997;
-  }, 17);
+    return (
+      (hash * SLOPPY_HASH_MULTIPLIER + character.charCodeAt(ZERO_COORDINATE)) %
+      SLOPPY_HASH_MODULUS
+    );
+  }, SLOPPY_HASH_INITIAL_VALUE);
 }
 
-function getSloppyFilterId(element: KizkattElement, variant = 0) {
-  return `kizkatt-sloppy-${variant}-${element.id.replace(/[^A-Za-z0-9_-]/g, "")}`;
+function getSloppyFilterId(
+  element: KizkattElement,
+  variant = DEFAULT_FILTER_VARIANT
+) {
+  return `${SLOPPY_FILTER_ID_PREFIX}-${variant}-${element.id.replace(
+    SVG_ID_SAFE_PATTERN,
+    EMPTY_REPLACEMENT
+  )}`;
 }
 
 function getSloppiness(element: KizkattElement) {
-  return element.sloppiness ?? "architect";
+  return element.sloppiness ?? DEFAULT_SLOPPINESS;
 }
 
 function shouldUseHandDrawnStroke(element: KizkattElement) {
   const sloppiness = getSloppiness(element);
 
-  return sloppiness === "artist" || sloppiness === "cartoonist";
+  return sloppiness === SLOPPINESS_ARTIST || sloppiness === SLOPPINESS_CARTOONIST;
 }
 
 function getDoubleStrokeOffset(element: KizkattElement) {
-  const strokeWidth = Math.max(1, element.strokeWidth);
-  const gap = Math.max(0, element.sloppinessGap ?? 16);
+  const strokeWidth = Math.max(MIN_RENDERED_STROKE_WIDTH, element.strokeWidth);
+  const gap = Math.max(
+    MIN_DOUBLE_STROKE_GAP,
+    element.sloppinessGap ?? DEFAULT_SLOPPINESS_GAP
+  );
 
-  return Math.max(3, strokeWidth + gap);
+  return Math.max(MIN_DOUBLE_STROKE_OFFSET, strokeWidth + gap);
 }
 
 function getSecondaryClosedShapeInset(element: KizkattElement) {
   const sloppiness = getSloppiness(element);
   const offset = getDoubleStrokeOffset(element);
-  const rawInset = sloppiness === "double" ? offset : offset * 0.55;
-  const maxInset = Math.max(1, Math.min(element.width, element.height) * 0.38);
+  const rawInset =
+    sloppiness === SLOPPINESS_DOUBLE
+      ? offset
+      : offset * SECONDARY_HAND_DRAWN_INSET_MULTIPLIER;
+  const maxInset = Math.max(
+    MIN_SHAPE_SIZE_AFTER_INSET,
+    Math.min(element.width, element.height) *
+      SECONDARY_SHAPE_MAX_INSET_MULTIPLIER
+  );
 
   return Math.min(rawInset, maxInset);
 }
@@ -63,7 +155,7 @@ function getSecondaryStrokeProps(
   variant: number
 ) {
   const filter =
-    getSloppiness(element) === "cartoonist"
+    getSloppiness(element) === SLOPPINESS_CARTOONIST
       ? `url(#${getSloppyFilterId(element, variant)})`
       : undefined;
 
@@ -71,16 +163,18 @@ function getSecondaryStrokeProps(
     "data-sloppiness-stroke": "secondary",
     "data-sloppiness-spacing": getDoubleStrokeOffset(element),
     ...getElementShapeProps(element),
-    fill: "none",
+    fill: SVG_FILL_NONE,
     filter,
-    opacity: (element.opacity / 100) * 0.88,
-    pointerEvents: "none" as const
+    opacity:
+      (element.opacity / PERCENT_MAX_VALUE) *
+      SECONDARY_STROKE_OPACITY_MULTIPLIER,
+    pointerEvents: SVG_POINTER_EVENTS_NONE
   };
 }
 
 function ElementSloppyFilter({
   element,
-  variant = 0
+  variant = DEFAULT_FILTER_VARIANT
 }: {
   element: KizkattElement;
   variant?: number;
@@ -89,35 +183,51 @@ function ElementSloppyFilter({
     return null;
   }
 
-  const seed = hashElementId(element.id) + variant * 137;
-  const strokeWidth = Math.max(1, element.strokeWidth);
+  const seed =
+    hashElementId(element.id) +
+    variant * CARTOONIST_FILTER_VARIANT_SEED_OFFSET;
+  const strokeWidth = Math.max(MIN_RENDERED_STROKE_WIDTH, element.strokeWidth);
   const scale =
-    getSloppiness(element) === "cartoonist"
-      ? Math.max(3, Math.min(14, 2.5 + Math.sqrt(strokeWidth) * 1.35))
-      : Math.max(2.2, Math.min(11, 1.8 + Math.sqrt(strokeWidth) * 1.12));
+    getSloppiness(element) === SLOPPINESS_CARTOONIST
+      ? Math.max(
+          CARTOONIST_FILTER_MIN_SCALE,
+          Math.min(
+            CARTOONIST_FILTER_MAX_SCALE,
+            CARTOONIST_FILTER_BASE_SCALE +
+              Math.sqrt(strokeWidth) * CARTOONIST_FILTER_STROKE_MULTIPLIER
+          )
+        )
+      : Math.max(
+          ARTIST_FILTER_MIN_SCALE,
+          Math.min(
+            ARTIST_FILTER_MAX_SCALE,
+            ARTIST_FILTER_BASE_SCALE +
+              Math.sqrt(strokeWidth) * ARTIST_FILTER_STROKE_MULTIPLIER
+          )
+        );
 
   return (
     <defs>
       <filter
         id={getSloppyFilterId(element, variant)}
-        x="-60%"
-        y="-60%"
-        width="220%"
-        height="220%"
+        x={SLOPPY_FILTER_BOUNDS}
+        y={SLOPPY_FILTER_BOUNDS}
+        width={SLOPPY_FILTER_SIZE}
+        height={SLOPPY_FILTER_SIZE}
       >
         <feTurbulence
-          type="fractalNoise"
-          baseFrequency="0.018 0.026"
-          numOctaves="2"
+          type={SVG_FILTER_FRACTAL_NOISE}
+          baseFrequency={SLOPPY_FILTER_BASE_FREQUENCY}
+          numOctaves={SLOPPY_FILTER_NUM_OCTAVES}
           seed={seed}
-          result="noise"
+          result={SLOPPY_FILTER_RESULT_ID}
         />
         <feDisplacementMap
-          in="SourceGraphic"
-          in2="noise"
+          in={SVG_FILTER_SOURCE_GRAPHIC}
+          in2={SLOPPY_FILTER_RESULT_ID}
           scale={scale}
-          xChannelSelector="R"
-          yChannelSelector="G"
+          xChannelSelector={SVG_CHANNEL_RED}
+          yChannelSelector={SVG_CHANNEL_GREEN}
         />
       </filter>
     </defs>
@@ -125,11 +235,14 @@ function ElementSloppyFilter({
 }
 
 function getFillPatternId(element: KizkattElement) {
-  return `kizkatt-fill-${element.id.replace(/[^A-Za-z0-9_-]/g, "")}`;
+  return `${FILL_PATTERN_ID_PREFIX}-${element.id.replace(
+    SVG_ID_SAFE_PATTERN,
+    EMPTY_REPLACEMENT
+  )}`;
 }
 
 function getElementFill(element: KizkattElement) {
-  if ((element.fillStyle ?? "solid") === "solid") {
+  if ((element.fillStyle ?? DEFAULT_FILL_STYLE) === DEFAULT_FILL_STYLE) {
     return element.backgroundColor;
   }
 
@@ -137,24 +250,53 @@ function getElementFill(element: KizkattElement) {
 }
 
 function ElementFillPattern({ element }: { element: KizkattElement }) {
-  const fillStyle = element.fillStyle ?? "solid";
+  const fillStyle = element.fillStyle ?? DEFAULT_FILL_STYLE;
 
-  if (fillStyle === "solid") {
+  if (fillStyle === DEFAULT_FILL_STYLE) {
     return null;
   }
 
   const patternId = getFillPatternId(element);
   const patternStroke =
-    element.backgroundColor === "transparent"
+    element.backgroundColor === TRANSPARENT_COLOR
       ? element.strokeColor
       : element.backgroundColor;
-  const fillWeight = Math.max(0.25, Math.min(6, element.fillWeight ?? 1));
-  const patternSize = 8 / fillWeight;
-  const patternStrokeWidth = Math.max(0.75, Math.min(3, 1.25 * Math.sqrt(fillWeight)));
-  const hachurePath = `M ${-patternSize / 4} ${patternSize / 4} L ${patternSize / 4} ${-patternSize / 4} M 0 ${patternSize} L ${patternSize} 0 M ${patternSize * 0.75} ${patternSize * 1.25} L ${patternSize * 1.25} ${patternSize * 0.75}`;
-  const crossHatchPath = `M 0 0 L ${patternSize} ${patternSize} M 0 ${patternSize} L ${patternSize} 0`;
+  const fillWeight = Math.max(
+    MIN_FILL_WEIGHT,
+    Math.min(MAX_FILL_WEIGHT, element.fillWeight ?? DEFAULT_FILL_WEIGHT)
+  );
+  const patternSize = BASE_FILL_PATTERN_SIZE / fillWeight;
+  const patternStrokeWidth = Math.max(
+    MIN_FILL_PATTERN_STROKE_WIDTH,
+    Math.min(
+      MAX_FILL_PATTERN_STROKE_WIDTH,
+      BASE_FILL_PATTERN_STROKE_WIDTH * Math.sqrt(fillWeight)
+    )
+  );
+  const hachurePath = [
+    `${SVG_MOVE_COMMAND} ${
+      patternSize * HACHURE_PATTERN_NEGATIVE_OFFSET_FACTOR
+    } ${patternSize * HACHURE_PATTERN_POSITIVE_OFFSET_FACTOR}`,
+    `${SVG_LINE_COMMAND} ${
+      patternSize * HACHURE_PATTERN_POSITIVE_OFFSET_FACTOR
+    } ${patternSize * HACHURE_PATTERN_NEGATIVE_OFFSET_FACTOR}`,
+    `${SVG_MOVE_COMMAND} ${ZERO_COORDINATE} ${patternSize}`,
+    `${SVG_LINE_COMMAND} ${patternSize} ${ZERO_COORDINATE}`,
+    `${SVG_MOVE_COMMAND} ${
+      patternSize * HACHURE_PATTERN_TRAILING_START_FACTOR
+    } ${patternSize * HACHURE_PATTERN_TRAILING_END_FACTOR}`,
+    `${SVG_LINE_COMMAND} ${
+      patternSize * HACHURE_PATTERN_TRAILING_END_FACTOR
+    } ${patternSize * HACHURE_PATTERN_TRAILING_START_FACTOR}`
+  ].join(SVG_COMMAND_SEPARATOR);
+  const crossHatchPath = [
+    `${SVG_MOVE_COMMAND} ${ZERO_COORDINATE} ${ZERO_COORDINATE}`,
+    `${SVG_LINE_COMMAND} ${patternSize} ${patternSize}`,
+    `${SVG_MOVE_COMMAND} ${ZERO_COORDINATE} ${patternSize}`,
+    `${SVG_LINE_COMMAND} ${patternSize} ${ZERO_COORDINATE}`
+  ].join(SVG_COMMAND_SEPARATOR);
   const reverseLine =
-    fillStyle === "crossHatch" ? (
+    fillStyle === FILL_STYLE_CROSS_HATCH ? (
       <path d={crossHatchPath} />
     ) : null;
 
@@ -167,14 +309,14 @@ function ElementFillPattern({ element }: { element: KizkattElement }) {
         patternUnits="userSpaceOnUse"
         patternTransform={`translate(${element.x} ${element.y})`}
       >
-        {fillStyle === "hachure" ? <path d={hachurePath} /> : null}
+        {fillStyle === FILL_STYLE_HACHURE ? <path d={hachurePath} /> : null}
         {reverseLine}
       </pattern>
       <style>{`
         #${patternId} path {
           stroke: ${patternStroke};
           stroke-width: ${patternStrokeWidth};
-          stroke-linecap: round;
+          stroke-linecap: ${SVG_LINECAP_ROUND};
         }
       `}</style>
     </defs>
@@ -200,21 +342,33 @@ function SelectedElementOverlay({
 function SecondaryRectStroke({ element }: { element: KizkattElement }) {
   const sloppiness = getSloppiness(element);
 
-  if (sloppiness !== "cartoonist" && sloppiness !== "double") {
+  if (
+    sloppiness !== SLOPPINESS_CARTOONIST &&
+    sloppiness !== SLOPPINESS_DOUBLE
+  ) {
     return null;
   }
 
   const inset = getSecondaryClosedShapeInset(element);
-  const edgeRadius = (element.edgeStyle ?? "round") === "round" ? 12 : 0;
+  const edgeRadius =
+    (element.edgeStyle ?? SVG_LINECAP_ROUND) === SVG_LINECAP_ROUND
+      ? ROUNDED_EDGE_RADIUS
+      : SHARP_EDGE_RADIUS;
 
   return (
     <rect
       x={element.x + inset}
       y={element.y + inset}
-      width={Math.max(1, element.width - inset * 2)}
-      height={Math.max(1, element.height - inset * 2)}
-      rx={Math.max(0, edgeRadius - inset)}
-      {...getSecondaryStrokeProps(element, 1)}
+      width={Math.max(
+        MIN_SHAPE_SIZE_AFTER_INSET,
+        element.width - inset * HALF_DIVISOR
+      )}
+      height={Math.max(
+        MIN_SHAPE_SIZE_AFTER_INSET,
+        element.height - inset * HALF_DIVISOR
+      )}
+      rx={Math.max(SHARP_EDGE_RADIUS, edgeRadius - inset)}
+      {...getSecondaryStrokeProps(element, CARTOONIST_FILTER_VARIANT)}
     />
   );
 }
@@ -222,28 +376,45 @@ function SecondaryRectStroke({ element }: { element: KizkattElement }) {
 function SecondaryDiamondStroke({ element }: { element: KizkattElement }) {
   const sloppiness = getSloppiness(element);
 
-  if (sloppiness !== "cartoonist" && sloppiness !== "double") {
+  if (
+    sloppiness !== SLOPPINESS_CARTOONIST &&
+    sloppiness !== SLOPPINESS_DOUBLE
+  ) {
     return null;
   }
 
   const inset = getSecondaryClosedShapeInset(element);
   const center = getElementCenter(element);
-  const halfWidth = Math.max(1, element.width / 2 - inset);
-  const halfHeight = Math.max(1, element.height / 2 - inset);
+  const halfWidth = Math.max(
+    MIN_SHAPE_SIZE_AFTER_INSET,
+    element.width / HALF_DIVISOR - inset
+  );
+  const halfHeight = Math.max(
+    MIN_SHAPE_SIZE_AFTER_INSET,
+    element.height / HALF_DIVISOR - inset
+  );
   const points = [
-    `${center.x},${center.y - halfHeight}`,
-    `${center.x + halfWidth},${center.y}`,
-    `${center.x},${center.y + halfHeight}`,
-    `${center.x - halfWidth},${center.y}`
-  ].join(" ");
+    `${center.x}${SVG_COORDINATE_SEPARATOR}${center.y - halfHeight}`,
+    `${center.x + halfWidth}${SVG_COORDINATE_SEPARATOR}${center.y}`,
+    `${center.x}${SVG_COORDINATE_SEPARATOR}${center.y + halfHeight}`,
+    `${center.x - halfWidth}${SVG_COORDINATE_SEPARATOR}${center.y}`
+  ].join(SVG_COMMAND_SEPARATOR);
 
-  return <polygon points={points} {...getSecondaryStrokeProps(element, 1)} />;
+  return (
+    <polygon
+      points={points}
+      {...getSecondaryStrokeProps(element, CARTOONIST_FILTER_VARIANT)}
+    />
+  );
 }
 
 function SecondaryEllipseStroke({ element }: { element: KizkattElement }) {
   const sloppiness = getSloppiness(element);
 
-  if (sloppiness !== "cartoonist" && sloppiness !== "double") {
+  if (
+    sloppiness !== SLOPPINESS_CARTOONIST &&
+    sloppiness !== SLOPPINESS_DOUBLE
+  ) {
     return null;
   }
 
@@ -251,18 +422,25 @@ function SecondaryEllipseStroke({ element }: { element: KizkattElement }) {
 
   return (
     <ellipse
-      cx={element.x + element.width / 2}
-      cy={element.y + element.height / 2}
-      rx={Math.max(1, Math.abs(element.width / 2) - inset)}
-      ry={Math.max(1, Math.abs(element.height / 2) - inset)}
-      {...getSecondaryStrokeProps(element, 1)}
+      cx={element.x + element.width / HALF_DIVISOR}
+      cy={element.y + element.height / HALF_DIVISOR}
+      rx={Math.max(
+        MIN_SHAPE_SIZE_AFTER_INSET,
+        Math.abs(element.width / HALF_DIVISOR) - inset
+      )}
+      ry={Math.max(
+        MIN_SHAPE_SIZE_AFTER_INSET,
+        Math.abs(element.height / HALF_DIVISOR) - inset
+      )}
+      {...getSecondaryStrokeProps(element, CARTOONIST_FILTER_VARIANT)}
     />
   );
 }
 
 function getLineOffsetPoints(element: KizkattElement) {
   const offset = getDoubleStrokeOffset(element);
-  const length = Math.hypot(element.width, element.height) || 1;
+  const length =
+    Math.hypot(element.width, element.height) || MIN_RENDERED_STROKE_WIDTH;
   const normal = {
     x: (-element.height / length) * offset,
     y: (element.width / length) * offset
@@ -285,19 +463,26 @@ function SecondaryLineStroke({
 }) {
   const sloppiness = getSloppiness(element);
 
-  if (sloppiness !== "cartoonist" && sloppiness !== "double") {
+  if (
+    sloppiness !== SLOPPINESS_CARTOONIST &&
+    sloppiness !== SLOPPINESS_DOUBLE
+  ) {
     return null;
   }
 
-  const secondaryProps = getSecondaryStrokeProps(element, 1);
+  const secondaryProps = getSecondaryStrokeProps(
+    element,
+    CARTOONIST_FILTER_VARIANT
+  );
 
-  if (linePoints.length > 2) {
+  if (linePoints.length > LINEAR_ELEMENT_SIMPLE_POINT_COUNT) {
     const offset = getDoubleStrokeOffset(element);
     const d = getLinearElementPath(
       linePoints.map((point) => ({
         x: point.x,
         y: point.y + offset
-      }))
+      })),
+      element.edgeStyle
     );
 
     return <path d={d} {...secondaryProps} />;
@@ -309,20 +494,29 @@ function SecondaryLineStroke({
 function SecondaryFreehandStroke({ element }: { element: KizkattElement }) {
   const sloppiness = getSloppiness(element);
 
-  if (sloppiness !== "cartoonist" && sloppiness !== "double") {
+  if (
+    sloppiness !== SLOPPINESS_CARTOONIST &&
+    sloppiness !== SLOPPINESS_DOUBLE
+  ) {
     return null;
   }
 
   const offset = getDoubleStrokeOffset(element);
   const d = (element.points ?? [])
     .map((point, index) => {
-      const command = index === 0 ? "M" : "L";
+      const command =
+        index === ZERO_COORDINATE ? SVG_MOVE_COMMAND : SVG_LINE_COMMAND;
 
       return `${command} ${element.x + point.x} ${element.y + point.y + offset}`;
     })
-    .join(" ");
+    .join(SVG_COMMAND_SEPARATOR);
 
-  return <path d={d} {...getSecondaryStrokeProps(element, 1)} />;
+  return (
+    <path
+      d={d}
+      {...getSecondaryStrokeProps(element, CARTOONIST_FILTER_VARIANT)}
+    />
+  );
 }
 
 export function renderElement(
@@ -331,14 +525,20 @@ export function renderElement(
   options: RenderElementOptions = {}
 ) {
   const commonProps = getPrimaryShapeProps(element);
-  const edgeRadius = (element.edgeStyle ?? "round") === "round" ? 12 : 0;
+  const edgeRadius =
+    (element.edgeStyle ?? SVG_LINECAP_ROUND) === SVG_LINECAP_ROUND
+      ? ROUNDED_EDGE_RADIUS
+      : SHARP_EDGE_RADIUS;
 
   if (element.type === "rectangle") {
     return (
       <ElementGroup key={element.id} element={element}>
         <ElementFillPattern element={element} />
         <ElementSloppyFilter element={element} />
-        <ElementSloppyFilter element={element} variant={1} />
+        <ElementSloppyFilter
+          element={element}
+          variant={CARTOONIST_FILTER_VARIANT}
+        />
         <rect
           x={element.x}
           y={element.y}
@@ -359,7 +559,10 @@ export function renderElement(
       <ElementGroup key={element.id} element={element}>
         <ElementFillPattern element={element} />
         <ElementSloppyFilter element={element} />
-        <ElementSloppyFilter element={element} variant={1} />
+        <ElementSloppyFilter
+          element={element}
+          variant={CARTOONIST_FILTER_VARIANT}
+        />
         {element.src ? (
           <image
             href={element.src}
@@ -368,7 +571,7 @@ export function renderElement(
             width={element.width}
             height={element.height}
             preserveAspectRatio="xMidYMid meet"
-            opacity={element.opacity / 100}
+            opacity={element.opacity / PERCENT_MAX_VALUE}
           />
         ) : (
           <rect
@@ -390,17 +593,20 @@ export function renderElement(
   if (element.type === "diamond") {
     const center = getElementCenter(element);
     const points = [
-      `${center.x},${element.y}`,
-      `${element.x + element.width},${center.y}`,
-      `${center.x},${element.y + element.height}`,
-      `${element.x},${center.y}`
-    ].join(" ");
+      `${center.x}${SVG_COORDINATE_SEPARATOR}${element.y}`,
+      `${element.x + element.width}${SVG_COORDINATE_SEPARATOR}${center.y}`,
+      `${center.x}${SVG_COORDINATE_SEPARATOR}${element.y + element.height}`,
+      `${element.x}${SVG_COORDINATE_SEPARATOR}${center.y}`
+    ].join(SVG_COMMAND_SEPARATOR);
 
     return (
       <ElementGroup key={element.id} element={element}>
         <ElementFillPattern element={element} />
         <ElementSloppyFilter element={element} />
-        <ElementSloppyFilter element={element} variant={1} />
+        <ElementSloppyFilter
+          element={element}
+          variant={CARTOONIST_FILTER_VARIANT}
+        />
         <polygon points={points} fill={getElementFill(element)} {...commonProps} />
         <SecondaryDiamondStroke element={element} />
         {selected && <SelectedElementOverlay element={element} options={options} />}
@@ -413,12 +619,15 @@ export function renderElement(
       <ElementGroup key={element.id} element={element}>
         <ElementFillPattern element={element} />
         <ElementSloppyFilter element={element} />
-        <ElementSloppyFilter element={element} variant={1} />
+        <ElementSloppyFilter
+          element={element}
+          variant={CARTOONIST_FILTER_VARIANT}
+        />
         <ellipse
-          cx={element.x + element.width / 2}
-          cy={element.y + element.height / 2}
-          rx={Math.abs(element.width / 2)}
-          ry={Math.abs(element.height / 2)}
+          cx={element.x + element.width / HALF_DIVISOR}
+          cy={element.y + element.height / HALF_DIVISOR}
+          rx={Math.abs(element.width / HALF_DIVISOR)}
+          ry={Math.abs(element.height / HALF_DIVISOR)}
           fill={getElementFill(element)}
           {...commonProps}
         />
@@ -431,18 +640,24 @@ export function renderElement(
   if (element.type === "line" || element.type === "arrow") {
     const bends = getElementBends(element);
     const linePoints = getLinearElementPoints(element, bends);
-    const hasBends = bends.length > 0;
+    const hasBends = bends.length > ZERO_COORDINATE;
+    const canUseFill = canElementUseBackground(element);
+    const pathData = getLinearElementPath(linePoints, element.edgeStyle);
     const markerEnd =
-      element.type === "arrow" ? "url(#kizkatt-arrow)" : undefined;
+      element.type === "arrow" ? ARROW_MARKER_URL : undefined;
 
     return (
       <ElementGroup key={element.id} element={element}>
+        {canUseFill && <ElementFillPattern element={element} />}
         <ElementSloppyFilter element={element} />
-        <ElementSloppyFilter element={element} variant={1} />
-        {hasBends ? (
+        <ElementSloppyFilter
+          element={element}
+          variant={CARTOONIST_FILTER_VARIANT}
+        />
+        {hasBends || canUseFill ? (
           <path
-            d={getLinearElementPath(linePoints)}
-            fill="none"
+            d={`${pathData}${canUseFill ? SVG_PATH_CLOSE_COMMAND : ""}`}
+            fill={canUseFill ? getElementFill(element) : SVG_FILL_NONE}
             markerEnd={markerEnd}
             {...commonProps}
           />
@@ -452,7 +667,7 @@ export function renderElement(
             y1={element.y}
             x2={element.x + element.width}
             y2={element.y + element.height}
-            fill="none"
+            fill={SVG_FILL_NONE}
             markerEnd={markerEnd}
             {...commonProps}
           />
@@ -471,6 +686,7 @@ export function renderElement(
               element={element}
               bends={bends}
               linePoints={linePoints}
+              selectedBendIndex={options.selectedBendIndex}
               showBounds={options.showSelectionBounds ?? true}
               showBendHandles={options.showLinearBendHandles ?? true}
               showRotateHandle={!hasBends && (options.showRotateHandle ?? true)}
@@ -482,11 +698,22 @@ export function renderElement(
   }
 
   if (element.type === "draw") {
+    const canUseFill = isElementPathClosed(element);
+    const freehandPath = getFreehandPath(element);
+
     return (
       <ElementGroup key={element.id} element={element}>
+        {canUseFill && <ElementFillPattern element={element} />}
         <ElementSloppyFilter element={element} />
-        <ElementSloppyFilter element={element} variant={1} />
-        <path d={getFreehandPath(element)} fill="none" {...commonProps} />
+        <ElementSloppyFilter
+          element={element}
+          variant={CARTOONIST_FILTER_VARIANT}
+        />
+        <path
+          d={`${freehandPath}${canUseFill ? SVG_PATH_CLOSE_COMMAND : ""}`}
+          fill={canUseFill ? getElementFill(element) : SVG_FILL_NONE}
+          {...commonProps}
+        />
         <SecondaryFreehandStroke element={element} />
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>
@@ -497,10 +724,10 @@ export function renderElement(
     <ElementGroup key={element.id} element={element}>
       <text
         x={element.x}
-        y={element.y + 26}
+        y={element.y + TEXT_BASELINE_OFFSET}
         className="kizkatt-text"
         fill={element.strokeColor}
-        opacity={element.opacity / 100}
+            opacity={element.opacity / PERCENT_MAX_VALUE}
       >
         {element.text}
       </text>

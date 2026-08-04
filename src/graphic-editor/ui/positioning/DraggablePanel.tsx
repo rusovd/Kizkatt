@@ -92,10 +92,12 @@ function getDragPointerId(
 
 export function DraggablePanel({
   children,
+  className,
   id,
   topDock = false
 }: {
   children: ReactNode;
+  className?: string;
   id: string;
   topDock?: boolean;
 }) {
@@ -279,7 +281,8 @@ export function DraggablePanel({
         `kizkatt-floating-panel--${id}`,
         position ? "is-positioned" : "",
         dragging ? "is-dragging" : "",
-        !dragEnabled ? "is-drag-disabled" : ""
+        !dragEnabled ? "is-drag-disabled" : "",
+        className ?? ""
       ].join(" ")}
       style={style}
       onClickCapture={(event) => {

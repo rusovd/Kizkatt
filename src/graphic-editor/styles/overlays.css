@@ -63,6 +63,12 @@
   vector-effect: non-scaling-stroke;
 }
 
+.kizkatt-bend-point-handle.is-selected {
+  fill: #050505;
+  stroke: #f3f4f6;
+  stroke-width: 1;
+}
+
 .kizkatt-rotate-handle {
   fill: var(--kizkatt-handle-bg);
   stroke: var(--kizkatt-selection-strong);

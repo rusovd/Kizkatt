@@ -2,7 +2,10 @@ import {
   DEFAULT_CANVAS_BACKGROUND,
   DEFAULT_ELEMENT_STYLE_BY_THEME,
   DEFAULT_GRID_COLOR,
+  PERCENT_MAX_VALUE,
   KizkattGraphicEditor as EngineKizkattGraphicEditor,
+  TEXT_ELEMENT_DEFAULT_HEIGHT,
+  TEXT_ELEMENT_DEFAULT_WIDTH,
   findElementAtPoint,
   getElementIdsInSelectionArea,
   getResizeAnchorPoint,
@@ -27,6 +30,11 @@ import {
 } from "kizkatt-graphic-engine";
 
 import {
+  COLOR_PANEL_COLUMN_COUNT,
+  DEFAULT_SELECT_TOOL,
+  EMPTY_COLLECTION_LENGTH
+} from "../config/constants";
+import {
   CanvasGrid,
   getCanvasCursor,
   SelectedBounds,
@@ -38,11 +46,15 @@ import { CanvasContextMenu } from "../ui/menus/CanvasContextMenu";
 import { FooterControls } from "../ui/controls/FooterControls";
 import { MainMenu } from "../ui/menus/MainMenu";
 import { StylePanel } from "../ui/panels/StylePanel";
-import { STYLE_TOOLS } from "../tools/toolRegistry";
+import {
+  ELEMENT_NAMING,
+  ELEMENT_TOOL_BY_TYPE,
+  SELECTED_ELEMENT_STYLE_TOOLS,
+  STYLE_TOOLS
+} from "../tools/toolRegistry";
 import { Toolbar } from "../ui/controls/Toolbar";
+import { I18nProvider, useI18n } from "../i18n";
 import { GraphicEditorSettingsProvider } from "../ui/settings/GraphicEditorSettings";
-
-const COLOR_PANEL_COLUMN_COUNT = 5;
 
 export {
   DEFAULT_CANVAS_BACKGROUND,
@@ -76,20 +88,22 @@ function TextEditor({
   pan,
   zoom
 }: TextEditorProps) {
+  const { strings } = useI18n();
+
   return (
     <textarea
-      aria-label="Edit text"
+      aria-label={strings.canvas.editText}
       autoFocus
       className="kizkatt-text-editor"
       onBlur={onBlur}
       onChange={(event) => onChange(event.target.value)}
       style={{
         color: element.strokeColor,
-        height: Math.max(36, element.height * zoom),
+        height: Math.max(TEXT_ELEMENT_DEFAULT_HEIGHT, element.height * zoom),
         left: pan.x + element.x * zoom,
-        opacity: element.opacity / 100,
+        opacity: element.opacity / PERCENT_MAX_VALUE,
         top: pan.y + element.y * zoom,
-        width: Math.max(128, element.width * zoom)
+        width: Math.max(TEXT_ELEMENT_DEFAULT_WIDTH, element.width * zoom)
       }}
       value={element.text}
     />
@@ -117,19 +131,39 @@ const editorComponents = {
   Toolbar
 };
 
+function KizkattGraphicEditorContent() {
+  const { strings } = useI18n();
+
+  return (
+    <EngineKizkattGraphicEditor
+      boardAriaLabel={strings.canvas.boardAriaLabel}
+      canvasAriaLabel={strings.canvas.canvasAriaLabel}
+      components={editorComponents}
+      defaultElementStyleByTheme={DEFAULT_ELEMENT_STYLE_BY_THEME}
+      imageInputAriaLabel={strings.canvas.chooseImage}
+      naming={ELEMENT_NAMING}
+      getToolForSelectedElement={(element) =>
+        ELEMENT_TOOL_BY_TYPE[element.type]
+      }
+      getCanvasCursor={getCanvasCursor}
+      renderElement={renderElement}
+      serializeSvg={serializeSvg}
+      shouldShowStylePanel={({ activeTool, selectedElements }) =>
+        STYLE_TOOLS.has(activeTool) ||
+        (selectedElements.length > EMPTY_COLLECTION_LENGTH &&
+          (activeTool === DEFAULT_SELECT_TOOL ||
+            SELECTED_ELEMENT_STYLE_TOOLS.has(activeTool)))
+      }
+    />
+  );
+}
+
 export function KizkattGraphicEditor() {
   return (
-    <GraphicEditorSettingsProvider>
-      <EngineKizkattGraphicEditor
-        components={editorComponents}
-        defaultElementStyleByTheme={DEFAULT_ELEMENT_STYLE_BY_THEME}
-        getCanvasCursor={getCanvasCursor}
-        renderElement={renderElement}
-        serializeSvg={serializeSvg}
-        shouldShowStylePanel={({ activeTool, selectedElements }) =>
-          selectedElements.length > 0 || STYLE_TOOLS.has(activeTool)
-        }
-      />
-    </GraphicEditorSettingsProvider>
+    <I18nProvider>
+      <GraphicEditorSettingsProvider>
+        <KizkattGraphicEditorContent />
+      </GraphicEditorSettingsProvider>
+    </I18nProvider>
   );
 }

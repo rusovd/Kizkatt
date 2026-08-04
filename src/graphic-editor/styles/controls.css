@@ -33,6 +33,10 @@
   cursor: default;
 }
 
+.kizkatt-floating-panel.is-floating-panel-active {
+  z-index: 9;
+}
+
 .kizkatt-floating-panel button,
 .kizkatt-floating-panel input,
 .kizkatt-floating-panel label {
@@ -133,6 +137,33 @@
   cursor: pointer;
 }
 
+.kizkatt-toolbar button.has-submenu {
+  overflow: hidden;
+}
+
+.kizkatt-submenu-indicator {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  color: var(--kizkatt-muted-text);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.kizkatt-submenu-indicator::before {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background: currentColor;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  content: "";
+  opacity: 0.72;
+}
+
 .kizkatt-toolbar-group,
 .kizkatt-toolbar-settings {
   position: relative;
@@ -203,6 +234,19 @@
   padding: 0 8px;
   border-radius: 6px;
   text-align: left;
+}
+
+.kizkatt-settings-item-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.kizkatt-settings-item-label .kizkatt-tool-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
 }
 
 .kizkatt-toolbar button:hover,

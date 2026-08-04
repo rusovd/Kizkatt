@@ -1,4 +1,5 @@
 .kizkatt-style-panel {
+  position: relative;
   display: grid;
   width: 198px;
   gap: 7px;
@@ -60,6 +61,16 @@
   outline-offset: 1px;
 }
 
+.kizkatt-swatches button:disabled,
+.kizkatt-palette-swatch.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.kizkatt-palette-swatch.is-disabled input {
+  cursor: not-allowed;
+}
+
 .kizkatt-quick-swatches {
   overflow: visible;
 }
@@ -103,6 +114,7 @@
 
 .kizkatt-color-popover {
   position: absolute;
+  z-index: 8;
   top: 22px;
   left: calc(100% + 16px);
   box-sizing: border-box;
@@ -255,8 +267,27 @@
   gap: 6px;
 }
 
+.kizkatt-fill-control--with-path {
+  grid-template-columns: minmax(0, 1fr) 30px 44px;
+}
+
 .kizkatt-fill-control .kizkatt-segmented {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.kizkatt-fill-control > button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--kizkatt-text-secondary);
+  cursor: pointer;
+}
+
+.kizkatt-fill-control > button .kizkatt-tool-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .kizkatt-sloppiness-control {
