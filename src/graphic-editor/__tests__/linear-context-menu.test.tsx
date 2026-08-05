@@ -36,9 +36,22 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     const curvePath = canvas.querySelector("[data-element-id] path");
     expect(curvePath?.getAttribute("d")).toContain(" C ");
     expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(1);
+    expect(canvas.querySelector(".kizkatt-bend-point-handle.is-selected"))
+      .toBeInTheDocument();
     expect(canvas.querySelectorAll(".kizkatt-bend-handle")).toHaveLength(2);
     expect(canvas.querySelector(".kizkatt-selection-overlay")).toBeInTheDocument();
     expect(canvas.querySelector(".kizkatt-bend-handle")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edges sharp" }));
+    expect(curvePath?.getAttribute("d")).not.toContain(" C ");
+    expect(curvePath?.getAttribute("d")).toContain(" L ");
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(1);
+
+    fireEvent.keyDown(screen.getByLabelText("Kizkatt diagram canvas"), {
+      key: "Delete"
+    });
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(0);
+    expect(canvas.querySelector("[data-element-id] line")).toBeInTheDocument();
   });
 
   it("opens the canvas context menu with expected actions", () => {

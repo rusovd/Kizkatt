@@ -1,6 +1,8 @@
 import { describe, it } from "vitest";
+import { storeCanvasState } from "kizkatt-graphic-engine";
 import {
   KizkattGraphicEditor,
+  chooseGroupedTool,
   expect,
   findElementAtPoint,
   fireEvent,
@@ -15,11 +17,6 @@ import {
   type KizkattElement
 } from "./testUtils";
 
-function chooseGroupedTool(groupLabel: string, toolLabel: string) {
-  fireEvent.click(screen.getByRole("button", { name: groupLabel }));
-  fireEvent.click(screen.getByRole("menuitem", { name: toolLabel }));
-}
-
 describe("KizkattGraphicEditor drawing and style panel", () => {
   it("creates a rectangle on the SVG canvas", () => {
     render(<KizkattGraphicEditor />);
@@ -32,6 +29,36 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     fireEvent.pointerUp(canvas);
 
     expect(canvas.querySelector("[data-element-id]")).toBeInTheDocument();
+  });
+
+  it("names created elements and writes names into SVG metadata", () => {
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
+    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
+    fireEvent.pointerUp(canvas);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    fireEvent.pointerDown(canvas, { clientX: 190, clientY: 50 });
+    fireEvent.pointerMove(canvas, { clientX: 260, clientY: 120 });
+    fireEvent.pointerUp(canvas);
+
+    const elementGroups = canvas.querySelectorAll("[data-element-id]");
+
+    expect(elementGroups[0]).toHaveAttribute(
+      "data-element-name",
+      "Rectangle 1"
+    );
+    expect(elementGroups[0].querySelector("metadata")?.textContent).toContain(
+      '"name":"Rectangle 1"'
+    );
+    expect(elementGroups[1]).toHaveAttribute(
+      "data-element-name",
+      "Rectangle 2"
+    );
   });
 
   it("does not create throwaway line elements from a click without dragging", () => {
@@ -62,6 +89,27 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       "is-active"
     );
     expect(canvas).toHaveStyle({ cursor: "default" });
+  });
+
+  it("activates the creation tool when a non-group element is clicked", () => {
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
+    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
+    fireEvent.pointerUp(canvas);
+
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
+    fireEvent.pointerDown(canvas, { clientX: 100, clientY: 50 });
+
+    expect(screen.getByRole("button", { name: "Rectangle" })).toHaveClass(
+      "is-active"
+    );
+    expect(
+      screen.getByRole("complementary", { name: "Element style" })
+    ).toBeInTheDocument();
   });
 
   it("shows rotate handles only after drawing finishes", () => {
@@ -298,6 +346,79 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(elementRect).toHaveAttribute("fill", "transparent");
     expect(screen.queryByRole("dialog", { name: "Stroke colors" })).not
       .toBeInTheDocument();
+  });
+
+  it("disables fill colors for selected arrows", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "#653b00",
+          height: 70,
+          id: "arrow",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "arrow",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["arrow"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    expect(
+      screen.getByRole("button", { name: "Background custom #653b00" })
+    ).toBeDisabled();
+    expect(canvas.querySelector("[data-element-id] line")).toHaveAttribute(
+      "fill",
+      "none"
+    );
+  });
+
+  it("enables fill colors after an open line is closed", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "#653b00",
+          height: 70,
+          id: "line",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "line",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["line"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    expect(
+      screen.getByRole("button", { name: "Background custom #653b00" })
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close path" }));
+
+    expect(
+      screen.getByRole("button", { name: "Background custom #653b00" })
+    ).not.toBeDisabled();
+    expect(canvas.querySelector("[data-element-type='line'] > path"))
+      .toHaveAttribute(
+      "fill",
+      "#653b00"
+    );
   });
 
   it("applies stroke style and edge controls from the style panel", () => {

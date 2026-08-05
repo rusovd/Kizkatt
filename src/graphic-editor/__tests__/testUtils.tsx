@@ -6,6 +6,7 @@ import {
   screen,
   waitFor
 } from "@testing-library/react";
+import { TOOLBAR_SUBMENU_HOLD_MS } from "../ui/controls/toolbarConstants";
 
 export { act, fireEvent, render, screen, waitFor };
 export { expect, vi } from "vitest";
@@ -57,7 +58,16 @@ export function getCirclePoint(circle: Element | null) {
 }
 
 export function chooseGroupedTool(groupLabel: string, toolLabel: string) {
-  fireEvent.click(screen.getByRole("button", { name: groupLabel }));
+  const groupButton = screen.getByRole("button", { name: groupLabel });
+
+  vi.useFakeTimers();
+  fireEvent.pointerDown(groupButton);
+  act(() => {
+    vi.advanceTimersByTime(TOOLBAR_SUBMENU_HOLD_MS);
+  });
+  fireEvent.pointerUp(groupButton);
+  vi.useRealTimers();
+
   fireEvent.click(screen.getByRole("menuitem", { name: toolLabel }));
 }
 

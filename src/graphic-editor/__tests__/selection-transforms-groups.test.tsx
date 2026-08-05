@@ -292,12 +292,27 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     const grouped = groupSelectedElements(elements, ["a", "b"], "group-1");
 
     expect(expandElementIdsToGroups(grouped, ["a"])).toEqual(["a", "b"]);
+    expect(grouped[0]).toMatchObject({
+      groupId: "group-1",
+      groupName: "Group 1"
+    });
+    expect(grouped[1]).toMatchObject({
+      groupId: "group-1",
+      groupName: "Group 1"
+    });
     expect(canUngroupSelection(grouped, ["a"])).toBe(true);
     expect(canGroupSelection(grouped, ["a"])).toBe(false);
     expect(canGroupSelection(grouped, ["a", "c"])).toBe(true);
     expect(
-      ungroupSelectedElements(grouped, ["a"]).map((element) => element.groupId)
-    ).toEqual([undefined, undefined, undefined]);
+      ungroupSelectedElements(grouped, ["a"]).map((element) => ({
+        groupId: element.groupId,
+        groupName: element.groupName
+      }))
+    ).toEqual([
+      { groupId: undefined, groupName: undefined },
+      { groupId: undefined, groupName: undefined },
+      { groupId: undefined, groupName: undefined }
+    ]);
   });
 
   it("uses transformed element bounds for multi-selection frames", () => {

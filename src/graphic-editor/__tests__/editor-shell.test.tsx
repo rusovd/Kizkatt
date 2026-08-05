@@ -4,6 +4,8 @@ import {
   DEFAULT_GRID_COLOR,
   Icons,
   KizkattGraphicEditor,
+  act,
+  chooseGroupedTool,
   expect,
   fireEvent,
   render,
@@ -106,6 +108,9 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Theme" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Language" })).toHaveValue(
+      "en"
+    );
     expect(
       screen.getByRole("button", { name: "Canvas background #161719" })
     ).toBeInTheDocument();
@@ -148,6 +153,41 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
   });
 
+  it("exposes localized tooltips on editor controls", () => {
+    render(<KizkattGraphicEditor />);
+
+    expect(screen.getByRole("button", { name: "Select" })).toHaveAttribute(
+      "title",
+      "Select, move, resize, and rotate objects"
+    );
+    expect(screen.getByRole("button", { name: "Zoom in" })).toHaveAttribute(
+      "title",
+      "Zoom into the canvas"
+    );
+    expect(screen.getByRole("button", { name: "Undo" })).toHaveAttribute(
+      "title",
+      "Undo the last change"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+
+    expect(screen.getByRole("button", { name: /Open/ })).toHaveAttribute(
+      "title",
+      "Open a drawing file"
+    );
+    expect(
+      screen.getByRole("button", { name: "Canvas background #161719" })
+    ).toHaveAttribute("title", "Set canvas background to #161719");
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    expect(screen.getByRole("button", { name: "Fill solid" }))
+      .toHaveAttribute("title", "Use solid fill");
+    expect(screen.getByRole("button", { name: "Send to back" }))
+      .toHaveAttribute("title", "Move selected objects to the back");
+  });
+
   it("stores dragged panel positions and docks button controls to the top", () => {
     render(<KizkattGraphicEditor />);
 
@@ -180,14 +220,16 @@ describe("KizkattGraphicEditor shell", () => {
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Diamond" }));
+    expect(screen.queryByRole("menuitem", { name: "Diamond" })).not
+      .toBeInTheDocument();
+
+    chooseGroupedTool("Rectangle", "Diamond");
 
     expect(screen.getByRole("button", { name: "Diamond" })).toHaveClass(
       "is-active"
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Arrow" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Line" }));
+    chooseGroupedTool("Arrow", "Line");
 
     expect(screen.getByRole("button", { name: "Line" })).toHaveClass(
       "is-active"
@@ -236,6 +278,105 @@ describe("KizkattGraphicEditor shell", () => {
       "kizkatt-toolbar--vertical"
     );
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("keeps only one toolbar submenu open at a time", () => {
+    render(<KizkattGraphicEditor />);
+
+    const openSubmenu = (buttonName: string) => {
+      const button = screen.getByRole("button", { name: buttonName });
+
+      vi.useFakeTimers();
+      fireEvent.pointerDown(button);
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      fireEvent.pointerUp(button);
+      vi.useRealTimers();
+    };
+
+    openSubmenu("Rectangle");
+    expect(screen.getByRole("menuitem", { name: "Diamond" }))
+      .toBeInTheDocument();
+
+    openSubmenu("Arrow");
+    expect(screen.queryByRole("menuitem", { name: "Diamond" })).not
+      .toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Line" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Toolbar settings" }));
+    expect(screen.queryByRole("menuitem", { name: "Line" })).not
+      .toBeInTheDocument();
+    expect(screen.getByRole("menuitemcheckbox", { name: /Stick panels/ }))
+      .toBeInTheDocument();
+  });
+
+  it("opens grouped toolbar menus from the corner indicator", () => {
+    render(<KizkattGraphicEditor />);
+
+    const rectangleButton = screen.getByRole("button", { name: "Rectangle" });
+    const indicator = rectangleButton.querySelector(
+      ".kizkatt-submenu-indicator"
+    );
+
+    expect(indicator).not.toBeNull();
+    fireEvent.click(indicator as Element);
+
+    expect(screen.getByRole("menuitem", { name: "Diamond" }))
+      .toBeInTheDocument();
+    expect(rectangleButton).not.toHaveClass("is-active");
+    expect(screen.getByRole("button", { name: "Select" })).toHaveClass(
+      "is-active"
+    );
+  });
+
+  it("closes the current tool style panel when switching to text", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Text" }));
+
+    expect(screen.getByRole("button", { name: "Text" })).toHaveClass(
+      "is-active"
+    );
+    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+  });
+
+  it("closes the current tool style panel when switching to eraser", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Eraser" }));
+
+    expect(screen.getByRole("button", { name: "Eraser" })).toHaveClass(
+      "is-active"
+    );
+    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+  });
+
+  it("closes style-panel popovers when opening a toolbar submenu", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Background custom #653b00" })
+    );
+
+    expect(screen.getByRole("dialog", { name: "Background colors" }))
+      .toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Toolbar settings" }));
+
+    expect(screen.queryByRole("dialog", { name: "Background colors" })).not
+      .toBeInTheDocument();
+    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+    expect(screen.getByRole("menuitemcheckbox", { name: /Stick panels/ }))
+      .toBeInTheDocument();
   });
 
   it("duplicates toolbar autohide in the main menu", () => {
@@ -463,6 +604,11 @@ describe("KizkattGraphicEditor shell", () => {
     expect(Icons.ExportIcon).toBeTruthy();
     expect(Icons.ResetIcon).toBeTruthy();
     expect(Icons.SettingsIcon).toBeTruthy();
+    expect(Icons.PinIcon).toBeTruthy();
+    expect(Icons.EyeIcon).toBeTruthy();
+    expect(Icons.LayoutHorizontalIcon).toBeTruthy();
+    expect(Icons.LayoutVerticalIcon).toBeTruthy();
+    expect(Icons.LanguageIcon).toBeTruthy();
     expect(Icons.SunIcon).toBeTruthy();
     expect(Icons.MoonIcon).toBeTruthy();
     expect(Icons.UndoIcon).toBeTruthy();
