@@ -13,10 +13,14 @@ export const THEME_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:theme
 export const UI_SCALE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:ui-scale`;
 export const CANVAS_STATE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:canvas-state`;
 export const QUICK_SAVE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:quick-save`;
+export const CONTEXT_MENU_DEFAULTS_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:context-menu-defaults`;
 export const HISTORY_LIMIT = 100;
 export const MIN_ELEMENT_SIZE = 10;
 export const MIN_CREATE_DRAG_DISTANCE = 6;
+export const MIN_CREATE_HOLD_DURATION_MS = 150;
 export const MIN_SELECT_DRAG_DISTANCE = 4;
+export const OBJECT_SNAP_DISTANCE = 12;
+export const GRID_CELL_SIZE = 24;
 export const MIN_PIXEL_SIZE = 1;
 export const TEXT_ELEMENT_DEFAULT_WIDTH = 128;
 export const TEXT_ELEMENT_DEFAULT_HEIGHT = 36;
@@ -53,6 +57,9 @@ export const IMAGE_FILE_ACCEPT = "image/*";
 export const SVG_IMAGE_MIME_TYPE = "image/svg+xml;charset=utf-8";
 export const PNG_IMAGE_MIME_TYPE = "image/png";
 export const PLAIN_TEXT_MIME_TYPE = "text/plain";
+export const PNG_EXPORT_DPI = 300;
+export const SCREEN_DPI = 96;
+export const PNG_EXPORT_PADDING = 16;
 export const EMPTY_INPUT_VALUE = "";
 export const EDITABLE_KEYBOARD_TARGET_SELECTORS = [
   "input",

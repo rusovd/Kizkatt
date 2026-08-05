@@ -158,8 +158,12 @@ export function isElementPathClosed(element: KizkattElement) {
 }
 
 export function canElementUseBackground(element: KizkattElement) {
-  if (element.type === "arrow" || element.type === "image") {
+  if (element.type === "arrow") {
     return false;
+  }
+
+  if (element.type === "image") {
+    return Boolean(element.svgContent);
   }
 
   if (element.type === "line" || element.type === "draw") {

@@ -6,6 +6,7 @@ import {
 } from "../../geometry";
 import {
   MIN_CREATE_DRAG_DISTANCE,
+  MIN_CREATE_HOLD_DURATION_MS,
   MIN_SELECT_DRAG_DISTANCE
 } from "../../config/constants";
 import { normalizeElement } from "../../model/element";
@@ -13,14 +14,14 @@ import type { Interaction } from "../../model/types";
 import type { PointerHandlerContext } from "./types";
 
 export function finishPointerInteraction(
-  event: PointerEvent<SVGSVGElement>,
+  _event: PointerEvent<SVGSVGElement>,
   activeInteraction: Interaction,
   context: PointerHandlerContext
 ) {
   const {
     canvasStateRef,
-    getPointerWorldPoint,
     replaceActiveState,
+    selectionAreaMode,
     setTool,
     updateInteraction
   } = context;
@@ -38,7 +39,8 @@ export function finishPointerInteraction(
         ? getElementIdsInSelectionArea(
             activeCanvasState.elements,
             activeInteraction.origin,
-            activeInteraction.current
+            activeInteraction.current,
+            selectionAreaMode
           )
         : []
     });
@@ -49,10 +51,12 @@ export function finishPointerInteraction(
   if (activeInteraction.type === "create") {
     const dragDistance = getDistance(
       activeInteraction.origin,
-      getPointerWorldPoint(event)
+      activeInteraction.current
     );
+    const holdDuration = Date.now() - activeInteraction.startedAt;
     const isTinyCreate =
-      !activeInteraction.hasMoved && dragDistance < MIN_CREATE_DRAG_DISTANCE;
+      dragDistance < MIN_CREATE_DRAG_DISTANCE &&
+      holdDuration < MIN_CREATE_HOLD_DURATION_MS;
 
     if (isTinyCreate) {
       replaceActiveState({
@@ -68,6 +72,14 @@ export function finishPointerInteraction(
       return;
     }
 
+    replaceActiveState({
+      ...activeCanvasState,
+      elements: activeCanvasState.elements.map((element) =>
+        element.id === activeInteraction.elementId
+          ? normalizeElement(element)
+          : element
+      )
+    });
     setTool("select");
     updateInteraction(null);
     return;

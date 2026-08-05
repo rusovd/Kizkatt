@@ -1,6 +1,7 @@
 import {
   CANVAS_BACKGROUND_STORAGE_KEY,
   CANVAS_STATE_STORAGE_KEY,
+  CONTEXT_MENU_DEFAULTS_STORAGE_KEY,
   CUSTOM_CANVAS_BACKGROUND_STORAGE_KEY,
   DEFAULT_CANVAS_BACKGROUND,
   DEFAULT_CUSTOM_CANVAS_BACKGROUND_BY_THEME,
@@ -18,8 +19,103 @@ import { getElementBends } from "../geometry/linearElements";
 import { normalizeElementNames } from "../model/naming";
 import type { CanvasState, KizkattElement, KizkattTheme } from "../model/types";
 
+export type ContextMenuPasteDefault = "clipboard" | "svgCode";
+export type ContextMenuCopyDefault = "selection" | "png" | "svg";
+export type ContextMenuSelectionDefault = "intersect" | "contain";
+export type ContextMenuSnappingDefault =
+  | "arrowBinding"
+  | "snapToGrid"
+  | "snapToMidpoints"
+  | "snapToObjects"
+  | "toggleGrid";
+export type ContextMenuViewDefault = "viewMode" | "zenMode";
+
+export type ContextMenuDefaults = {
+  copy: ContextMenuCopyDefault;
+  paste: ContextMenuPasteDefault;
+  selection: ContextMenuSelectionDefault;
+  snapping: ContextMenuSnappingDefault;
+  view: ContextMenuViewDefault;
+};
+
+const DEFAULT_CONTEXT_MENU_DEFAULTS: ContextMenuDefaults = {
+  copy: "selection",
+  paste: "clipboard",
+  selection: "intersect",
+  snapping: "toggleGrid",
+  view: "zenMode"
+};
+
+const CONTEXT_MENU_DEFAULT_OPTIONS = {
+  copy: ["selection", "png", "svg"],
+  paste: ["clipboard", "svgCode"],
+  selection: ["intersect", "contain"],
+  snapping: [
+    "arrowBinding",
+    "snapToGrid",
+    "snapToMidpoints",
+    "snapToObjects",
+    "toggleGrid"
+  ],
+  view: ["viewMode", "zenMode"]
+} as const;
+
 function isTheme(value: unknown): value is KizkattTheme {
   return value === "light" || value === "dark";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isValidContextMenuDefault<Key extends keyof ContextMenuDefaults>(
+  key: Key,
+  value: unknown
+): value is ContextMenuDefaults[Key] {
+  return (CONTEXT_MENU_DEFAULT_OPTIONS[key] as readonly unknown[]).includes(
+    value
+  );
+}
+
+export function getStoredContextMenuDefaults(
+  storage = window.localStorage
+): ContextMenuDefaults {
+  try {
+    const parsed = JSON.parse(
+      storage.getItem(CONTEXT_MENU_DEFAULTS_STORAGE_KEY) ?? "{}"
+    );
+
+    if (!isRecord(parsed)) {
+      return DEFAULT_CONTEXT_MENU_DEFAULTS;
+    }
+
+    return {
+      copy: isValidContextMenuDefault("copy", parsed.copy)
+        ? parsed.copy
+        : DEFAULT_CONTEXT_MENU_DEFAULTS.copy,
+      paste: isValidContextMenuDefault("paste", parsed.paste)
+        ? parsed.paste
+        : DEFAULT_CONTEXT_MENU_DEFAULTS.paste,
+      selection: isValidContextMenuDefault("selection", parsed.selection)
+        ? parsed.selection
+        : DEFAULT_CONTEXT_MENU_DEFAULTS.selection,
+      snapping: isValidContextMenuDefault("snapping", parsed.snapping)
+        ? parsed.snapping
+        : DEFAULT_CONTEXT_MENU_DEFAULTS.snapping,
+      view: isValidContextMenuDefault("view", parsed.view)
+        ? parsed.view
+        : DEFAULT_CONTEXT_MENU_DEFAULTS.view
+    };
+  } catch {
+    return DEFAULT_CONTEXT_MENU_DEFAULTS;
+  }
+}
+
+export function storeContextMenuDefaults(
+  defaults: ContextMenuDefaults,
+  storage = window.localStorage
+) {
+  storage.setItem(CONTEXT_MENU_DEFAULTS_STORAGE_KEY, JSON.stringify(defaults));
 }
 
 function resolveThemeStorage(

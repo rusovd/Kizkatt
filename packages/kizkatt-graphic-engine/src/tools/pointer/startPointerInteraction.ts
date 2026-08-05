@@ -51,7 +51,7 @@ export function startPointerInteraction(
     commitState,
     createElementName,
     getPointerWorldPoint,
-    getToolForSelectedElement,
+    getSnappedPointerWorldPoint,
     pan,
     pendingImageSrc,
     replaceActiveState,
@@ -61,12 +61,62 @@ export function startPointerInteraction(
     setTool,
     style,
     tool,
-    updateInteraction
+    updateInteraction,
+    viewMode
   } = context;
   const target = getEventTargetElement(event);
   const worldPoint = getPointerWorldPoint(event);
 
   closeContextMenu();
+
+  if (viewMode) {
+    if (tool === "hand") {
+      updateInteraction({
+        type: "pan",
+        start: getClientPoint(event),
+        originalPan: pan
+      });
+      return;
+    }
+
+    if (tool === "select") {
+      const hitElement = findElementAtPoint(canvasState.elements, worldPoint);
+
+      if (hitElement) {
+        const selectionMode = event.shiftKey
+          ? "add"
+          : event.ctrlKey
+          ? "remove"
+          : "replace";
+        const selectedIds = getNextSelectedIdsForHit(
+          canvasState.elements,
+          canvasState.selectedIds,
+          hitElement.id,
+          selectionMode
+        );
+
+        replaceActiveState({
+          ...canvasState,
+          selectedBend: undefined,
+          selectedIds
+        });
+        return;
+      }
+
+      replaceActiveState({
+        ...canvasState,
+        selectedBend: undefined,
+        selectedIds: []
+      });
+      updateInteraction({
+        type: "selectArea",
+        current: worldPoint,
+        origin: worldPoint
+      });
+    }
+
+    return;
+  }
 
   if (target && isHandleTarget(target, "resize")) {
     const bounds = selectionBounds(selectedElements, {
@@ -212,13 +262,6 @@ export function startPointerInteraction(
         selectedBend: undefined,
         selectedIds
       });
-      if (!hitElement.groupId) {
-        const selectedTool = getToolForSelectedElement?.(hitElement);
-
-        if (selectedTool) {
-          setTool(selectedTool);
-        }
-      }
       updateInteraction({
         type: "move",
         start: worldPoint,
@@ -265,8 +308,9 @@ export function startPointerInteraction(
       return;
     }
 
+    const snappedWorldPoint = getSnappedPointerWorldPoint(event);
     const nextElement: KizkattElement = {
-      ...createElement(DEFAULT_IMAGE_ELEMENT_TYPE, worldPoint, style),
+      ...createElement(DEFAULT_IMAGE_ELEMENT_TYPE, snappedWorldPoint, style),
       backgroundColor: TRANSPARENT_COLOR,
       height: DEFAULT_IMAGE_SIZE.height,
       name: createElementName(DEFAULT_IMAGE_ELEMENT_TYPE, canvasState.elements),
@@ -284,9 +328,10 @@ export function startPointerInteraction(
     return;
   }
 
+  const creationPoint = getSnappedPointerWorldPoint(event);
   const nextElement = createElement(
     tool === LOCK_TOOL ? DEFAULT_LOCK_TOOL_ELEMENT_TYPE : tool,
-    worldPoint,
+    creationPoint,
     style
   );
   nextElement.name = createElementName(nextElement.type, canvasState.elements);
@@ -298,10 +343,10 @@ export function startPointerInteraction(
   });
   updateInteraction({
     type: "create",
-    current: worldPoint,
+    current: creationPoint,
     hasMoved: false,
     elementId: nextElement.id,
-    origin: worldPoint,
+    origin: creationPoint,
     startedAt: Date.now()
   });
 

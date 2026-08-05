@@ -44,7 +44,10 @@ import {
   PASTED_TEXT_LINE_HEIGHT,
   PASTED_TEXT_MAX_WIDTH,
   PLAIN_TEXT_MIME_TYPE,
+  PNG_EXPORT_DPI,
+  PNG_EXPORT_PADDING,
   PNG_IMAGE_MIME_TYPE,
+  SCREEN_DPI,
   SELECTION_LINK_PREFIX,
   SINGLE_SELECTION_COUNT,
   SVG_IMAGE_MIME_TYPE,
@@ -69,7 +72,12 @@ import {
   groupSelectedElements,
   ungroupSelectedElements
 } from "../model/groups";
-import { getElementBends, reorderElementsByLayerAction } from "../geometry";
+import {
+  getElementBends,
+  getResizeCursor,
+  reorderElementsByLayerAction,
+  selectionBounds
+} from "../geometry";
 import {
   isAllowedEditingShortcut,
   isEditableKeyboardTarget,
@@ -96,18 +104,45 @@ import {
 } from "../platform/storage";
 import { useToolPointerHandlers } from "../tools/pointer";
 import type {
+  Bounds,
   ContextMenuState,
   Interaction,
   KizkattElement,
   Point,
+  SelectionAreaMode,
   StyleState,
   KizkattTheme,
   Tool
 } from "../model/types";
+import type { SvgSerializeOptions } from "../export/svgExport";
 
 type EyeDropperConstructor = new () => {
   open: () => Promise<{ sRGBHex: string }>;
 };
+
+const SVG_FRAGMENT_DEFAULT_SIZE = 24;
+const SVG_JSX_ATTRIBUTE_MAP = new Map([
+  ["className", "class"],
+  ["clipPath", "clip-path"],
+  ["clipRule", "clip-rule"],
+  ["fillOpacity", "fill-opacity"],
+  ["fillRule", "fill-rule"],
+  ["strokeDasharray", "stroke-dasharray"],
+  ["strokeLinecap", "stroke-linecap"],
+  ["strokeLinejoin", "stroke-linejoin"],
+  ["strokeOpacity", "stroke-opacity"],
+  ["strokeWidth", "stroke-width"]
+]);
+const SVG_ROOT_CONTENT_ATTRIBUTE_BLOCKLIST = new Set([
+  "height",
+  "version",
+  "viewBox",
+  "viewbox",
+  "width",
+  "xmlns",
+  "xmlns:xlink"
+]);
+const SVG_URL_ATTRIBUTE_NAMES = new Set(["href", "xlink:href"]);
 
 function getFittedImageSize(width: number, height: number) {
   if (width <= 0 || height <= 0) {
@@ -126,9 +161,211 @@ function getFittedImageSize(width: number, height: number) {
   };
 }
 
+function parseSvgLength(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const numericValue = Number.parseFloat(value);
+
+  return Number.isFinite(numericValue) && numericValue > 0
+    ? numericValue
+    : null;
+}
+
+function parseSvgViewBox(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const parts = value
+    .trim()
+    .split(/[\s,]+/)
+    .map((part) => Number(part));
+
+  if (parts.length !== 4 || parts.some((part) => !Number.isFinite(part))) {
+    return null;
+  }
+
+  const [, , width, height] = parts;
+
+  return width > 0 && height > 0 ? { height, width } : null;
+}
+
+function getSvgRoot(document: Document) {
+  const root = document.documentElement;
+
+  return root?.tagName.toLowerCase() === "svg" ? (root as SVGSVGElement) : null;
+}
+
+function parseSvgDocument(svgCode: string) {
+  return new DOMParser().parseFromString(svgCode, "image/svg+xml");
+}
+
+function createSvgDocumentFromCode(svgCode: string) {
+  const document = parseSvgDocument(svgCode);
+
+  if (getSvgRoot(document) && !document.querySelector("parsererror")) {
+    return document;
+  }
+
+  return parseSvgDocument(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SVG_FRAGMENT_DEFAULT_SIZE} ${SVG_FRAGMENT_DEFAULT_SIZE}">${svgCode}</svg>`
+  );
+}
+
+function normalizeSvgAttributes(element: Element) {
+  Array.from(element.attributes).forEach((attribute) => {
+    if (attribute.name.toLowerCase().startsWith("on")) {
+      element.removeAttribute(attribute.name);
+      return;
+    }
+
+    const normalizedName = SVG_JSX_ATTRIBUTE_MAP.get(attribute.name);
+
+    if (normalizedName) {
+      element.setAttribute(normalizedName, attribute.value);
+      element.removeAttribute(attribute.name);
+      return;
+    }
+
+    if (
+      SVG_URL_ATTRIBUTE_NAMES.has(attribute.name) &&
+      attribute.value.trim().toLowerCase().startsWith("javascript:")
+    ) {
+      element.removeAttribute(attribute.name);
+    }
+  });
+}
+
+function getSvgContent(root: SVGSVGElement) {
+  const rootContentAttributes = Array.from(root.attributes).filter(
+    (attribute) =>
+      !SVG_ROOT_CONTENT_ATTRIBUTE_BLOCKLIST.has(attribute.name) &&
+      !attribute.name.toLowerCase().startsWith("on")
+  );
+
+  if (rootContentAttributes.length === 0) {
+    return root.innerHTML;
+  }
+
+  const contentGroup = root.ownerDocument.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "g"
+  );
+
+  rootContentAttributes.forEach((attribute) => {
+    contentGroup.setAttribute(attribute.name, attribute.value);
+  });
+
+  while (root.firstChild) {
+    contentGroup.appendChild(root.firstChild);
+  }
+
+  root.appendChild(contentGroup);
+
+  return root.innerHTML;
+}
+
+function parseSvgCode(svgCode: string) {
+  const trimmedCode = svgCode.trim();
+
+  if (!trimmedCode) {
+    return null;
+  }
+
+  const document = createSvgDocumentFromCode(trimmedCode);
+  const root = getSvgRoot(document);
+
+  if (!root || document.querySelector("parsererror")) {
+    return null;
+  }
+
+  root.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  root
+    .querySelectorAll("script, foreignObject, style")
+    .forEach((element) => element.remove());
+  [root, ...Array.from(root.querySelectorAll("*"))].forEach(
+    normalizeSvgAttributes
+  );
+
+  const viewBoxSize = parseSvgViewBox(root.getAttribute("viewBox"));
+  const intrinsicWidth =
+    parseSvgLength(root.getAttribute("width")) ?? viewBoxSize?.width;
+  const intrinsicHeight =
+    parseSvgLength(root.getAttribute("height")) ?? viewBoxSize?.height;
+  const viewBox =
+    root.getAttribute("viewBox") ??
+    `0 0 ${intrinsicWidth ?? DEFAULT_IMAGE_SIZE.width} ${
+      intrinsicHeight ?? DEFAULT_IMAGE_SIZE.height
+    }`;
+  const size = getFittedImageSize(
+    intrinsicWidth ?? DEFAULT_IMAGE_SIZE.width,
+    intrinsicHeight ?? DEFAULT_IMAGE_SIZE.height
+  );
+
+  return {
+    content: getSvgContent(root),
+    size,
+    viewBox
+  };
+}
+
+function inflateBounds(bounds: Bounds, padding: number) {
+  return {
+    height: bounds.height + padding * VIEWPORT_CENTER_DIVISOR,
+    width: bounds.width + padding * VIEWPORT_CENTER_DIVISOR,
+    x: bounds.x - padding,
+    y: bounds.y - padding
+  };
+}
+
+function getExportBounds(elements: KizkattElement[]) {
+  const bounds = selectionBounds(elements, { includeRotation: true });
+
+  if (!bounds) {
+    return null;
+  }
+
+  const maxStrokeWidth = Math.max(
+    PNG_EXPORT_PADDING,
+    ...elements.map((element) => element.strokeWidth)
+  );
+
+  return inflateBounds(bounds, maxStrokeWidth);
+}
+
+type Size = {
+  height: number;
+  width: number;
+};
+
+type CopiedPngExport = Size & {
+  createdAt: number;
+};
+
+const COPIED_PNG_EXPORT_SIZE_TTL_MS = 5 * 60 * 1000;
+
+function isExpectedCopiedPngSize(
+  naturalWidth: number,
+  naturalHeight: number,
+  preferredSize: Size
+) {
+  const pixelRatio = PNG_EXPORT_DPI / SCREEN_DPI;
+  const expectedWidth = Math.ceil(preferredSize.width * pixelRatio);
+  const expectedHeight = Math.ceil(preferredSize.height * pixelRatio);
+
+  return (
+    Math.abs(naturalWidth - expectedWidth) <= MIN_PIXEL_SIZE &&
+    Math.abs(naturalHeight - expectedHeight) <= MIN_PIXEL_SIZE
+  );
+}
+
 export type KizkattRenderElementOptions = {
+  overlayVariant?: "primary" | "internal";
   selectedBendIndex?: number;
   showLinearBendHandles?: boolean;
+  showRotateHoverIcon?: boolean;
   showRotateHandle?: boolean;
   showSelectionBounds?: boolean;
 };
@@ -140,23 +377,30 @@ export type ToolbarProps = {
 
 export type CanvasContextMenuProps = {
   arrowBinding: boolean;
+  canCopySelection: boolean;
   canGroup: boolean;
   canUngroup: boolean;
   contextMenu: ContextMenuState | null;
   onCloseAndRun: (action: () => void | Promise<void>) => void;
+  onCopy: () => void;
   onCopyPng: () => Promise<void>;
   onCopySvg: () => Promise<void>;
   onGroup: () => void;
-  onPaste: () => void;
+  onPaste: () => void | Promise<void>;
+  onPasteSvgCode: () => void | Promise<void>;
   onSelectAll: () => void;
   onUngroup: () => void;
+  selectionAreaMode: SelectionAreaMode;
   setArrowBinding: (updater: (value: boolean) => boolean) => void;
+  setSelectionAreaMode: (mode: SelectionAreaMode) => void;
   setShowGrid: (updater: (value: boolean) => boolean) => void;
+  setSnapToGrid: (updater: (value: boolean) => boolean) => void;
   setSnapToMidpoints: (updater: (value: boolean) => boolean) => void;
   setSnapToObjects: (updater: (value: boolean) => boolean) => void;
   setViewMode: (updater: (value: boolean) => boolean) => void;
   setZenMode: (updater: (value: boolean) => boolean) => void;
   showGrid: boolean;
+  snapToGrid: boolean;
   snapToMidpoints: boolean;
   snapToObjects: boolean;
   viewMode: boolean;
@@ -242,7 +486,11 @@ export type KizkattGraphicEditorProps = {
     selected: boolean,
     options?: KizkattRenderElementOptions
   ) => ReactNode;
-  serializeSvg: (svg: SVGSVGElement) => string;
+  renderElementOverlay?: (
+    element: KizkattElement,
+    options?: KizkattRenderElementOptions
+  ) => ReactNode;
+  serializeSvg: (svg: SVGSVGElement, options?: SvgSerializeOptions) => string;
   naming?: ElementNamingConfig;
   shouldShowStylePanel: (state: {
     activeTool: Tool;
@@ -266,6 +514,39 @@ function isSameStyle(firstStyle: StyleState, secondStyle: StyleState) {
   );
 }
 
+function getActiveInteractionCursor(interaction: Interaction | null) {
+  if (!interaction) {
+    return null;
+  }
+
+  if (interaction.type === "resize") {
+    if (!interaction.handle) {
+      return "move";
+    }
+
+    const selectedIdSet = new Set(interaction.selectedIds);
+    const selectedOriginalElements = interaction.originalElements.filter(
+      (element) => selectedIdSet.has(element.id)
+    );
+    const angle =
+      selectedOriginalElements.length === SINGLE_SELECTION_COUNT
+        ? selectedOriginalElements[0].angle
+        : 0;
+
+    return getResizeCursor(angle, interaction.handle);
+  }
+
+  if (
+    interaction.type === "bend" ||
+    interaction.type === "move" ||
+    interaction.type === "rotate"
+  ) {
+    return "grabbing";
+  }
+
+  return null;
+}
+
 export function KizkattGraphicEditor({
   arrowMarkerId = DEFAULT_ARROW_MARKER_ID,
   boardAriaLabel = DEFAULT_BOARD_ARIA_LABEL,
@@ -281,6 +562,7 @@ export function KizkattGraphicEditor({
   imageInputAriaLabel = DEFAULT_IMAGE_INPUT_ARIA_LABEL,
   naming,
   renderElement,
+  renderElementOverlay,
   serializeSvg,
   shouldShowStylePanel
 }: KizkattGraphicEditorProps) {
@@ -298,6 +580,7 @@ export function KizkattGraphicEditor({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const clipboardRef = useRef<KizkattElement[]>([]);
+  const copiedPngExportRef = useRef<CopiedPngExport | null>(null);
   const [tool, setTool] = useState<Tool>("select");
   const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState<KizkattTheme>(() => getStoredTheme());
@@ -339,7 +622,10 @@ export function KizkattGraphicEditor({
   >(null);
   const [pendingImageSrc, setPendingImageSrc] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [selectionAreaMode, setSelectionAreaMode] =
+    useState<SelectionAreaMode>("intersect");
   const [showGrid, setShowGrid] = useState(true);
+  const [snapToGrid, setSnapToGrid] = useState(false);
   const [snapToObjects, setSnapToObjects] = useState(false);
   const [arrowBinding, setArrowBinding] = useState(true);
   const [snapToMidpoints, setSnapToMidpoints] = useState(true);
@@ -351,13 +637,17 @@ export function KizkattGraphicEditor({
   useEffect(() => {
     storeCanvasState(canvasState);
   }, [canvasState]);
+  const selectedIdSet = useMemo(
+    () => new Set(canvasState.selectedIds),
+    [canvasState.selectedIds]
+  );
   const selectedElements = useMemo(
     () =>
-      canvasState.elements.filter((element) =>
-        canvasState.selectedIds.includes(element.id)
-      ),
-    [canvasState]
+      canvasState.elements.filter((element) => selectedIdSet.has(element.id)),
+    [canvasState.elements, selectedIdSet]
   );
+  const canCopySelection =
+    selectedElements.length > EMPTY_COLLECTION_LENGTH;
   const editingTextElement = canvasState.elements.find(
     (element) => element.id === editingTextElementId && element.type === "text"
   );
@@ -376,16 +666,18 @@ export function KizkattGraphicEditor({
       }
     : style;
   const showStylePanel =
+    !viewMode &&
+    !zenMode &&
     !menuOpen &&
     shouldShowStylePanel({
       activeTool: tool,
       selectedElements
     });
-  const canGroup = canGroupSelection(
+  const canGroup = !viewMode && canGroupSelection(
     canvasState.elements,
     canvasState.selectedIds
   );
-  const canUngroup = canUngroupSelection(
+  const canUngroup = !viewMode && canUngroupSelection(
     canvasState.elements,
     canvasState.selectedIds
   );
@@ -403,7 +695,7 @@ export function KizkattGraphicEditor({
   }, [selectedElements]);
 
   const pasteSelected = useCallback(() => {
-    if (clipboardRef.current.length === EMPTY_COLLECTION_LENGTH) {
+    if (viewMode || clipboardRef.current.length === EMPTY_COLLECTION_LENGTH) {
       return;
     }
 
@@ -420,10 +712,10 @@ export function KizkattGraphicEditor({
       selectedBend: undefined,
       selectedIds: pastedElements.map((element) => element.id)
     });
-  }, [canvasState.elements, commitState, naming]);
+  }, [canvasState.elements, commitState, naming, viewMode]);
 
   const duplicateSelected = useCallback(() => {
-    if (selectedElements.length === 0) {
+    if (viewMode || selectedElements.length === 0) {
       return;
     }
 
@@ -440,11 +732,12 @@ export function KizkattGraphicEditor({
       selectedBend: undefined,
       selectedIds: duplicatedElements.map((element) => element.id)
     });
-  }, [canvasState.elements, commitState, naming, selectedElements]);
+  }, [canvasState.elements, commitState, naming, selectedElements, viewMode]);
 
-  const getPastePoint = useCallback(() => {
+  const getPastePoint = useCallback((clientPoint?: Point) => {
     const canvasRect = svgRef.current?.getBoundingClientRect();
-    const clientPoint = canvasRect
+    const nextClientPoint = clientPoint ??
+      (canvasRect
       ? {
           x: canvasRect.left + canvasRect.width / VIEWPORT_CENTER_DIVISOR,
           y: canvasRect.top + canvasRect.height / VIEWPORT_CENTER_DIVISOR
@@ -452,16 +745,20 @@ export function KizkattGraphicEditor({
       : {
           x: window.innerWidth / VIEWPORT_CENTER_DIVISOR,
           y: window.innerHeight / VIEWPORT_CENTER_DIVISOR
-        };
+        });
 
     return {
-      x: (clientPoint.x - pan.x) / zoom,
-      y: (clientPoint.y - pan.y) / zoom
+      x: (nextClientPoint.x - (canvasRect?.left ?? 0) - pan.x) / zoom,
+      y: (nextClientPoint.y - (canvasRect?.top ?? 0) - pan.y) / zoom
     };
   }, [pan, zoom]);
 
   const insertPastedText = useCallback(
-    (text: string) => {
+    (text: string, pastePoint = getPastePoint()) => {
+      if (viewMode) {
+        return false;
+      }
+
       const trimmedText = text.trim();
 
       if (!trimmedText) {
@@ -473,7 +770,6 @@ export function KizkattGraphicEditor({
         ...lines.map((line) => line.length),
         1
       );
-      const pastePoint = getPastePoint();
       const elements = canvasStateRef.current.elements;
       const nextElement: KizkattElement = {
         ...createElement("text", pastePoint, style),
@@ -502,12 +798,15 @@ export function KizkattGraphicEditor({
 
       return true;
     },
-    [commitState, getPastePoint, naming, style]
+    [commitState, getPastePoint, naming, style, viewMode]
   );
 
   const insertPastedImage = useCallback(
-    (src: string) => {
-      const pastePoint = getPastePoint();
+    (src: string, preferredSize?: Size, pastePoint = getPastePoint()) => {
+      if (viewMode) {
+        return;
+      }
+
       const elements = canvasStateRef.current.elements;
       const baseElement: KizkattElement = {
         ...createElement("image", pastePoint, style),
@@ -537,7 +836,16 @@ export function KizkattGraphicEditor({
 
       const image = new Image();
       image.onload = () => {
-        commitImage(getFittedImageSize(image.naturalWidth, image.naturalHeight));
+        commitImage(
+          preferredSize &&
+            isExpectedCopiedPngSize(
+              image.naturalWidth,
+              image.naturalHeight,
+              preferredSize
+            )
+            ? preferredSize
+            : getFittedImageSize(image.naturalWidth, image.naturalHeight)
+        );
       };
       image.onerror = () => {
         commitImage();
@@ -545,20 +853,29 @@ export function KizkattGraphicEditor({
       image.src = src;
 
       if (image.complete && image.naturalWidth >= MIN_PIXEL_SIZE) {
-        commitImage(getFittedImageSize(image.naturalWidth, image.naturalHeight));
+        commitImage(
+          preferredSize &&
+            isExpectedCopiedPngSize(
+              image.naturalWidth,
+              image.naturalHeight,
+              preferredSize
+            )
+            ? preferredSize
+            : getFittedImageSize(image.naturalWidth, image.naturalHeight)
+        );
       }
       window.setTimeout(() => commitImage(), IMAGE_LOAD_FALLBACK_TIMEOUT_MS);
     },
-    [commitState, getPastePoint, naming, style]
+    [commitState, getPastePoint, naming, style, viewMode]
   );
 
   const readClipboardImage = useCallback(
-    (file: File) => {
+    (file: Blob, preferredSize?: Size, pastePoint?: Point) => {
       const reader = new FileReader();
 
       reader.onload = () => {
         if (typeof reader.result === "string") {
-          insertPastedImage(reader.result);
+          insertPastedImage(reader.result, preferredSize, pastePoint);
         }
       };
       reader.readAsDataURL(file);
@@ -566,7 +883,47 @@ export function KizkattGraphicEditor({
     [insertPastedImage]
   );
 
+  const insertPastedSvgCode = useCallback(
+    (svgCode: string, pastePoint = getPastePoint()) => {
+      if (viewMode) {
+        return false;
+      }
+
+      const parsedSvg = parseSvgCode(svgCode);
+
+      if (!parsedSvg) {
+        return false;
+      }
+
+      const elements = canvasStateRef.current.elements;
+      const nextElement: KizkattElement = {
+        ...createElement("image", pastePoint, style),
+        backgroundColor: TRANSPARENT_COLOR,
+        height: parsedSvg.size.height,
+        name: buildElementName("image", elements, naming),
+        svgContent: parsedSvg.content,
+        svgViewBox: parsedSvg.viewBox,
+        width: parsedSvg.size.width
+      };
+
+      commitState({
+        elements: [...elements, nextElement],
+        selectedBend: undefined,
+        selectedIds: [nextElement.id]
+      });
+      setPendingImageSrc(null);
+      setTool("select");
+
+      return true;
+    },
+    [commitState, getPastePoint, naming, style, viewMode]
+  );
+
   const deleteSelected = useCallback(() => {
+    if (viewMode) {
+      return;
+    }
+
     if (canvasState.selectedBend) {
       const { bendIndex, elementId } = canvasState.selectedBend;
       const selectedBendElement = canvasState.elements.find(
@@ -608,7 +965,7 @@ export function KizkattGraphicEditor({
       selectedIds: []
     });
     setEditingTextElementId(null);
-  }, [canvasState, commitState]);
+  }, [canvasState, commitState, viewMode]);
 
   const copySelectedLink = useCallback(() => {
     if (
@@ -665,21 +1022,51 @@ export function KizkattGraphicEditor({
   const copySvgToClipboard = async () => {
     const svg = svgRef.current;
 
-    if (!svg || !navigator.clipboard?.writeText) {
+    if (!svg || !canCopySelection || !navigator.clipboard?.writeText) {
       return;
     }
 
-    await navigator.clipboard.writeText(serializeSvg(svg));
+    const exportBounds = getExportBounds(selectedElements);
+
+    if (!exportBounds) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(
+      serializeSvg(svg, {
+        bounds: exportBounds,
+        elementIds: canvasState.selectedIds,
+        transparentBackground: true
+      })
+    );
   };
 
   const copyPngToClipboard = async () => {
     const svg = svgRef.current;
 
-    if (!svg || !("ClipboardItem" in window) || !navigator.clipboard?.write) {
+    if (
+      !svg ||
+      !canCopySelection ||
+      !("ClipboardItem" in window) ||
+      !navigator.clipboard?.write
+    ) {
       return;
     }
 
-    const markup = serializeSvg(svg);
+    const exportBounds = getExportBounds(selectedElements);
+
+    if (!exportBounds) {
+      return;
+    }
+
+    const pixelRatio = PNG_EXPORT_DPI / SCREEN_DPI;
+    const markup = serializeSvg(svg, {
+      bounds: exportBounds,
+      elementIds: canvasState.selectedIds,
+      pixelRatio,
+      scaleStrokes: true,
+      transparentBackground: true
+    });
     const blob = new Blob([markup], { type: SVG_IMAGE_MIME_TYPE });
     const url = URL.createObjectURL(blob);
     const image = new Image();
@@ -691,14 +1078,13 @@ export function KizkattGraphicEditor({
     });
 
     const canvas = document.createElement("canvas");
-    const rect = svg.getBoundingClientRect();
     canvas.width = Math.max(
       MIN_PIXEL_SIZE,
-      Math.round(rect.width || window.innerWidth)
+      Math.ceil(exportBounds.width * pixelRatio)
     );
     canvas.height = Math.max(
       MIN_PIXEL_SIZE,
-      Math.round(rect.height || window.innerHeight)
+      Math.ceil(exportBounds.height * pixelRatio)
     );
     canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
     URL.revokeObjectURL(url);
@@ -711,13 +1097,18 @@ export function KizkattGraphicEditor({
       await navigator.clipboard.write([
         new ClipboardItem({ [PNG_IMAGE_MIME_TYPE]: pngBlob })
       ]);
+      copiedPngExportRef.current = {
+        createdAt: Date.now(),
+        height: exportBounds.height,
+        width: exportBounds.width
+      };
     }
   };
 
   const updateSelectedStyle = (patch: Partial<StyleState>) => {
     setStyle((previousStyle) => ({ ...previousStyle, ...patch }));
 
-    if (canvasState.selectedIds.length === EMPTY_COLLECTION_LENGTH) {
+    if (viewMode || canvasState.selectedIds.length === EMPTY_COLLECTION_LENGTH) {
       return;
     }
 
@@ -738,7 +1129,7 @@ export function KizkattGraphicEditor({
       : null;
 
   const updateClosedPath = (closed: boolean) => {
-    if (!closeablePathElement) {
+    if (viewMode || !closeablePathElement) {
       return;
     }
 
@@ -755,7 +1146,7 @@ export function KizkattGraphicEditor({
   const applyLayerAction = (
     action: "back" | "backward" | "forward" | "front"
   ) => {
-    if (canvasState.selectedIds.length === EMPTY_COLLECTION_LENGTH) {
+    if (viewMode || canvasState.selectedIds.length === EMPTY_COLLECTION_LENGTH) {
       return;
     }
 
@@ -772,6 +1163,10 @@ export function KizkattGraphicEditor({
   const applyElementAction = (
     action: "delete" | "duplicate" | "link"
   ) => {
+    if (viewMode && action !== "link") {
+      return;
+    }
+
     if (action === "delete") {
       deleteSelected();
       return;
@@ -786,6 +1181,10 @@ export function KizkattGraphicEditor({
   };
 
   const updateTextElement = (elementId: string, text: string) => {
+    if (viewMode) {
+      return;
+    }
+
     replaceActiveState({
       ...canvasState,
       elements: canvasState.elements.map((element) =>
@@ -795,6 +1194,11 @@ export function KizkattGraphicEditor({
   };
 
   const resetCanvas = () => {
+    if (viewMode) {
+      setMenuOpen(false);
+      return;
+    }
+
     commitState({ elements: [], selectedBend: undefined, selectedIds: [] });
     setEditingTextElementId(null);
     setMenuOpen(false);
@@ -806,6 +1210,11 @@ export function KizkattGraphicEditor({
   };
 
   const quickLoadCanvas = () => {
+    if (viewMode) {
+      setMenuOpen(false);
+      return;
+    }
+
     const storedState = getStoredQuickCanvasState() ?? getStoredCanvasState();
 
     if (!storedState) {
@@ -864,7 +1273,25 @@ export function KizkattGraphicEditor({
     storeGridColor(color, theme);
   };
 
+  const setReadOnlyViewMode = (updater: (value: boolean) => boolean) => {
+    setViewMode((previousValue) => {
+      const nextValue = updater(previousValue);
+
+      if (nextValue) {
+        setEditingTextElementId(null);
+        setPendingImageSrc(null);
+        setTool("select");
+      }
+
+      return nextValue;
+    });
+  };
+
   const activateTool = (nextTool: Tool) => {
+    if (viewMode && nextTool !== "hand" && nextTool !== "select") {
+      return;
+    }
+
     if (nextTool === "image") {
       imageInputRef.current?.click();
       return;
@@ -874,6 +1301,10 @@ export function KizkattGraphicEditor({
   };
 
   const readImageFile = (file: File) => {
+    if (viewMode) {
+      return;
+    }
+
     const reader = new FileReader();
 
     reader.onload = () => {
@@ -917,6 +1348,8 @@ export function KizkattGraphicEditor({
         selectAll();
       } else if (key === EDITING_SHORTCUT_KEY.copy) {
         copySelected();
+      } else if (viewMode) {
+        return;
       } else if (key === EDITING_SHORTCUT_KEY.paste) {
         pasteSelected();
       } else if (key === EDITING_SHORTCUT_KEY.undo && event.shiftKey) {
@@ -932,7 +1365,9 @@ export function KizkattGraphicEditor({
 
     if (event.key === EDITOR_KEY.delete) {
       event.preventDefault();
-      deleteSelected();
+      if (!viewMode) {
+        deleteSelected();
+      }
       return;
     }
 
@@ -956,8 +1391,108 @@ export function KizkattGraphicEditor({
     });
   };
 
+  const getCopiedPngPreferredSize = (file: Blob): Size | undefined => {
+    const copiedPngExport = copiedPngExportRef.current;
+
+    if (
+      file.type !== PNG_IMAGE_MIME_TYPE ||
+      !copiedPngExport ||
+      Date.now() - copiedPngExport.createdAt > COPIED_PNG_EXPORT_SIZE_TTL_MS
+    ) {
+      return undefined;
+    }
+
+    return {
+      height: copiedPngExport.height,
+      width: copiedPngExport.width
+    };
+  };
+
+  const pasteFromContextMenu = async () => {
+    if (viewMode) {
+      return;
+    }
+
+    const pastePoint = getPastePoint(
+      contextMenu
+        ? {
+            x: contextMenu.x,
+            y: contextMenu.y
+          }
+        : undefined
+    );
+
+    try {
+      if (navigator.clipboard?.read) {
+        const items = await navigator.clipboard.read();
+
+        for (const item of items) {
+          const imageType = item.types.find((type) =>
+            type.startsWith(IMAGE_MIME_TYPE_PREFIX)
+          );
+
+          if (imageType) {
+            const imageBlob = await item.getType(imageType);
+            readClipboardImage(
+              imageBlob,
+              getCopiedPngPreferredSize(imageBlob),
+              pastePoint
+            );
+            return;
+          }
+        }
+
+        for (const item of items) {
+          if (item.types.includes(PLAIN_TEXT_MIME_TYPE)) {
+            const textBlob = await item.getType(PLAIN_TEXT_MIME_TYPE);
+            const text = await textBlob.text();
+
+            if (insertPastedText(text, pastePoint)) {
+              return;
+            }
+          }
+        }
+      }
+
+      const text = await navigator.clipboard?.readText?.();
+
+      if (text && insertPastedText(text, pastePoint)) {
+        return;
+      }
+    } catch {
+      
+    }
+
+    pasteSelected();
+  };
+
+  const pasteSvgCodeFromContextMenu = async () => {
+    if (viewMode) {
+      return;
+    }
+
+    const pastePoint = getPastePoint(
+      contextMenu
+        ? {
+            x: contextMenu.x,
+            y: contextMenu.y
+          }
+        : undefined
+    );
+
+    try {
+      const text = await navigator.clipboard?.readText?.();
+
+      if (text) {
+        insertPastedSvgCode(text, pastePoint);
+      }
+    } catch {
+      
+    }
+  };
+
   const onBoardPaste = (event: ClipboardEvent<HTMLElement>) => {
-    if (isEditableKeyboardTarget(event.target)) {
+    if (viewMode || isEditableKeyboardTarget(event.target)) {
       return;
     }
 
@@ -973,7 +1508,7 @@ export function KizkattGraphicEditor({
 
     if (imageFile) {
       event.preventDefault();
-      readClipboardImage(imageFile);
+      readClipboardImage(imageFile, getCopiedPngPreferredSize(imageFile));
       return;
     }
 
@@ -1011,21 +1546,63 @@ export function KizkattGraphicEditor({
       pan,
       pendingImageSrc,
       replaceActiveState,
+      selectionAreaMode,
       selectedElements,
       setEditingTextElementId,
       setPan,
       setPendingImageSrc,
       setTool,
+      snapToGrid,
+      snapToMidpoints,
+      snapToObjects,
       style,
       svgRef,
       tool,
+      viewMode,
       zoom
     });
 
-  const canvasCursor = getCanvasCursor({
-    isPanning: interaction?.type === "pan",
-    tool
-  });
+  const canvasCursor =
+    getActiveInteractionCursor(interaction) ??
+    getCanvasCursor({
+      isPanning: interaction?.type === "pan",
+      tool
+    });
+  const renderInlineSelection = !renderElementOverlay;
+  const getElementSelectionRenderState = (element: KizkattElement) => {
+    const isSelected = selectedIdSet.has(element.id);
+    const showPrimaryOverlay =
+      !viewMode && selectedElements.length <= SINGLE_SELECTION_COUNT && isSelected;
+    const showInternalOverlay =
+      !viewMode && selectedElements.length > SINGLE_SELECTION_COUNT && isSelected;
+    const isDrawingFreehand =
+      interaction?.type === "create" &&
+      interaction.elementId === element.id &&
+      element.type === "draw";
+    const isCreatingLinearElement =
+      interaction?.type === "create" &&
+      interaction.elementId === element.id &&
+      (element.type === "line" || element.type === "arrow");
+    const isCreatingElement =
+      interaction?.type === "create" && interaction.elementId === element.id;
+    const isRotatingSelection = interaction?.type === "rotate";
+
+    return {
+      options: {
+        selectedBendIndex:
+          canvasState.selectedBend?.elementId === element.id
+            ? canvasState.selectedBend.bendIndex
+            : undefined,
+        showLinearBendHandles: !isCreatingLinearElement,
+        showRotateHoverIcon: !isRotatingSelection,
+        showRotateHandle: !isCreatingElement,
+        showSelectionBounds: !isRotatingSelection
+      },
+      showInternalOverlay,
+      showPrimaryOverlay: showPrimaryOverlay && !isDrawingFreehand
+    };
+  };
+
   return (
     <section
       className={`${boardClassName} ${boardThemeClassName(theme)}`}
@@ -1036,7 +1613,7 @@ export function KizkattGraphicEditor({
       onPaste={onBoardPaste}
       onPointerDownCapture={onBoardPointerDownCapture}
     >
-      <Toolbar activeTool={tool} onActivateTool={activateTool} />
+      {!zenMode && <Toolbar activeTool={tool} onActivateTool={activateTool} />}
 
       <input
         ref={imageInputRef}
@@ -1049,23 +1626,30 @@ export function KizkattGraphicEditor({
 
       <CanvasContextMenu
         arrowBinding={arrowBinding}
+        canCopySelection={canCopySelection}
         canGroup={canGroup}
         canUngroup={canUngroup}
         contextMenu={contextMenu}
         onCloseAndRun={runContextMenuAction}
+        onCopy={copySelected}
         onCopyPng={copyPngToClipboard}
         onCopySvg={copySvgToClipboard}
         onGroup={groupSelected}
-        onPaste={pasteSelected}
+        onPaste={pasteFromContextMenu}
+        onPasteSvgCode={pasteSvgCodeFromContextMenu}
         onSelectAll={selectAll}
         onUngroup={ungroupSelected}
+        selectionAreaMode={selectionAreaMode}
         setArrowBinding={setArrowBinding}
+        setSelectionAreaMode={setSelectionAreaMode}
         setShowGrid={setShowGrid}
+        setSnapToGrid={setSnapToGrid}
         setSnapToMidpoints={setSnapToMidpoints}
         setSnapToObjects={setSnapToObjects}
-        setViewMode={setViewMode}
+        setViewMode={setReadOnlyViewMode}
         setZenMode={setZenMode}
         showGrid={showGrid}
+        snapToGrid={snapToGrid}
         snapToMidpoints={snapToMidpoints}
         snapToObjects={snapToObjects}
         viewMode={viewMode}
@@ -1146,53 +1730,70 @@ export function KizkattGraphicEditor({
         </defs>
         <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
           {canvasState.elements.map((element) => {
-            const isSelected = canvasState.selectedIds.includes(element.id);
-            const showElementSelection =
-              selectedElements.length <= 1 && isSelected;
-            const isDrawingFreehand =
-              interaction?.type === "create" &&
-              interaction.elementId === element.id &&
-              element.type === "draw";
-            const isCreatingLinearElement =
-              interaction?.type === "create" &&
-              interaction.elementId === element.id &&
-              (element.type === "line" || element.type === "arrow");
-            const isCreatingElement =
-              interaction?.type === "create" &&
-              interaction.elementId === element.id;
-            const isRotatingSelection = interaction?.type === "rotate";
+            const { options, showPrimaryOverlay } =
+              getElementSelectionRenderState(element);
 
             return renderElement(
               element,
-              showElementSelection && !isDrawingFreehand,
-              {
-                selectedBendIndex:
-                  canvasState.selectedBend?.elementId === element.id
-                    ? canvasState.selectedBend.bendIndex
-                    : undefined,
-                showLinearBendHandles: !isCreatingLinearElement,
-                showRotateHandle: !isCreatingElement,
-                showSelectionBounds: !isRotatingSelection
-              }
+              renderInlineSelection && showPrimaryOverlay,
+              options
             );
           })}
+          {renderElementOverlay &&
+            canvasState.elements.map((element) => {
+              const { options, showInternalOverlay, showPrimaryOverlay } =
+                getElementSelectionRenderState(element);
+
+              if (showPrimaryOverlay) {
+                return renderElementOverlay(element, {
+                  ...options,
+                  overlayVariant: "primary"
+                });
+              }
+
+              if (showInternalOverlay) {
+                return renderElementOverlay(element, {
+                  ...options,
+                  overlayVariant: "internal"
+                });
+              }
+
+              return null;
+            })}
           <SelectionArea interaction={interaction} />
-          <SelectedBounds elements={selectedElements} interaction={interaction} />
+          {!viewMode && (
+            <SelectedBounds
+              elements={selectedElements}
+              interaction={interaction}
+              showRotateHoverIcon={interaction?.type !== "rotate"}
+            />
+          )}
         </g>
       </svg>
 
-      <FooterControls
-        canRedo={canRedo}
-        canUndo={canUndo}
-        zoom={zoom}
-        onRedo={redo}
-        onUndo={undo}
-        onZoomIn={() =>
-          setZoom((value) => Math.min(MAX_ZOOM, value + ZOOM_STEP))
-        }
-        onZoomOut={() =>
-          setZoom((value) => Math.max(MIN_ZOOM, value - ZOOM_STEP))
-        }
-      />    </section>
+      {!zenMode && (
+        <FooterControls
+          canRedo={!viewMode && canRedo}
+          canUndo={!viewMode && canUndo}
+          zoom={zoom}
+          onRedo={() => {
+            if (!viewMode) {
+              redo();
+            }
+          }}
+          onUndo={() => {
+            if (!viewMode) {
+              undo();
+            }
+          }}
+          onZoomIn={() =>
+            setZoom((value) => Math.min(MAX_ZOOM, value + ZOOM_STEP))
+          }
+          onZoomOut={() =>
+            setZoom((value) => Math.max(MIN_ZOOM, value - ZOOM_STEP))
+          }
+        />
+      )}
+    </section>
   );
 }

@@ -23,6 +23,7 @@ export {
 export {
   getElementIdsInSelectionArea
 } from "./selection";
+export { snapPointToElements, snapPointToGrid } from "./snapping";
 export {
   getResizeAnchorPoint,
   getResizeCursor,

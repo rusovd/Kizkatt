@@ -5,10 +5,14 @@ import {
   getDistance,
   getElementIdsInSelectionArea,
   getElementLocalVector,
+  resizeElementFromHandle,
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint
 } from "../../geometry";
-import { MIN_SELECT_DRAG_DISTANCE } from "../../config/constants";
+import {
+  MIN_SELECT_DRAG_DISTANCE,
+  SINGLE_SELECTION_COUNT
+} from "../../config/constants";
 import type { Interaction } from "../../model/types";
 import type { PointerHandlerContext } from "./types";
 
@@ -20,12 +24,22 @@ export function updatePointerInteraction(
   const {
     canvasStateRef,
     getPointerWorldPoint,
+    getSnappedPointerWorldPoint,
     replaceActiveState,
+    selectionAreaMode,
     setPan,
     updateInteraction
   } = context;
   const activeCanvasState = canvasStateRef.current;
-  const worldPoint = getPointerWorldPoint(event);
+  const rawWorldPoint = getPointerWorldPoint(event);
+  const worldPoint =
+    activeInteraction.type === "create"
+      ? getSnappedPointerWorldPoint(event, [activeInteraction.elementId])
+      : activeInteraction.type === "resize"
+      ? getSnappedPointerWorldPoint(event, activeInteraction.selectedIds)
+      : activeInteraction.type === "bend"
+      ? getSnappedPointerWorldPoint(event, [activeInteraction.elementId])
+      : rawWorldPoint;
 
   if (activeInteraction.type === "pan") {
     const clientPoint = getClientPoint(event);
@@ -49,7 +63,8 @@ export function updatePointerInteraction(
         ? getElementIdsInSelectionArea(
             activeCanvasState.elements,
             activeInteraction.origin,
-            worldPoint
+            worldPoint,
+            selectionAreaMode
           )
         : activeCanvasState.selectedIds;
 
@@ -122,26 +137,42 @@ export function updatePointerInteraction(
     const selectedIdSet = new Set(activeInteraction.selectedIds);
     const dx = worldPoint.x - activeInteraction.start.x;
     const dy = worldPoint.y - activeInteraction.start.y;
+    let nextElements;
+
+    if (
+      activeInteraction.handle &&
+      activeInteraction.selectedIds.length === SINGLE_SELECTION_COUNT
+    ) {
+      const handle = activeInteraction.handle;
+
+      nextElements = activeInteraction.originalElements.map((element) =>
+        selectedIdSet.has(element.id)
+          ? resizeElementFromHandle(element, handle, worldPoint)
+          : element
+      );
+    } else if (activeInteraction.handle) {
+      nextElements = resizeElementsFromSelectionHandle(
+        activeInteraction.originalElements,
+        activeInteraction.selectedIds,
+        activeInteraction.originalBounds,
+        activeInteraction.handle,
+        worldPoint
+      );
+    } else {
+      nextElements = activeInteraction.originalElements.map((element) =>
+        selectedIdSet.has(element.id)
+          ? {
+              ...element,
+              height: element.height + dy,
+              width: element.width + dx
+            }
+          : element
+      );
+    }
 
     replaceActiveState({
       ...activeCanvasState,
-      elements: activeInteraction.handle
-        ? resizeElementsFromSelectionHandle(
-            activeInteraction.originalElements,
-            activeInteraction.selectedIds,
-            activeInteraction.originalBounds,
-            activeInteraction.handle,
-            worldPoint
-          )
-        : activeInteraction.originalElements.map((element) =>
-            selectedIdSet.has(element.id)
-              ? {
-                  ...element,
-                  height: element.height + dy,
-                  width: element.width + dx
-                }
-              : element
-          )
+      elements: nextElements
     });
     return;
   }

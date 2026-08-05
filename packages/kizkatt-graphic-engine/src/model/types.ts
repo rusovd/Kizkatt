@@ -29,6 +29,8 @@ export type Point = {
 
 export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
+export type SelectionAreaMode = "intersect" | "contain";
+
 export type KizkattElement = {
   id: string;
   groupId?: string;
@@ -52,6 +54,8 @@ export type KizkattElement = {
   opacity: number;
   text?: string;
   src?: string;
+  svgContent?: string;
+  svgViewBox?: string;
   bends?: Point[];
   closed?: boolean;
   curve?: Point;

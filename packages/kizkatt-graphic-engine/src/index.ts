@@ -1,5 +1,6 @@
 export * from "./config/constants";
 export * from "./editor/KizkattGraphicEditor";
+export * from "./export/svgExport";
 export * from "./geometry";
 export * from "./hooks/useCanvasHistory";
 export * from "./model/element";
