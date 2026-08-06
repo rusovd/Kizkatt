@@ -18,5 +18,6 @@ export {
   resizeElementsFromSelectionHandle,
   rotatePointAroundPoint,
   rotateElementsAroundPoint,
-  selectionBounds
+  selectionBounds,
+  snapPointToElements
 } from "kizkatt-graphic-engine";

@@ -18,6 +18,7 @@ export {
   DEFAULT_UI_SCALE,
   EMPTY_COLLECTION_LENGTH,
   FIRST_ARRAY_INDEX,
+  GRID_CELL_SIZE,
   GRID_COLORS_BY_THEME,
   HISTORY_LIMIT,
   LIGHT_THEME_BACKGROUND_COLORS,
@@ -37,7 +38,6 @@ export {
 } from "kizkatt-graphic-engine";
 
 export const COLOR_PANEL_COLUMN_COUNT = 5;
-export const GRID_CELL_SIZE = 24;
 export const GRID_MAJOR_CELLS = 5;
 export const GRID_FIRST_MINOR_INDEX = 1;
 export const GRID_CROSS_MIN_SIZE = 1.25;

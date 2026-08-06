@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import {
   getElementBends,
   getElementCenter,
@@ -9,7 +11,11 @@ import type { KizkattElement } from "../../model/types";
 import { PERCENT_MAX_VALUE } from "../../config/constants";
 import { ElementGroup } from "./ElementGroup";
 import { ElementOverlay } from "./ElementOverlay";
-import { getElementShapeProps, getFreehandPath } from "./elementProps";
+import {
+  getElementShapeProps,
+  getElementTransform,
+  getFreehandPath
+} from "./elementProps";
 import { LinearElementOverlay } from "./LinearElementOverlay";
 import {
   ARROW_MARKER_URL,
@@ -249,6 +255,51 @@ function getElementFill(element: KizkattElement) {
   return `url(#${getFillPatternId(element)})`;
 }
 
+function getInlineSvgFill(element: KizkattElement) {
+  return element.backgroundColor === TRANSPARENT_COLOR
+    ? SVG_FILL_NONE
+    : getElementFill(element);
+}
+
+function InlineSvgObject({ element }: { element: KizkattElement }) {
+  const fill = getInlineSvgFill(element);
+  const shapeProps = getElementShapeProps(element);
+  const style = {
+    "--kizkatt-inline-svg-fill": fill,
+    "--kizkatt-inline-svg-stroke": element.strokeColor,
+    "--kizkatt-inline-svg-stroke-dasharray":
+      shapeProps.strokeDasharray ?? "none",
+    "--kizkatt-inline-svg-stroke-width": `${element.strokeWidth}`
+  } as CSSProperties;
+
+  return (
+    <svg
+      className={[
+        "kizkatt-inline-svg-object",
+        element.backgroundColor === TRANSPARENT_COLOR ? "" : "is-fill-editing"
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      color={element.strokeColor}
+      fill={fill}
+      height={element.height}
+      opacity={element.opacity / PERCENT_MAX_VALUE}
+      preserveAspectRatio="xMidYMid meet"
+      stroke={element.strokeColor}
+      strokeDasharray={shapeProps.strokeDasharray}
+      strokeLinecap={shapeProps.strokeLinecap}
+      strokeLinejoin={shapeProps.strokeLinejoin}
+      strokeWidth={element.strokeWidth}
+      style={style}
+      viewBox={element.svgViewBox ?? `0 0 ${element.width} ${element.height}`}
+      width={element.width}
+      x={element.x}
+      y={element.y}
+      dangerouslySetInnerHTML={{ __html: element.svgContent ?? "" }}
+    />
+  );
+}
+
 function ElementFillPattern({ element }: { element: KizkattElement }) {
   const fillStyle = element.fillStyle ?? DEFAULT_FILL_STYLE;
 
@@ -334,6 +385,7 @@ function SelectedElementOverlay({
     <ElementOverlay
       element={element}
       showBounds={options.showSelectionBounds ?? true}
+      showRotateHoverIcon={options.showRotateHoverIcon ?? true}
       showRotateHandle={options.showRotateHandle ?? true}
     />
   );
@@ -519,6 +571,80 @@ function SecondaryFreehandStroke({ element }: { element: KizkattElement }) {
   );
 }
 
+export function renderElementOverlay(
+  element: KizkattElement,
+  options: RenderElementOptions = {}
+) {
+  const isInternalOverlay = options.overlayVariant === "internal";
+
+  if (isInternalOverlay) {
+    return (
+      <g
+        key={`overlay-${element.id}`}
+        className="kizkatt-element-overlay-layer"
+        data-element-overlay-id={element.id}
+        data-element-overlay-variant="internal"
+        transform={getElementTransform(element)}
+      >
+        <ElementOverlay
+          element={element}
+          internal
+          showBounds={options.showSelectionBounds ?? true}
+          showResizeHandles={false}
+          showRotateHandle={false}
+        />
+      </g>
+    );
+  }
+
+  if (element.type === "line" || element.type === "arrow") {
+    const bends = getElementBends(element);
+    const linePoints = getLinearElementPoints(element, bends);
+    const hasBends = bends.length > ZERO_COORDINATE;
+
+    return (
+      <g
+        key={`overlay-${element.id}`}
+        className="kizkatt-element-overlay-layer"
+        data-element-overlay-id={element.id}
+        data-element-overlay-variant="primary"
+        transform={getElementTransform(element)}
+      >
+        {hasBends ? (
+          <ElementOverlay
+            element={element}
+            showBounds={options.showSelectionBounds ?? true}
+            showRotateHoverIcon={options.showRotateHoverIcon ?? true}
+            showRotateHandle={options.showRotateHandle ?? true}
+          />
+        ) : null}
+        <LinearElementOverlay
+          element={element}
+          bends={bends}
+          linePoints={linePoints}
+          selectedBendIndex={options.selectedBendIndex}
+          showBounds={options.showSelectionBounds ?? true}
+          showBendHandles={options.showLinearBendHandles ?? true}
+          showRotateHoverIcon={options.showRotateHoverIcon ?? true}
+          showRotateHandle={!hasBends && (options.showRotateHandle ?? true)}
+        />
+      </g>
+    );
+  }
+
+  return (
+    <g
+      key={`overlay-${element.id}`}
+      className="kizkatt-element-overlay-layer"
+      data-element-overlay-id={element.id}
+      data-element-overlay-variant="primary"
+      transform={getElementTransform(element)}
+    >
+      <SelectedElementOverlay element={element} options={options} />
+    </g>
+  );
+}
+
 export function renderElement(
   element: KizkattElement,
   selected: boolean,
@@ -563,7 +689,9 @@ export function renderElement(
           element={element}
           variant={CARTOONIST_FILTER_VARIANT}
         />
-        {element.src ? (
+        {element.svgContent ? (
+          <InlineSvgObject element={element} />
+        ) : element.src ? (
           <image
             href={element.src}
             x={element.x}

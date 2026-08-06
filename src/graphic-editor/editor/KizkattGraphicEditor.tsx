@@ -40,6 +40,7 @@ import {
   SelectedBounds,
   SelectionArea,
   renderElement,
+  renderElementOverlay,
   serializeSvg
 } from "../ui/canvas";
 import { CanvasContextMenu } from "../ui/menus/CanvasContextMenu";
@@ -147,6 +148,7 @@ function KizkattGraphicEditorContent() {
       }
       getCanvasCursor={getCanvasCursor}
       renderElement={renderElement}
+      renderElementOverlay={renderElementOverlay}
       serializeSvg={serializeSvg}
       shouldShowStylePanel={({ activeTool, selectedElements }) =>
         STYLE_TOOLS.has(activeTool) ||

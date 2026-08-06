@@ -9,15 +9,18 @@ import {
   SELECTION_HANDLE_SIZE,
   SVG_FILL_NONE
 } from "./renderingConstants";
+import { RotateHoverIcon } from "./ElementOverlay";
 
 const HALF_HANDLE_SIZE = SELECTION_HANDLE_SIZE / HALF_DIVISOR;
 
 export function SelectedBounds({
   elements,
-  interaction
+  interaction,
+  showRotateHoverIcon = true
 }: {
   elements: KizkattElement[];
   interaction: Interaction | null;
+  showRotateHoverIcon?: boolean;
 }) {
   const bounds = selectionBounds(elements, { includeRotation: true });
 
@@ -84,6 +87,9 @@ export function SelectedBounds({
         cy={rotateHandle.y}
         r={ROTATE_HANDLE_RADIUS}
       />
+      {showRotateHoverIcon && !isRotating && (
+        <RotateHoverIcon x={rotateHandle.x} y={rotateHandle.y} />
+      )}
     </g>
   );
 }

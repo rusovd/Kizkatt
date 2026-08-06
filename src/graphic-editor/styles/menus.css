@@ -62,8 +62,74 @@
   text-align: left;
 }
 
+.kizkatt-context-menu .kizkatt-menu-item-label {
+  flex: 1;
+  gap: 10px;
+}
+
+.kizkatt-context-menu .kizkatt-menu-item-label .kizkatt-tool-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.kizkatt-context-check {
+  display: inline-block;
+  width: 13px;
+  color: var(--kizkatt-text);
+  text-align: center;
+}
+
+.kizkatt-context-menu-trailing {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: 12px;
+}
+
+.kizkatt-context-menu-submenu-item {
+  position: relative;
+}
+
+.kizkatt-context-submenu-chevron {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+}
+
+.kizkatt-context-submenu-chevron .kizkatt-tool-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.kizkatt-context-submenu {
+  position: absolute;
+  top: -6px;
+  left: calc(100% + 4px);
+  z-index: 7;
+  display: grid;
+  width: 286px;
+  padding: 6px 0;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 6px;
+  background: var(--kizkatt-control-bg);
+  box-shadow: 0 10px 28px var(--kizkatt-shadow);
+}
+
 .kizkatt-context-menu button:hover {
   background: var(--kizkatt-control-bg-hover);
+}
+
+.kizkatt-context-menu button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.kizkatt-context-menu button:disabled:hover {
+  background: transparent;
 }
 
 .kizkatt-context-menu kbd {

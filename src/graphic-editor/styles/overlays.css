@@ -12,6 +12,17 @@
   stroke-dasharray: 4 4;
 }
 
+.kizkatt-selection-overlay--internal {
+  pointer-events: none;
+}
+
+.kizkatt-selection-overlay--internal rect:first-child {
+  stroke: var(--kizkatt-selection-strong);
+  stroke-dasharray: 3 5;
+  stroke-width: 0.65;
+  opacity: 0.72;
+}
+
 .kizkatt-line-overlay {
   pointer-events: none;
 }
@@ -75,4 +86,26 @@
   cursor: grab;
   pointer-events: all;
   vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-rotate-hover-icon {
+  color: var(--kizkatt-selection-strong);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 100ms ease;
+}
+
+.kizkatt-rotate-hover-icon .kizkatt-tool-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 2px 4px var(--kizkatt-shadow));
+}
+
+.kizkatt-rotate-handle:hover + .kizkatt-rotate-hover-icon {
+  opacity: 1;
+}
+
+.kizkatt-rotate-handle:active + .kizkatt-rotate-hover-icon {
+  opacity: 0;
 }

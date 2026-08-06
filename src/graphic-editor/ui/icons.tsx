@@ -103,6 +103,28 @@ export const TextIcon = createIcon(
   </g>
 );
 
+export const ArcArrowsIcon = createIcon(
+  <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M7 14c2.8-3 7.2-3 10 0" />
+    <polyline points="8.8 12.8 7 14 8.8 15.2" />
+    <polyline points="15.2 12.8 17 14 15.2 15.2" />
+  </g>
+);
+
+
+export const ShovelIcon = createIcon(
+  <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14.5 8.5l1-1" />
+    <path d="M9.2 15.8l6.3-6.3" />
+    <path d="M8.3 14.9l-1.1-1.1-2.1 2.1a6.8 6.8 0 0 0-1.6 6.1 6.8 6.8 0 0 0 6.1-1.6l2.1-2.1-1.1-1.1" />
+    <path d="M15.5 3.2l5.3 5.3-2.1 2.1a3.2 3.2 0 0 1-4.5 0l-.8-.8a3.2 3.2 0 0 1 0-4.5z" />
+    <path d="M15.8 5.3l2.9 2.9-.8.8a.9.9 0 0 1-1.3 0l-1.6-1.6a.9.9 0 0 1 0-1.3z" />
+    <path d="M5.2 18.1a4.8 4.8 0 0 0-.1 2" />
+  </g>
+);
+
 export const ImageIcon = createIcon(
   <g strokeWidth="1.25">
     <path d="M12.5 6.667h.01" />
@@ -354,6 +376,111 @@ export const ResetIcon = createIcon(
     <path d="M3.268 12.043a7.017 7.017 0 0 0 6.634 4.957a7.012 7.012 0 0 0 7.043 -6.131a7 7 0 0 0 -5.314 -7.672a7.021 7.021 0 0 0 -8.241 4.403" />
     <path d="M3 4v4h4" />
   </g>
+);
+
+export const PasteIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M9 4.5h6a2 2 0 0 1 2 2v13H7v-13a2 2 0 0 1 2-2Z" />
+    <path d="M9.5 4.5a2.5 2.5 0 0 1 5 0" />
+    <path d="M10 10h4" />
+    <path d="M10 14h4" />
+  </g>
+);
+
+export const CopyIcon = createIcon(
+  <g strokeWidth="1.5">
+    <rect x="8" y="8" width="11" height="11" rx="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
+  </g>
+);
+
+export const CodeIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="m9 8-4 4 4 4" />
+    <path d="m15 8 4 4-4 4" />
+    <path d="m13 5-2 14" />
+  </g>
+);
+
+export const SelectAllIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M5 5h3" />
+    <path d="M16 5h3" />
+    <path d="M5 19h3" />
+    <path d="M16 19h3" />
+    <path d="M5 5v3" />
+    <path d="M19 5v3" />
+    <path d="M5 16v3" />
+    <path d="M19 16v3" />
+    <rect x="8" y="8" width="8" height="8" rx="1.5" />
+  </g>
+);
+
+export const SelectionContainIcon = createIcon(
+  <g strokeWidth="1.5">
+    <rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 3" />
+    <rect x="8" y="8" width="8" height="8" rx="1.5" />
+  </g>
+);
+
+export const GridIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M4 8h16" />
+    <path d="M4 16h16" />
+    <path d="M8 4v16" />
+    <path d="M16 4v16" />
+    <rect x="4" y="4" width="16" height="16" rx="2" />
+  </g>
+);
+
+export const SnapIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M6 4v6a6 6 0 0 0 12 0V4" />
+    <path d="M6 10h4" />
+    <path d="M14 10h4" />
+    <path d="M6 4h4" />
+    <path d="M14 4h4" />
+    <path d="M9 19h6" />
+  </g>
+);
+
+export const ViewModeIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+    <circle cx="12" cy="12" r="2.5" />
+  </g>
+);
+
+export const ZenIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M5 7h14" />
+    <path d="M7 12h10" />
+    <path d="M9 17h6" />
+    <path d="M4 4l16 16" />
+  </g>
+);
+
+export const GroupIcon = createIcon(
+  <g strokeWidth="1.5">
+    <rect x="4" y="4" width="7" height="7" rx="1.5" />
+    <rect x="13" y="13" width="7" height="7" rx="1.5" />
+    <path d="M11 7.5h2" />
+    <path d="M16.5 11v2" />
+  </g>
+);
+
+export const UngroupIcon = createIcon(
+  <g strokeWidth="1.5">
+    <rect x="4" y="4" width="7" height="7" rx="1.5" />
+    <rect x="13" y="13" width="7" height="7" rx="1.5" />
+    <path d="M11.5 11.5l-2.5 2.5" />
+    <path d="M15 9l-2.5 2.5" />
+  </g>
+);
+
+export const ChevronRightIcon = createIcon(
+  <path d="m9 6 6 6-6 6" strokeWidth="1.8" />,
+  { height: 20, width: 20 }
 );
 
 export const SettingsIcon = createIcon(

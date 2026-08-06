@@ -10,6 +10,7 @@ export type {
   KizkattTheme,
   Point,
   ResizeHandle,
+  SelectionAreaMode,
   StyleState,
   Tool
 } from "kizkatt-graphic-engine";

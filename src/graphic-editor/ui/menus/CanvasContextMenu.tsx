@@ -1,57 +1,445 @@
-import type { ContextMenuState } from "../../model/types";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import {
+  getStoredContextMenuDefaults,
+  storeContextMenuDefaults
+} from "kizkatt-graphic-engine";
+import type {
+  ContextMenuCopyDefault,
+  ContextMenuDefaults,
+  ContextMenuPasteDefault,
+  ContextMenuSelectionDefault,
+  ContextMenuSnappingDefault,
+  ContextMenuViewDefault
+} from "kizkatt-graphic-engine";
+
+import type { ContextMenuState, SelectionAreaMode } from "../../model/types";
 import { useI18n } from "../../i18n";
+import {
+  ArrowIcon,
+  ChevronRightIcon,
+  CodeIcon,
+  CopyIcon,
+  GridIcon,
+  GroupIcon,
+  ImageIcon,
+  PasteIcon,
+  SelectAllIcon,
+  SelectionContainIcon,
+  SelectionIcon,
+  SnapIcon,
+  UngroupIcon,
+  ViewModeIcon,
+  ZenIcon
+} from "../icons";
 
 type CanvasContextMenuProps = {
   arrowBinding: boolean;
+  canCopySelection: boolean;
   canGroup: boolean;
   canUngroup: boolean;
   contextMenu: ContextMenuState | null;
   onCloseAndRun: (action: () => void | Promise<void>) => void;
+  onCopy: () => void;
   onCopyPng: () => Promise<void>;
   onCopySvg: () => Promise<void>;
   onGroup: () => void;
-  onPaste: () => void;
+  onPaste: () => void | Promise<void>;
+  onPasteSvgCode: () => void | Promise<void>;
   onSelectAll: () => void;
   onUngroup: () => void;
+  selectionAreaMode: SelectionAreaMode;
   setArrowBinding: (updater: (value: boolean) => boolean) => void;
+  setSelectionAreaMode: (mode: SelectionAreaMode) => void;
   setShowGrid: (updater: (value: boolean) => boolean) => void;
+  setSnapToGrid: (updater: (value: boolean) => boolean) => void;
   setSnapToMidpoints: (updater: (value: boolean) => boolean) => void;
   setSnapToObjects: (updater: (value: boolean) => boolean) => void;
   setViewMode: (updater: (value: boolean) => boolean) => void;
   setZenMode: (updater: (value: boolean) => boolean) => void;
   showGrid: boolean;
+  snapToGrid: boolean;
   snapToMidpoints: boolean;
   snapToObjects: boolean;
   viewMode: boolean;
   zenMode: boolean;
 };
 
+type MenuRole = "menuitem" | "menuitemcheckbox" | "menuitemradio";
+type SubmenuId = "copy" | "paste" | "selection" | "snapping" | "view";
+
+type ContextMenuAction<Id extends string> = {
+  checked?: boolean;
+  disabled?: boolean;
+  icon: ReactNode;
+  id: Id;
+  label: string;
+  role?: MenuRole;
+  run: () => void | Promise<void>;
+  shortcut?: string;
+  title: string;
+};
+
+function getPreferredAction<Id extends string>(
+  actions: Array<ContextMenuAction<Id>>,
+  preferredId: Id
+) {
+  const preferredAction = actions.find((action) => action.id === preferredId);
+
+  if (preferredAction) {
+    return preferredAction;
+  }
+
+  const fallbackAction = actions[0];
+
+  if (!fallbackAction) {
+    throw new Error("Context menu action group cannot be empty.");
+  }
+
+  return fallbackAction;
+}
+
+function MenuItemLabel({
+  children,
+  icon
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+}) {
+  return (
+    <span className="kizkatt-menu-item-label">
+      {icon}
+      <span>{children}</span>
+    </span>
+  );
+}
+
+function CheckMark({ checked }: { checked?: boolean }) {
+  return (
+    <span className="kizkatt-context-check" aria-hidden="true">
+      {checked ? "✓" : ""}
+    </span>
+  );
+}
+
+function MenuButton({
+  checked,
+  children,
+  disabled,
+  icon,
+  onClick,
+  role = "menuitem",
+  shortcut,
+  title
+}: {
+  checked?: boolean;
+  children: ReactNode;
+  disabled?: boolean;
+  icon: ReactNode;
+  onClick: () => void;
+  role?: MenuRole;
+  shortcut?: string;
+  title: string;
+}) {
+  const ariaChecked =
+    role === "menuitemcheckbox" || role === "menuitemradio"
+      ? checked
+      : undefined;
+  const showTrailing = role !== "menuitem" || Boolean(shortcut);
+
+  return (
+    <button
+      type="button"
+      role={role}
+      aria-checked={ariaChecked}
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+    >
+      <MenuItemLabel icon={icon}>{children}</MenuItemLabel>
+      {showTrailing && (
+        <span className="kizkatt-context-menu-trailing">
+          {role === "menuitem" ? null : <CheckMark checked={checked} />}
+          {shortcut && <kbd>{shortcut}</kbd>}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function SubmenuMenuItem<Id extends string>({
+  children,
+  openSubmenu,
+  onPrimaryClick,
+  primaryAction,
+  setOpenSubmenu,
+  submenuId
+}: {
+  children: ReactNode;
+  onPrimaryClick: () => void;
+  openSubmenu: SubmenuId | null;
+  primaryAction: ContextMenuAction<Id>;
+  setOpenSubmenu: (submenuId: SubmenuId | null) => void;
+  submenuId: SubmenuId;
+}) {
+  const open = openSubmenu === submenuId;
+  const role = primaryAction.role ?? "menuitem";
+  const ariaChecked =
+    role === "menuitemcheckbox" || role === "menuitemradio"
+      ? primaryAction.checked
+      : undefined;
+
+  return (
+    <div
+      className="kizkatt-context-menu-submenu-item"
+      role="none"
+      onBlur={(event) => {
+        const nextFocusTarget = event.relatedTarget;
+
+        if (
+          !(nextFocusTarget instanceof Node) ||
+          !event.currentTarget.contains(nextFocusTarget)
+        ) {
+          setOpenSubmenu(null);
+        }
+      }}
+      onFocus={() => setOpenSubmenu(submenuId)}
+      onMouseEnter={() => setOpenSubmenu(submenuId)}
+    >
+      <button
+        type="button"
+        role={role}
+        aria-checked={ariaChecked}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        disabled={primaryAction.disabled}
+        title={primaryAction.title}
+        onClick={onPrimaryClick}
+      >
+        <MenuItemLabel icon={primaryAction.icon}>
+          {primaryAction.label}
+        </MenuItemLabel>
+        <span className="kizkatt-context-menu-trailing">
+          {role === "menuitem" ? null : (
+            <CheckMark checked={primaryAction.checked} />
+          )}
+          {primaryAction.shortcut && <kbd>{primaryAction.shortcut}</kbd>}
+          <span className="kizkatt-context-submenu-chevron" aria-hidden="true">
+            {ChevronRightIcon}
+          </span>
+        </span>
+      </button>
+      {open && (
+        <div className="kizkatt-context-submenu" role="menu">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CanvasContextMenu({
   arrowBinding,
+  canCopySelection,
   canGroup,
   canUngroup,
   contextMenu,
   onCloseAndRun,
+  onCopy,
   onCopyPng,
   onCopySvg,
   onGroup,
   onPaste,
+  onPasteSvgCode,
   onSelectAll,
   onUngroup,
+  selectionAreaMode,
   setArrowBinding,
+  setSelectionAreaMode,
   setShowGrid,
+  setSnapToGrid,
   setSnapToMidpoints,
   setSnapToObjects,
   setViewMode,
   setZenMode,
   showGrid,
+  snapToGrid,
   snapToMidpoints,
   snapToObjects,
   viewMode,
   zenMode
 }: CanvasContextMenuProps) {
+  const [openSubmenu, setOpenSubmenu] = useState<SubmenuId | null>(null);
+  const [menuDefaults, setMenuDefaults] = useState(
+    getStoredContextMenuDefaults
+  );
   const { strings } = useI18n();
   const tooltips = strings.contextMenu.tooltips;
+
+  const setMenuDefault = <Key extends keyof ContextMenuDefaults>(
+    key: Key,
+    value: ContextMenuDefaults[Key]
+  ) => {
+    setMenuDefaults((previousDefaults) => {
+      const nextDefaults: ContextMenuDefaults = {
+        ...previousDefaults,
+        [key]: value
+      };
+
+      storeContextMenuDefaults(nextDefaults);
+      return nextDefaults;
+    });
+  };
+
+  useEffect(() => {
+    setOpenSubmenu(null);
+  }, [contextMenu?.x, contextMenu?.y]);
+
+  const pasteActions: Array<ContextMenuAction<ContextMenuPasteDefault>> = [
+    {
+      icon: PasteIcon,
+      id: "clipboard",
+      label: strings.contextMenu.paste,
+      run: onPaste,
+      shortcut: "Ctrl+V",
+      title: tooltips.paste
+    },
+    {
+      icon: CodeIcon,
+      id: "svgCode",
+      label: strings.contextMenu.pasteSvgCode,
+      run: onPasteSvgCode,
+      title: tooltips.pasteSvgCode
+    }
+  ];
+  const copyActions: Array<ContextMenuAction<ContextMenuCopyDefault>> = [
+    {
+      disabled: !canCopySelection,
+      icon: CopyIcon,
+      id: "selection",
+      label: strings.contextMenu.copy,
+      run: onCopy,
+      shortcut: "Ctrl+C",
+      title: tooltips.copy
+    },
+    {
+      disabled: !canCopySelection,
+      icon: ImageIcon,
+      id: "png",
+      label: strings.contextMenu.copyPng,
+      run: onCopyPng,
+      title: tooltips.copyPng
+    },
+    {
+      disabled: !canCopySelection,
+      icon: CodeIcon,
+      id: "svg",
+      label: strings.contextMenu.copySvg,
+      run: onCopySvg,
+      title: tooltips.copySvg
+    }
+  ];
+  const selectionActions: Array<ContextMenuAction<ContextMenuSelectionDefault>> = [
+    {
+      checked: selectionAreaMode === "intersect",
+      icon: SelectionIcon,
+      id: "intersect",
+      label: strings.contextMenu.selectTouching,
+      role: "menuitemradio",
+      run: () => setSelectionAreaMode("intersect"),
+      title: tooltips.selectTouching
+    },
+    {
+      checked: selectionAreaMode === "contain",
+      icon: SelectionContainIcon,
+      id: "contain",
+      label: strings.contextMenu.selectEnclosed,
+      role: "menuitemradio",
+      run: () => setSelectionAreaMode("contain"),
+      title: tooltips.selectEnclosed
+    }
+  ];
+  const snappingActions: Array<ContextMenuAction<ContextMenuSnappingDefault>> = [
+    {
+      checked: showGrid,
+      icon: GridIcon,
+      id: "toggleGrid",
+      label: strings.contextMenu.toggleGrid,
+      role: "menuitemcheckbox",
+      run: () => setShowGrid((value) => !value),
+      title: tooltips.toggleGrid
+    },
+    {
+      checked: snapToGrid,
+      icon: SnapIcon,
+      id: "snapToGrid",
+      label: strings.contextMenu.snapToGrid,
+      role: "menuitemcheckbox",
+      run: () => setSnapToGrid((value) => !value),
+      title: tooltips.snapToGrid
+    },
+    {
+      checked: snapToObjects,
+      icon: SelectionContainIcon,
+      id: "snapToObjects",
+      label: strings.contextMenu.snapToObjects,
+      role: "menuitemcheckbox",
+      run: () => setSnapToObjects((value) => !value),
+      title: tooltips.snapToObjects
+    },
+    {
+      checked: arrowBinding,
+      icon: ArrowIcon,
+      id: "arrowBinding",
+      label: strings.contextMenu.arrowBinding,
+      role: "menuitemcheckbox",
+      run: () => setArrowBinding((value) => !value),
+      title: tooltips.arrowBinding
+    },
+    {
+      checked: snapToMidpoints,
+      icon: SnapIcon,
+      id: "snapToMidpoints",
+      label: strings.contextMenu.snapToMidpoints,
+      role: "menuitemcheckbox",
+      run: () => setSnapToMidpoints((value) => !value),
+      title: tooltips.snapToMidpoints
+    }
+  ];
+  const viewActions: Array<ContextMenuAction<ContextMenuViewDefault>> = [
+    {
+      checked: zenMode,
+      icon: ZenIcon,
+      id: "zenMode",
+      label: strings.contextMenu.zenMode,
+      role: "menuitemcheckbox",
+      run: () => setZenMode((value) => !value),
+      title: tooltips.zenMode
+    },
+    {
+      checked: viewMode,
+      icon: ViewModeIcon,
+      id: "viewMode",
+      label: strings.contextMenu.viewMode,
+      role: "menuitemcheckbox",
+      run: () => setViewMode((value) => !value),
+      title: tooltips.viewMode
+    }
+  ];
+  const pastePrimaryAction = getPreferredAction(
+    pasteActions,
+    menuDefaults.paste
+  );
+  const copyPrimaryAction = getPreferredAction(copyActions, menuDefaults.copy);
+  const selectionPrimaryAction = getPreferredAction(
+    selectionActions,
+    menuDefaults.selection
+  );
+  const snappingPrimaryAction = getPreferredAction(
+    snappingActions,
+    menuDefaults.snapping
+  );
+  const viewPrimaryAction = getPreferredAction(viewActions, menuDefaults.view);
 
   if (!contextMenu) {
     return null;
@@ -67,140 +455,158 @@ export function CanvasContextMenu({
         top: contextMenu.y
       }}
     >
-      <button
-        type="button"
-        role="menuitem"
-        title={tooltips.paste}
-        onClick={() => onCloseAndRun(onPaste)}
+      {!viewMode && (
+        <>
+          <SubmenuMenuItem
+            openSubmenu={openSubmenu}
+            primaryAction={pastePrimaryAction}
+            setOpenSubmenu={setOpenSubmenu}
+            submenuId="paste"
+            onPrimaryClick={() => onCloseAndRun(pastePrimaryAction.run)}
+          >
+            {pasteActions.map((action) => (
+              <MenuButton
+                icon={action.icon}
+                key={action.id}
+                shortcut={action.shortcut}
+                title={action.title}
+                onClick={() => {
+                  setMenuDefault("paste", action.id);
+                  onCloseAndRun(action.run);
+                }}
+              >
+                {action.label}
+              </MenuButton>
+            ))}
+          </SubmenuMenuItem>
+          <div className="kizkatt-context-divider" />
+        </>
+      )}
+      <SubmenuMenuItem
+        openSubmenu={openSubmenu}
+        primaryAction={copyPrimaryAction}
+        setOpenSubmenu={setOpenSubmenu}
+        submenuId="copy"
+        onPrimaryClick={() => onCloseAndRun(copyPrimaryAction.run)}
       >
-        <span>{strings.contextMenu.paste}</span>
-        <kbd>Ctrl+V</kbd>
-      </button>
+        {copyActions.map((action) => (
+          <MenuButton
+            disabled={action.disabled}
+            icon={action.icon}
+            key={action.id}
+            shortcut={action.shortcut}
+            title={action.title}
+            onClick={() => {
+              setMenuDefault("copy", action.id);
+              onCloseAndRun(action.run);
+            }}
+          >
+            {action.label}
+          </MenuButton>
+        ))}
+      </SubmenuMenuItem>
       <div className="kizkatt-context-divider" />
-      <button
-        type="button"
-        role="menuitem"
-        title={tooltips.copyPng}
-        onClick={() => onCloseAndRun(onCopyPng)}
-      >
-        <span>{strings.contextMenu.copyPng}</span>
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        title={tooltips.copySvg}
-        onClick={() => onCloseAndRun(onCopySvg)}
-      >
-        <span>{strings.contextMenu.copySvg}</span>
-      </button>
-      <div className="kizkatt-context-divider" />
-      <button
-        type="button"
-        role="menuitem"
+      <MenuButton
+        icon={SelectAllIcon}
         title={tooltips.selectAll}
+        shortcut="Ctrl+A"
         onClick={() => onCloseAndRun(onSelectAll)}
       >
-        <span>{strings.contextMenu.selectAll}</span>
-        <kbd>Ctrl+A</kbd>
-      </button>
-      {(canGroup || canUngroup) && (
+        {strings.contextMenu.selectAll}
+      </MenuButton>
+      <SubmenuMenuItem
+        openSubmenu={openSubmenu}
+        primaryAction={selectionPrimaryAction}
+        setOpenSubmenu={setOpenSubmenu}
+        submenuId="selection"
+        onPrimaryClick={() => onCloseAndRun(selectionPrimaryAction.run)}
+      >
+        {selectionActions.map((action) => (
+          <MenuButton
+            checked={action.checked}
+            icon={action.icon}
+            key={action.id}
+            role={action.role}
+            title={action.title}
+            onClick={() => {
+              setMenuDefault("selection", action.id);
+              onCloseAndRun(action.run);
+            }}
+          >
+            {action.label}
+          </MenuButton>
+        ))}
+      </SubmenuMenuItem>
+      {!viewMode && (canGroup || canUngroup) && (
         <>
           <div className="kizkatt-context-divider" />
           {canGroup && (
-            <button
-              type="button"
-              role="menuitem"
+            <MenuButton
+              icon={GroupIcon}
               title={tooltips.group}
               onClick={() => onCloseAndRun(onGroup)}
             >
-              <span>{strings.contextMenu.group}</span>
-            </button>
+              {strings.contextMenu.group}
+            </MenuButton>
           )}
           {canUngroup && (
-            <button
-              type="button"
-              role="menuitem"
+            <MenuButton
+              icon={UngroupIcon}
               title={tooltips.ungroup}
               onClick={() => onCloseAndRun(onUngroup)}
             >
-              <span>{strings.contextMenu.ungroup}</span>
-            </button>
+              {strings.contextMenu.ungroup}
+            </MenuButton>
           )}
         </>
       )}
       <div className="kizkatt-context-divider" />
-      <button
-        type="button"
-        role="menuitemcheckbox"
-        aria-checked={showGrid}
-        title={tooltips.toggleGrid}
-        onClick={() => onCloseAndRun(() => setShowGrid((value) => !value))}
+      <SubmenuMenuItem
+        openSubmenu={openSubmenu}
+        primaryAction={snappingPrimaryAction}
+        setOpenSubmenu={setOpenSubmenu}
+        submenuId="snapping"
+        onPrimaryClick={() => onCloseAndRun(snappingPrimaryAction.run)}
       >
-        <span>
-          {showGrid ? "✓ " : ""}
-          {strings.contextMenu.toggleGrid}
-        </span>
-      </button>
-      <button
-        type="button"
-        role="menuitemcheckbox"
-        aria-checked={snapToObjects}
-        title={tooltips.snapToObjects}
-        onClick={() => onCloseAndRun(() => setSnapToObjects((value) => !value))}
+        {snappingActions.map((action) => (
+          <MenuButton
+            checked={action.checked}
+            icon={action.icon}
+            key={action.id}
+            role={action.role}
+            title={action.title}
+            onClick={() => {
+              setMenuDefault("snapping", action.id);
+              onCloseAndRun(action.run);
+            }}
+          >
+            {action.label}
+          </MenuButton>
+        ))}
+      </SubmenuMenuItem>
+      <SubmenuMenuItem
+        openSubmenu={openSubmenu}
+        primaryAction={viewPrimaryAction}
+        setOpenSubmenu={setOpenSubmenu}
+        submenuId="view"
+        onPrimaryClick={() => onCloseAndRun(viewPrimaryAction.run)}
       >
-        <span>
-          {snapToObjects ? "✓ " : ""}
-          {strings.contextMenu.snapToObjects}
-        </span>
-      </button>
-      <button
-        type="button"
-        role="menuitemcheckbox"
-        aria-checked={arrowBinding}
-        title={tooltips.arrowBinding}
-        onClick={() => onCloseAndRun(() => setArrowBinding((value) => !value))}
-      >
-        <span>
-          {arrowBinding ? "✓ " : ""}
-          {strings.contextMenu.arrowBinding}
-        </span>
-      </button>
-      <button
-        type="button"
-        role="menuitemcheckbox"
-        aria-checked={snapToMidpoints}
-        title={tooltips.snapToMidpoints}
-        onClick={() => onCloseAndRun(() => setSnapToMidpoints((value) => !value))}
-      >
-        <span>
-          {snapToMidpoints ? "✓ " : ""}
-          {strings.contextMenu.snapToMidpoints}
-        </span>
-      </button>
-      <button
-        type="button"
-        role="menuitemcheckbox"
-        aria-checked={zenMode}
-        title={tooltips.zenMode}
-        onClick={() => onCloseAndRun(() => setZenMode((value) => !value))}
-      >
-        <span>
-          {zenMode ? "✓ " : ""}
-          {strings.contextMenu.zenMode}
-        </span>
-      </button>
-      <button
-        type="button"
-        role="menuitemcheckbox"
-        aria-checked={viewMode}
-        title={tooltips.viewMode}
-        onClick={() => onCloseAndRun(() => setViewMode((value) => !value))}
-      >
-        <span>
-          {viewMode ? "✓ " : ""}
-          {strings.contextMenu.viewMode}
-        </span>
-      </button>
+        {viewActions.map((action) => (
+          <MenuButton
+            checked={action.checked}
+            icon={action.icon}
+            key={action.id}
+            role={action.role}
+            title={action.title}
+            onClick={() => {
+              setMenuDefault("view", action.id);
+              onCloseAndRun(action.run);
+            }}
+          >
+            {action.label}
+          </MenuButton>
+        ))}
+      </SubmenuMenuItem>
     </div>
   );
 }

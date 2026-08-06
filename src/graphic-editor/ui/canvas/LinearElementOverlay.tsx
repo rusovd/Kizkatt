@@ -13,6 +13,7 @@ import {
   ROTATE_HANDLE_OFFSET,
   ROTATE_HANDLE_RADIUS
 } from "./renderingConstants";
+import { RotateHoverIcon } from "./ElementOverlay";
 
 export function LinearElementOverlay({
   bends,
@@ -21,6 +22,7 @@ export function LinearElementOverlay({
   selectedBendIndex,
   showBounds = true,
   showBendHandles = true,
+  showRotateHoverIcon = true,
   showRotateHandle = true
 }: {
   bends: ReturnType<typeof getElementBends>;
@@ -29,6 +31,7 @@ export function LinearElementOverlay({
   selectedBendIndex?: number;
   showBounds?: boolean;
   showBendHandles?: boolean;
+  showRotateHoverIcon?: boolean;
   showRotateHandle?: boolean;
 }) {
   const center = getElementCenter(element);
@@ -98,15 +101,20 @@ export function LinearElementOverlay({
         </>
       )}
       {showRotateHandle && (
-        <circle
-          className="kizkatt-rotate-handle"
-          data-handle="rotate"
-          data-handle-world-x={rotateHandleWorldPoint.x}
-          data-handle-world-y={rotateHandleWorldPoint.y}
-          cx={rotateHandle.x}
-          cy={rotateHandle.y}
-          r={ROTATE_HANDLE_RADIUS}
-        />
+        <>
+          <circle
+            className="kizkatt-rotate-handle"
+            data-handle="rotate"
+            data-handle-world-x={rotateHandleWorldPoint.x}
+            data-handle-world-y={rotateHandleWorldPoint.y}
+            cx={rotateHandle.x}
+            cy={rotateHandle.y}
+            r={ROTATE_HANDLE_RADIUS}
+          />
+          {showRotateHoverIcon && (
+            <RotateHoverIcon x={rotateHandle.x} y={rotateHandle.y} />
+          )}
+        </>
       )}
     </g>
   );
