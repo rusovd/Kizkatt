@@ -57,6 +57,21 @@ export function getCirclePoint(circle: Element | null) {
   };
 }
 
+export function firePointerEvent(
+  target: Element,
+  type: "pointerdown" | "pointermove" | "pointerup",
+  init: MouseEventInit = {}
+) {
+  fireEvent(
+    target,
+    new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      ...init
+    })
+  );
+}
+
 export function chooseGroupedTool(groupLabel: string, toolLabel: string) {
   const groupButton = screen.getByRole("button", { name: groupLabel });
 

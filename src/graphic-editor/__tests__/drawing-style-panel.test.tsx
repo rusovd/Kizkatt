@@ -1,11 +1,13 @@
 import { describe, it } from "vitest";
 import { storeCanvasState } from "kizkatt-graphic-engine";
 import {
+  act,
   KizkattGraphicEditor,
   chooseGroupedTool,
   expect,
   findElementAtPoint,
   fireEvent,
+  firePointerEvent,
   getCirclePoint,
   getResizeAnchorPoint,
   getResizeCursor,
@@ -14,6 +16,7 @@ import {
   reorderElementsByLayerAction,
   resizeElementFromHandle,
   screen,
+  vi,
   type KizkattElement
 } from "./testUtils";
 
@@ -24,9 +27,9 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     expect(canvas.querySelector("[data-element-id]")).toBeInTheDocument();
   });
@@ -37,14 +40,14 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    fireEvent.pointerDown(canvas, { clientX: 190, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 260, clientY: 120 });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerdown", { clientX: 190, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 260, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     const elementGroups = canvas.querySelectorAll("[data-element-id]");
 
@@ -67,10 +70,41 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     chooseGroupedTool("Arrow", "Line");
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerUp(canvas, { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointerup", { clientX: 40, clientY: 50 });
 
     expect(canvas.querySelector("[data-element-id]")).not.toBeInTheDocument();
+  });
+
+  it("drops quick tiny shape drags but keeps deliberate tiny held drags", () => {
+    vi.useFakeTimers();
+
+    try {
+      render(<KizkattGraphicEditor />);
+
+      const canvas = screen.getByRole("application", {
+        name: "Drawing canvas"
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+      firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+      firePointerEvent(canvas, "pointermove", { clientX: 43, clientY: 52 });
+      firePointerEvent(canvas, "pointerup", { clientX: 43, clientY: 52 });
+
+      expect(canvas.querySelector("[data-element-id]")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+      firePointerEvent(canvas, "pointerdown", { clientX: 60, clientY: 60 });
+      act(() => {
+        vi.advanceTimersByTime(160);
+      });
+      firePointerEvent(canvas, "pointermove", { clientX: 63, clientY: 62 });
+      firePointerEvent(canvas, "pointerup", { clientX: 63, clientY: 62 });
+
+      expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("returns to select mode after drawing an element", () => {
@@ -81,9 +115,9 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
     expect(canvas).toHaveStyle({ cursor: "crosshair" });
 
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     expect(screen.getByRole("button", { name: "Select" })).toHaveClass(
       "is-active"
@@ -91,20 +125,23 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(canvas).toHaveStyle({ cursor: "default" });
   });
 
-  it("activates the creation tool when a non-group element is clicked", () => {
+  it("keeps the select tool active when a non-group element is clicked", () => {
     render(<KizkattGraphicEditor />);
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     fireEvent.click(screen.getByRole("button", { name: "Select" }));
-    fireEvent.pointerDown(canvas, { clientX: 100, clientY: 50 });
+    firePointerEvent(canvas, "pointerdown", { clientX: 100, clientY: 50 });
 
-    expect(screen.getByRole("button", { name: "Rectangle" })).toHaveClass(
+    expect(screen.getByRole("button", { name: "Select" })).toHaveClass(
+      "is-active"
+    );
+    expect(screen.getByRole("button", { name: "Rectangle" })).not.toHaveClass(
       "is-active"
     );
     expect(
@@ -118,26 +155,26 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
 
     expect(canvas.querySelector(".kizkatt-rotate-handle")).not
       .toBeInTheDocument();
 
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerup");
 
     expect(canvas.querySelector(".kizkatt-rotate-handle")).toBeInTheDocument();
 
     chooseGroupedTool("Arrow", "Line");
-    fireEvent.pointerDown(canvas, { clientX: 220, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 320, clientY: 120 });
+    firePointerEvent(canvas, "pointerdown", { clientX: 220, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 320, clientY: 120 });
 
     const rotateHandlesWhileDrawing = canvas.querySelectorAll(
       ".kizkatt-rotate-handle"
     );
     expect(rotateHandlesWhileDrawing).toHaveLength(0);
 
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerup");
 
     expect(canvas.querySelector(".kizkatt-rotate-handle")).toBeInTheDocument();
   });
@@ -148,12 +185,12 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     const initialRotateHandle = canvas.querySelector(
-      "[data-element-id] .kizkatt-rotate-handle"
+      "[data-element-overlay-id] .kizkatt-rotate-handle"
     );
     const initialCx = initialRotateHandle?.getAttribute("cx");
     const initialCy = initialRotateHandle?.getAttribute("cy");
@@ -161,22 +198,22 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(initialCy).toBeTruthy();
     const initialPoint = getCirclePoint(initialRotateHandle);
 
-    fireEvent.pointerDown(initialRotateHandle as Element, {
+    firePointerEvent(initialRotateHandle as Element, "pointerdown", {
       clientX: initialPoint.x,
       clientY: initialPoint.y
     });
     expect(canvas.querySelector("[data-resize-handle]")).not
       .toBeInTheDocument();
     expect(canvas.querySelector(".kizkatt-rotate-handle")).toBeInTheDocument();
-    fireEvent.pointerMove(canvas, {
+    firePointerEvent(canvas, "pointermove", {
       clientX: initialPoint.x + 48,
       clientY: initialPoint.y
     });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerup");
 
     const elementGroup = canvas.querySelector("[data-element-id]");
     const rotatedHandle = canvas.querySelector(
-      "[data-element-id] .kizkatt-rotate-handle"
+      "[data-element-overlay-id] .kizkatt-rotate-handle"
     );
     expect(elementGroup?.getAttribute("transform")).not.toContain("rotate(0");
     expect(rotatedHandle).toHaveAttribute("cx", initialCx);
@@ -189,9 +226,9 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     const resizeHandles = Array.from(
       canvas.querySelectorAll("[data-resize-handle]")
@@ -200,15 +237,114 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(resizeHandles).toEqual(["nw", "n", "ne", "e", "se", "s", "sw", "w"]);
   });
 
+  it("keeps active transform cursors after the pointer leaves a handle", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    const resizeHandle = canvas.querySelector("[data-resize-handle='se']");
+    expect(resizeHandle).toBeInTheDocument();
+
+    firePointerEvent(resizeHandle as Element, "pointerdown", {
+      clientX: 160,
+      clientY: 120
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 220, clientY: 160 });
+
+    expect(canvas).toHaveStyle({ cursor: getResizeCursor(0, "se") });
+
+    firePointerEvent(canvas, "pointerup");
+    expect(canvas).toHaveStyle({ cursor: "default" });
+
+    const rotateHandle = canvas.querySelector(
+      "[data-element-overlay-id] .kizkatt-rotate-handle"
+    );
+    const rotatePoint = getCirclePoint(rotateHandle);
+
+    firePointerEvent(rotateHandle as Element, "pointerdown", {
+      clientX: rotatePoint.x,
+      clientY: rotatePoint.y
+    });
+    firePointerEvent(canvas, "pointermove", {
+      clientX: rotatePoint.x + 48,
+      clientY: rotatePoint.y
+    });
+
+    expect(canvas).toHaveStyle({ cursor: "grabbing" });
+
+    firePointerEvent(canvas, "pointerup");
+    expect(canvas).toHaveStyle({ cursor: "default" });
+  });
+
+  it("resizes a single rotated rectangle along its local axes", () => {
+    const angle = Math.PI / 4;
+    const element: KizkattElement = {
+      angle,
+      backgroundColor: "#0b3556",
+      height: 70,
+      id: "rotated-rectangle",
+      opacity: 100,
+      strokeColor: "#2f9e44",
+      strokeStyle: "solid",
+      strokeWidth: 10,
+      type: "rectangle",
+      width: 120,
+      x: 100,
+      y: 100
+    };
+    const xAxis = {
+      x: Math.cos(angle),
+      y: Math.sin(angle)
+    };
+    const yAxis = {
+      x: -Math.sin(angle),
+      y: Math.cos(angle)
+    };
+    const startPoint = getResizeAnchorPoint(element, "sw");
+    const nextPoint = {
+      x: startPoint.x + 6 * xAxis.x - 6 * yAxis.x,
+      y: startPoint.y + 6 * xAxis.y - 6 * yAxis.y
+    };
+
+    storeCanvasState({
+      elements: [element],
+      selectedIds: [element.id]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const resizeHandle = canvas.querySelector("[data-resize-handle='ne']");
+    expect(resizeHandle).toBeInTheDocument();
+
+    firePointerEvent(resizeHandle as Element, "pointerdown", {
+      clientX: startPoint.x,
+      clientY: startPoint.y
+    });
+    firePointerEvent(canvas, "pointermove", {
+      clientX: nextPoint.x,
+      clientY: nextPoint.y
+    });
+
+    const elementRect = canvas.querySelector("[data-element-id] rect");
+
+    expect(Number(elementRect?.getAttribute("width"))).toBeCloseTo(126);
+    expect(Number(elementRect?.getAttribute("height"))).toBeCloseTo(76);
+  });
+
   it("opens color shades and applies transparent and hex colors", () => {
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     const elementRect = canvas.querySelector("[data-element-id] rect");
 
@@ -427,9 +563,9 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     const elementRect = canvas.querySelector("[data-element-id] rect");
 
@@ -575,9 +711,9 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 50 });
-    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 120 });
-    fireEvent.pointerUp(canvas);
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(1);
 
@@ -844,4 +980,3 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
   });
 
 });
-
