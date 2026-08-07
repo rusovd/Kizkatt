@@ -46,22 +46,22 @@
   overflow: visible;
 }
 
-.kizkatt-inline-svg-object [stroke]:not([stroke="none"]) {
+.kizkatt-inline-svg-object.is-style-editing [stroke]:not([stroke="none"]) {
   stroke: var(--kizkatt-inline-svg-stroke) !important;
 }
 
-.kizkatt-inline-svg-object [stroke-width] {
+.kizkatt-inline-svg-object.is-style-editing [stroke-width] {
   stroke-width: var(--kizkatt-inline-svg-stroke-width) !important;
 }
 
-.kizkatt-inline-svg-object [stroke-dasharray] {
+.kizkatt-inline-svg-object.is-style-editing [stroke-dasharray] {
   stroke-dasharray: var(--kizkatt-inline-svg-stroke-dasharray) !important;
 }
 
-.kizkatt-inline-svg-object.is-fill-editing [fill]:not([fill="none"]) {
+.kizkatt-inline-svg-object.is-style-editing.is-fill-editing [fill]:not([fill="none"]) {
   fill: var(--kizkatt-inline-svg-fill) !important;
 }
 
-.kizkatt-inline-svg-object.is-fill-editing :not([fill]) {
+.kizkatt-inline-svg-object.is-style-editing.is-fill-editing :not([fill]) {
   fill: var(--kizkatt-inline-svg-fill);
 }

@@ -25,6 +25,7 @@ export const ENGLISH_TRANSLATIONS = {
   contextMenu: {
     ariaLabel: "Canvas context menu",
     arrowBinding: "Arrow binding",
+    breakApart: "Break apart",
     copy: "Copy",
     copyPng: "Copy to clipboard as PNG",
     copySvg: "Copy as SVG code",
@@ -43,6 +44,7 @@ export const ENGLISH_TRANSLATIONS = {
     zenMode: "Zen mode",
     tooltips: {
       arrowBinding: "Toggle automatic arrow binding",
+      breakApart: "Convert this SVG object back into separate objects",
       copy: "Copy the selected objects",
       copyPng: "Copy the selected drawing area as PNG",
       copySvg: "Copy the selected drawing area as SVG code",

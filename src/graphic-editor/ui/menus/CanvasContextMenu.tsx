@@ -35,11 +35,13 @@ import {
 
 type CanvasContextMenuProps = {
   arrowBinding: boolean;
+  canBreakApart: boolean;
   canCopySelection: boolean;
   canGroup: boolean;
   canUngroup: boolean;
   contextMenu: ContextMenuState | null;
   onCloseAndRun: (action: () => void | Promise<void>) => void;
+  onBreakApart: () => void;
   onCopy: () => void;
   onCopyPng: () => Promise<void>;
   onCopySvg: () => Promise<void>;
@@ -240,11 +242,13 @@ function SubmenuMenuItem<Id extends string>({
 
 export function CanvasContextMenu({
   arrowBinding,
+  canBreakApart,
   canCopySelection,
   canGroup,
   canUngroup,
   contextMenu,
   onCloseAndRun,
+  onBreakApart,
   onCopy,
   onCopyPng,
   onCopySvg,
@@ -537,9 +541,18 @@ export function CanvasContextMenu({
           </MenuButton>
         ))}
       </SubmenuMenuItem>
-      {!viewMode && (canGroup || canUngroup) && (
+      {!viewMode && (canGroup || canUngroup || canBreakApart) && (
         <>
           <div className="kizkatt-context-divider" />
+          {canBreakApart && (
+            <MenuButton
+              icon={UngroupIcon}
+              title={tooltips.breakApart}
+              onClick={() => onCloseAndRun(onBreakApart)}
+            >
+              {strings.contextMenu.breakApart}
+            </MenuButton>
+          )}
           {canGroup && (
             <MenuButton
               icon={GroupIcon}

@@ -55,6 +55,7 @@ export type KizkattElement = {
   text?: string;
   src?: string;
   svgContent?: string;
+  svgUseElementStyle?: boolean;
   svgViewBox?: string;
   bends?: Point[];
   closed?: boolean;

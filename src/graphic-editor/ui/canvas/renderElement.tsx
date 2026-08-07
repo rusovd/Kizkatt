@@ -264,6 +264,7 @@ function getInlineSvgFill(element: KizkattElement) {
 function InlineSvgObject({ element }: { element: KizkattElement }) {
   const fill = getInlineSvgFill(element);
   const shapeProps = getElementShapeProps(element);
+  const useElementStyle = element.svgUseElementStyle ?? true;
   const style = {
     "--kizkatt-inline-svg-fill": fill,
     "--kizkatt-inline-svg-stroke": element.strokeColor,
@@ -276,6 +277,7 @@ function InlineSvgObject({ element }: { element: KizkattElement }) {
     <svg
       className={[
         "kizkatt-inline-svg-object",
+        useElementStyle ? "is-style-editing" : "",
         element.backgroundColor === TRANSPARENT_COLOR ? "" : "is-fill-editing"
       ]
         .filter(Boolean)

@@ -222,6 +222,114 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
       .toBeInTheDocument();
   });
 
+  it("automatically breaks apart Kizkatt SVG exports on paste", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        readText: vi.fn().mockResolvedValue(`
+          <svg class="kizkatt-canvas" role="application" aria-label="Drawing canvas" width="200" height="120" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+            <g>
+              <g data-element-id="exported-rectangle" data-element-type="rectangle">
+                <rect x="10" y="20" width="80" height="40" rx="12" fill="#653b00" stroke="#f08c00" stroke-width="21" />
+              </g>
+              <g data-element-id="exported-image" data-element-type="image">
+                <image href="data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E" x="120" y="20" width="50" height="40" />
+              </g>
+            </g>
+          </svg>
+        `)
+      }
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
+    hoverContextSubmenuItem(screen.getByRole("menuitem", { name: /Paste/ }));
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Paste SVG code as object" })
+    );
+
+    await waitFor(() => {
+      expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(2);
+    });
+
+    const exportedRect = canvas.querySelector(
+      "[data-element-type='rectangle'] > rect"
+    );
+    const image = canvas.querySelector("[data-element-type='image'] > image");
+
+    expect(canvas.querySelector(".kizkatt-inline-svg-object")).not
+      .toBeInTheDocument();
+    expect(exportedRect).toHaveAttribute("stroke", "#f08c00");
+    expect(exportedRect).toHaveAttribute("stroke-width", "21");
+    expect(image).toHaveAttribute(
+      "href",
+      "data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E"
+    );
+  });
+
+  it("breaks apart Kizkatt SVG objects while keeping image children as images", async () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          fillStyle: "solid",
+          fillWeight: 1,
+          height: 120,
+          id: "svg-object",
+          name: "Image 1",
+          opacity: 100,
+          sloppiness: "architect",
+          sloppinessGap: 16,
+          strokeColor: "#1971c2",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          svgContent: `
+            <g>
+              <g data-element-id="exported-rectangle" data-element-type="rectangle">
+                <rect x="10" y="20" width="80" height="40" rx="12" fill="#653b00" stroke="#f08c00" stroke-width="10" />
+              </g>
+              <g data-element-id="exported-image" data-element-type="image">
+                <image href="data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E" x="120" y="20" width="50" height="40" />
+              </g>
+            </g>
+          `,
+          svgUseElementStyle: false,
+          svgViewBox: "0 0 200 120",
+          type: "image",
+          width: 200,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["svg-object"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Break apart" }));
+
+    await waitFor(() => {
+      expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(2);
+    });
+
+    const rectangle = canvas.querySelector(
+      "[data-element-type='rectangle'] > rect"
+    );
+    const image = canvas.querySelector("[data-element-type='image'] > image");
+
+    expect(rectangle).toHaveAttribute("stroke", "#f08c00");
+    expect(rectangle).toHaveAttribute("stroke-width", "10");
+    expect(image).toHaveAttribute(
+      "href",
+      "data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E"
+    );
+  });
+
   it("pastes SVG fragment code from icon snippets", async () => {
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,

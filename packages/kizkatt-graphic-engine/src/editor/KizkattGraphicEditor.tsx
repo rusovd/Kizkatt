@@ -43,6 +43,7 @@ import {
   PASTED_TEXT_CHARACTER_WIDTH,
   PASTED_TEXT_LINE_HEIGHT,
   PASTED_TEXT_MAX_WIDTH,
+  PERCENT_MAX_VALUE,
   PLAIN_TEXT_MIME_TYPE,
   PNG_EXPORT_DPI,
   PNG_EXPORT_PADDING,
@@ -57,7 +58,7 @@ import {
   VIEWPORT_CENTER_DIVISOR,
   ZOOM_STEP
 } from "../config/constants";
-import { createElement, createId } from "../model/element";
+import { createElement, createId, normalizeElement } from "../model/element";
 import {
   createElementName as buildElementName,
   createGroupName,
@@ -134,7 +135,11 @@ const SVG_JSX_ATTRIBUTE_MAP = new Map([
   ["strokeWidth", "stroke-width"]
 ]);
 const SVG_ROOT_CONTENT_ATTRIBUTE_BLOCKLIST = new Set([
+  "aria-label",
+  "class",
   "height",
+  "role",
+  "style",
   "version",
   "viewBox",
   "viewbox",
@@ -143,6 +148,17 @@ const SVG_ROOT_CONTENT_ATTRIBUTE_BLOCKLIST = new Set([
   "xmlns:xlink"
 ]);
 const SVG_URL_ATTRIBUTE_NAMES = new Set(["href", "xlink:href"]);
+const SVG_IMPORT_ELEMENT_TYPES = new Set([
+  "arrow",
+  "diamond",
+  "draw",
+  "ellipse",
+  "image",
+  "line",
+  "rectangle",
+  "text"
+]);
+const SVG_RADIANS_PER_DEGREE = Math.PI / 180;
 
 function getFittedImageSize(width: number, height: number) {
   if (width <= 0 || height <= 0) {
@@ -158,6 +174,13 @@ function getFittedImageSize(width: number, height: number) {
   return {
     height: Math.max(MIN_PIXEL_SIZE, Math.round(height * scale)),
     width: Math.max(MIN_PIXEL_SIZE, Math.round(width * scale))
+  };
+}
+
+function getImageSize(width: number, height: number) {
+  return {
+    height: Math.max(MIN_PIXEL_SIZE, Math.round(height)),
+    width: Math.max(MIN_PIXEL_SIZE, Math.round(width))
   };
 }
 
@@ -187,9 +210,9 @@ function parseSvgViewBox(value: string | null) {
     return null;
   }
 
-  const [, , width, height] = parts;
+  const [x, y, width, height] = parts;
 
-  return width > 0 && height > 0 ? { height, width } : null;
+  return width > 0 && height > 0 ? { height, width, x, y } : null;
 }
 
 function getSvgRoot(document: Document) {
@@ -288,6 +311,9 @@ function parseSvgCode(svgCode: string) {
   [root, ...Array.from(root.querySelectorAll("*"))].forEach(
     normalizeSvgAttributes
   );
+  const isKizkattExport =
+    root.classList.contains("kizkatt-canvas") ||
+    Boolean(root.querySelector("[data-element-id]"));
 
   const viewBoxSize = parseSvgViewBox(root.getAttribute("viewBox"));
   const intrinsicWidth =
@@ -299,16 +325,686 @@ function parseSvgCode(svgCode: string) {
     `0 0 ${intrinsicWidth ?? DEFAULT_IMAGE_SIZE.width} ${
       intrinsicHeight ?? DEFAULT_IMAGE_SIZE.height
     }`;
-  const size = getFittedImageSize(
-    intrinsicWidth ?? DEFAULT_IMAGE_SIZE.width,
-    intrinsicHeight ?? DEFAULT_IMAGE_SIZE.height
-  );
+  const rawWidth = intrinsicWidth ?? DEFAULT_IMAGE_SIZE.width;
+  const rawHeight = intrinsicHeight ?? DEFAULT_IMAGE_SIZE.height;
+  const size = isKizkattExport
+    ? getImageSize(rawWidth, rawHeight)
+    : getFittedImageSize(rawWidth, rawHeight);
 
   return {
     content: getSvgContent(root),
     size,
+    useElementStyle: !isKizkattExport,
     viewBox
   };
+}
+
+function isKizkattSvgCode(svgCode: string) {
+  const document = parseSvgDocument(svgCode);
+  const root = getSvgRoot(document);
+
+  return Boolean(
+    root &&
+      !document.querySelector("parsererror") &&
+      (root.classList.contains("kizkatt-canvas") ||
+        root.querySelector("[data-element-id]"))
+  );
+}
+
+function isBreakApartableSvgElement(element: KizkattElement) {
+  const svgCode = getSvgCodeFromDataUrl(element.src);
+
+  return (
+    element.type === "image" &&
+    (Boolean(element.svgContent && element.svgUseElementStyle === false) ||
+      Boolean(svgCode && isKizkattSvgCode(svgCode)))
+  );
+}
+
+function getSvgCodeFromDataUrl(src?: string) {
+  if (!src?.startsWith("data:image/svg+xml")) {
+    return null;
+  }
+
+  const commaIndex = src.indexOf(",");
+
+  if (commaIndex < 0) {
+    return null;
+  }
+
+  const header = src.slice(0, commaIndex).toLowerCase();
+  const data = src.slice(commaIndex + 1);
+
+  try {
+    return header.includes(";base64")
+      ? window.atob(data)
+      : decodeURIComponent(data);
+  } catch {
+    return null;
+  }
+}
+
+function getBreakApartSvgCode(element: KizkattElement) {
+  if (element.svgContent) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${
+      element.svgViewBox ?? `0 0 ${element.width} ${element.height}`
+    }">${element.svgContent}</svg>`;
+  }
+
+  return getSvgCodeFromDataUrl(element.src);
+}
+
+function getSvgNumber(element: Element, attributeName: string) {
+  return parseSvgLength(element.getAttribute(attributeName));
+}
+
+function getInheritedSvgAttribute(element: Element, attributeName: string) {
+  let currentElement: Element | null = element;
+
+  while (currentElement) {
+    const attributeValue = currentElement.getAttribute(attributeName);
+
+    if (attributeValue !== null) {
+      return attributeValue;
+    }
+
+    currentElement = currentElement.parentElement;
+  }
+
+  return null;
+}
+
+function parseSvgOpacity(value: string | null) {
+  if (!value) {
+    return PERCENT_MAX_VALUE;
+  }
+
+  const parsedValue = Number.parseFloat(value);
+
+  return Number.isFinite(parsedValue)
+    ? Math.max(0, Math.min(PERCENT_MAX_VALUE, parsedValue * PERCENT_MAX_VALUE))
+    : PERCENT_MAX_VALUE;
+}
+
+function getSvgStrokeStyle(element: Element): KizkattElement["strokeStyle"] {
+  const dasharray = getInheritedSvgAttribute(element, "stroke-dasharray");
+
+  if (!dasharray || dasharray === "none") {
+    return "solid";
+  }
+
+  const dashValues = dasharray
+    .split(/[\s,]+/)
+    .map((value) => Number.parseFloat(value))
+    .filter(Number.isFinite);
+
+  if (dashValues.length >= 2 && dashValues[0] <= dashValues[1]) {
+    return "dotted";
+  }
+
+  return "dashed";
+}
+
+function getSvgElementStyle(
+  group: Element,
+  element: Element,
+  fallbackStyle: StyleState
+) {
+  const stroke = getInheritedSvgAttribute(element, "stroke");
+  const fill = getInheritedSvgAttribute(element, "fill");
+  const strokeWidth = getSvgNumber(element, "stroke-width");
+  const secondaryStroke = group.querySelector("[data-sloppiness-stroke]");
+  const primaryElementHasFilter = Boolean(
+    getInheritedSvgAttribute(element, "filter")?.includes("kizkatt-sloppy")
+  );
+  const spacing = secondaryStroke
+    ? Number.parseFloat(
+        secondaryStroke.getAttribute("data-sloppiness-spacing") ?? ""
+      )
+    : null;
+  const sloppiness =
+    secondaryStroke && primaryElementHasFilter
+      ? "cartoonist"
+      : secondaryStroke
+        ? "double"
+        : primaryElementHasFilter
+          ? "artist"
+          : "architect";
+
+  return {
+    backgroundColor:
+      fill && fill !== "none" && !fill.startsWith("url(")
+        ? fill
+        : TRANSPARENT_COLOR,
+    fillStyle: DEFAULT_FILL_STYLE,
+    fillWeight: DEFAULT_FILL_WEIGHT,
+    opacity: parseSvgOpacity(getInheritedSvgAttribute(element, "opacity")),
+    sloppiness,
+    sloppinessGap:
+      Number.isFinite(spacing) && strokeWidth
+        ? Math.max(0, (spacing as number) - strokeWidth)
+        : fallbackStyle.sloppinessGap,
+    strokeColor: stroke && stroke !== "none" ? stroke : fallbackStyle.strokeColor,
+    strokeStyle: getSvgStrokeStyle(element),
+    strokeWidth: strokeWidth ?? fallbackStyle.strokeWidth
+  };
+}
+
+function parseSvgRotation(transform: string | null) {
+  const match = transform?.match(
+    /rotate\(\s*(-?\d+(?:\.\d+)?)(?:[\s,]+(-?\d+(?:\.\d+)?)[\s,]+(-?\d+(?:\.\d+)?))?/
+  );
+
+  if (!match) {
+    return { angle: 0, center: null };
+  }
+
+  return {
+    angle: Number.parseFloat(match[1]) * SVG_RADIANS_PER_DEGREE,
+    center:
+      match[2] && match[3]
+        ? { x: Number.parseFloat(match[2]), y: Number.parseFloat(match[3]) }
+        : null
+  };
+}
+
+function rotatePoint(point: Point, center: Point, angle: number): Point {
+  if (angle === 0) {
+    return point;
+  }
+
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+
+  return {
+    x: center.x + dx * cos - dy * sin,
+    y: center.y + dx * sin + dy * cos
+  };
+}
+
+function getElementCenterPoint(element: KizkattElement) {
+  return {
+    x: element.x + element.width / VIEWPORT_CENTER_DIVISOR,
+    y: element.y + element.height / VIEWPORT_CENTER_DIVISOR
+  };
+}
+
+function mapSvgPointToElement(
+  point: Point,
+  sourceElement: KizkattElement,
+  viewBox: Bounds
+) {
+  const mappedPoint = {
+    x: sourceElement.x + ((point.x - viewBox.x) / viewBox.width) * sourceElement.width,
+    y:
+      sourceElement.y +
+      ((point.y - viewBox.y) / viewBox.height) * sourceElement.height
+  };
+
+  return rotatePoint(mappedPoint, getElementCenterPoint(sourceElement), sourceElement.angle);
+}
+
+function mapSvgBoundsToElement(
+  bounds: Bounds,
+  sourceElement: KizkattElement,
+  viewBox: Bounds,
+  angle = 0
+) {
+  const width = (bounds.width / viewBox.width) * sourceElement.width;
+  const height = (bounds.height / viewBox.height) * sourceElement.height;
+  const center = mapSvgPointToElement(
+    {
+      x: bounds.x + bounds.width / VIEWPORT_CENTER_DIVISOR,
+      y: bounds.y + bounds.height / VIEWPORT_CENTER_DIVISOR
+    },
+    sourceElement,
+    viewBox
+  );
+
+  return {
+    angle: angle + sourceElement.angle,
+    height,
+    width,
+    x: center.x - width / VIEWPORT_CENTER_DIVISOR,
+    y: center.y - height / VIEWPORT_CENTER_DIVISOR
+  };
+}
+
+function getPrimarySvgShape(group: Element, selector: string) {
+  return Array.from(group.querySelectorAll(selector)).find(
+    (element) => !element.hasAttribute("data-sloppiness-stroke")
+  );
+}
+
+function parseSvgPoints(value: string | null) {
+  if (!value) {
+    return [];
+  }
+
+  const values = value
+    .trim()
+    .split(/[\s,]+/)
+    .map((part) => Number.parseFloat(part));
+  const points: Point[] = [];
+
+  for (let index = 0; index < values.length - 1; index += 2) {
+    if (Number.isFinite(values[index]) && Number.isFinite(values[index + 1])) {
+      points.push({ x: values[index], y: values[index + 1] });
+    }
+  }
+
+  return points;
+}
+
+function getPointsBounds(points: Point[]) {
+  if (points.length === 0) {
+    return null;
+  }
+
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
+
+  return {
+    height: maxY - minY,
+    width: maxX - minX,
+    x: minX,
+    y: minY
+  };
+}
+
+function getElementTypeFromSvgGroup(group: Element) {
+  const type = group.getAttribute("data-element-type");
+
+  return type && SVG_IMPORT_ELEMENT_TYPES.has(type) ? type : null;
+}
+
+function getImportedElementName(
+  type: KizkattElement["type"],
+  existingElements: KizkattElement[],
+  importedElements: KizkattElement[],
+  naming?: ElementNamingConfig
+) {
+  return buildElementName(type, [...existingElements, ...importedElements], naming);
+}
+
+function getImportedGroup(
+  group: Element,
+  groupIdMap: Map<string, string>,
+  createGroupId: () => string
+) {
+  const oldGroupId = group.getAttribute("data-group-id");
+
+  if (!oldGroupId) {
+    return {};
+  }
+
+  const groupId = groupIdMap.get(oldGroupId) ?? createGroupId();
+  groupIdMap.set(oldGroupId, groupId);
+
+  return {
+    groupId,
+    groupName: group.getAttribute("data-group-name") ?? undefined
+  };
+}
+
+function createImportedElement(
+  type: KizkattElement["type"],
+  group: Element,
+  shape: Element,
+  geometry: Bounds & { angle?: number },
+  sourceElement: KizkattElement,
+  viewBox: Bounds,
+  existingElements: KizkattElement[],
+  importedElements: KizkattElement[],
+  groupIdMap: Map<string, string>,
+  fallbackStyle: StyleState,
+  naming?: ElementNamingConfig
+) {
+  return normalizeElement({
+    ...mapSvgBoundsToElement(geometry, sourceElement, viewBox, geometry.angle),
+    ...getSvgElementStyle(group, shape, fallbackStyle),
+    ...getImportedGroup(group, groupIdMap, createId),
+    edgeStyle:
+      type === "rectangle" && (getSvgNumber(shape, "rx") ?? 0) <= 0
+        ? "sharp"
+        : "round",
+    id: createId(),
+    name: getImportedElementName(type, existingElements, importedElements, naming),
+    type
+  });
+}
+
+function getSvgGroupGeometry(group: Element, type: KizkattElement["type"]) {
+  const rotation = parseSvgRotation(group.getAttribute("transform"));
+
+  if (type === "rectangle") {
+    const rect = getPrimarySvgShape(group, "rect");
+
+    if (!rect) {
+      return null;
+    }
+
+    const x = getSvgNumber(rect, "x") ?? 0;
+    const y = getSvgNumber(rect, "y") ?? 0;
+    const width = getSvgNumber(rect, "width");
+    const height = getSvgNumber(rect, "height");
+
+    return width && height
+      ? { geometry: { angle: rotation.angle, height, width, x, y }, shape: rect }
+      : null;
+  }
+
+  if (type === "ellipse") {
+    const ellipse = getPrimarySvgShape(group, "ellipse");
+
+    if (!ellipse) {
+      return null;
+    }
+
+    const cx = getSvgNumber(ellipse, "cx");
+    const cy = getSvgNumber(ellipse, "cy");
+    const rx = getSvgNumber(ellipse, "rx");
+    const ry = getSvgNumber(ellipse, "ry");
+
+    return cx !== null && cy !== null && rx && ry
+      ? {
+          geometry: {
+            angle: rotation.angle,
+            height: ry * VIEWPORT_CENTER_DIVISOR,
+            width: rx * VIEWPORT_CENTER_DIVISOR,
+            x: cx - rx,
+            y: cy - ry
+          },
+          shape: ellipse
+        }
+      : null;
+  }
+
+  if (type === "diamond") {
+    const polygon = getPrimarySvgShape(group, "polygon");
+    const bounds = getPointsBounds(parseSvgPoints(polygon?.getAttribute("points") ?? null));
+
+    return polygon && bounds
+      ? { geometry: { ...bounds, angle: rotation.angle }, shape: polygon }
+      : null;
+  }
+
+  if (type === "image") {
+    const image = getPrimarySvgShape(group, "image");
+    const nestedSvg = getPrimarySvgShape(group, "svg");
+    const shape = image ?? nestedSvg;
+
+    if (!shape) {
+      return null;
+    }
+
+    const x = getSvgNumber(shape, "x") ?? 0;
+    const y = getSvgNumber(shape, "y") ?? 0;
+    const width = getSvgNumber(shape, "width");
+    const height = getSvgNumber(shape, "height");
+
+    return width && height
+      ? { geometry: { angle: rotation.angle, height, width, x, y }, shape }
+      : null;
+  }
+
+  return null;
+}
+
+function createImportedLinearElement(
+  type: "line" | "arrow",
+  group: Element,
+  sourceElement: KizkattElement,
+  viewBox: Bounds,
+  existingElements: KizkattElement[],
+  importedElements: KizkattElement[],
+  groupIdMap: Map<string, string>,
+  fallbackStyle: StyleState,
+  naming?: ElementNamingConfig
+) {
+  const line = getPrimarySvgShape(group, "line");
+
+  if (!line) {
+    return null;
+  }
+
+  const x1 = getSvgNumber(line, "x1");
+  const y1 = getSvgNumber(line, "y1");
+  const x2 = getSvgNumber(line, "x2");
+  const y2 = getSvgNumber(line, "y2");
+
+  if (x1 === null || y1 === null || x2 === null || y2 === null) {
+    return null;
+  }
+
+  const rotation = parseSvgRotation(group.getAttribute("transform"));
+  const fallbackCenter = {
+    x: (x1 + x2) / VIEWPORT_CENTER_DIVISOR,
+    y: (y1 + y2) / VIEWPORT_CENTER_DIVISOR
+  };
+  const start = mapSvgPointToElement(
+    rotatePoint({ x: x1, y: y1 }, rotation.center ?? fallbackCenter, rotation.angle),
+    sourceElement,
+    viewBox
+  );
+  const end = mapSvgPointToElement(
+    rotatePoint({ x: x2, y: y2 }, rotation.center ?? fallbackCenter, rotation.angle),
+    sourceElement,
+    viewBox
+  );
+
+  return normalizeElement({
+    ...getSvgElementStyle(group, line, fallbackStyle),
+    ...getImportedGroup(group, groupIdMap, createId),
+    edgeStyle: "round",
+    height: end.y - start.y,
+    id: createId(),
+    name: getImportedElementName(type, existingElements, importedElements, naming),
+    type,
+    width: end.x - start.x,
+    x: start.x,
+    y: start.y,
+    angle: 0
+  });
+}
+
+function createImportedImageElement(
+  group: Element,
+  shape: Element,
+  geometry: Bounds & { angle?: number },
+  sourceElement: KizkattElement,
+  viewBox: Bounds,
+  existingElements: KizkattElement[],
+  importedElements: KizkattElement[],
+  groupIdMap: Map<string, string>,
+  fallbackStyle: StyleState,
+  naming?: ElementNamingConfig
+) {
+  const mappedGeometry = mapSvgBoundsToElement(
+    geometry,
+    sourceElement,
+    viewBox,
+    geometry.angle
+  );
+  const href =
+    shape.getAttribute("href") ?? shape.getAttribute("xlink:href") ?? undefined;
+  const nestedSvg = shape.tagName.toLowerCase() === "svg" ? (shape as SVGSVGElement) : null;
+
+  return normalizeElement({
+    ...mappedGeometry,
+    ...getSvgElementStyle(group, shape, fallbackStyle),
+    ...getImportedGroup(group, groupIdMap, createId),
+    backgroundColor: TRANSPARENT_COLOR,
+    id: createId(),
+    name: getImportedElementName("image", existingElements, importedElements, naming),
+    src: href,
+    svgContent: nestedSvg ? nestedSvg.innerHTML : undefined,
+    svgUseElementStyle: nestedSvg
+      ? nestedSvg.classList.contains("is-style-editing")
+      : undefined,
+    svgViewBox: nestedSvg?.getAttribute("viewBox") ?? undefined,
+    type: "image"
+  });
+}
+
+function createImportedTextElement(
+  group: Element,
+  sourceElement: KizkattElement,
+  viewBox: Bounds,
+  existingElements: KizkattElement[],
+  importedElements: KizkattElement[],
+  groupIdMap: Map<string, string>,
+  fallbackStyle: StyleState,
+  naming?: ElementNamingConfig
+) {
+  const text = getPrimarySvgShape(group, "text");
+
+  if (!text) {
+    return null;
+  }
+
+  const x = getSvgNumber(text, "x") ?? 0;
+  const y = getSvgNumber(text, "y") ?? 0;
+  const point = mapSvgPointToElement({ x, y }, sourceElement, viewBox);
+
+  return normalizeElement({
+    ...getSvgElementStyle(group, text, fallbackStyle),
+    ...getImportedGroup(group, groupIdMap, createId),
+    angle: sourceElement.angle,
+    height: TEXT_ELEMENT_DEFAULT_HEIGHT,
+    id: createId(),
+    name: getImportedElementName("text", existingElements, importedElements, naming),
+    text: text.textContent ?? "",
+    type: "text",
+    width: TEXT_ELEMENT_DEFAULT_WIDTH,
+    x: point.x,
+    y: point.y - TEXT_ELEMENT_DEFAULT_HEIGHT
+  });
+}
+
+function breakApartSvgElement(
+  sourceElement: KizkattElement,
+  existingElements: KizkattElement[],
+  fallbackStyle: StyleState,
+  naming?: ElementNamingConfig
+) {
+  const svgCode = getBreakApartSvgCode(sourceElement);
+
+  if (!svgCode) {
+    return [];
+  }
+
+  const document = parseSvgDocument(svgCode);
+  const root = getSvgRoot(document);
+
+  if (!root || document.querySelector("parsererror")) {
+    return [];
+  }
+
+  const viewBox = parseSvgViewBox(root.getAttribute("viewBox")) ?? {
+    height: sourceElement.height,
+    width: sourceElement.width,
+    x: 0,
+    y: 0
+  };
+  const groups = Array.from(root.querySelectorAll("[data-element-id]")).filter(
+    (group) => !group.parentElement?.closest("[data-element-id]")
+  );
+  const importedElements: KizkattElement[] = [];
+  const groupIdMap = new Map<string, string>();
+
+  groups.forEach((group) => {
+    const type = getElementTypeFromSvgGroup(group);
+
+    if (!type || type === "draw") {
+      return;
+    }
+
+    if (type === "line" || type === "arrow") {
+      const importedLinearElement = createImportedLinearElement(
+        type,
+        group,
+        sourceElement,
+        viewBox,
+        existingElements,
+        importedElements,
+        groupIdMap,
+        fallbackStyle,
+        naming
+      );
+
+      if (importedLinearElement) {
+        importedElements.push(importedLinearElement);
+      }
+      return;
+    }
+
+    if (type === "text") {
+      const importedTextElement = createImportedTextElement(
+        group,
+        sourceElement,
+        viewBox,
+        existingElements,
+        importedElements,
+        groupIdMap,
+        fallbackStyle,
+        naming
+      );
+
+      if (importedTextElement) {
+        importedElements.push(importedTextElement);
+      }
+      return;
+    }
+
+    const geometry = getSvgGroupGeometry(group, type);
+
+    if (!geometry) {
+      return;
+    }
+
+    if (type === "image") {
+      importedElements.push(
+        createImportedImageElement(
+          group,
+          geometry.shape,
+          geometry.geometry,
+          sourceElement,
+          viewBox,
+          existingElements,
+          importedElements,
+          groupIdMap,
+          fallbackStyle,
+          naming
+        )
+      );
+      return;
+    }
+
+    importedElements.push(
+      createImportedElement(
+        type,
+        group,
+        geometry.shape,
+        geometry.geometry,
+        sourceElement,
+        viewBox,
+        existingElements,
+        importedElements,
+        groupIdMap,
+        fallbackStyle,
+        naming
+      )
+    );
+  });
+
+  return importedElements;
 }
 
 function inflateBounds(bounds: Bounds, padding: number) {
@@ -377,11 +1073,13 @@ export type ToolbarProps = {
 
 export type CanvasContextMenuProps = {
   arrowBinding: boolean;
+  canBreakApart: boolean;
   canCopySelection: boolean;
   canGroup: boolean;
   canUngroup: boolean;
   contextMenu: ContextMenuState | null;
   onCloseAndRun: (action: () => void | Promise<void>) => void;
+  onBreakApart: () => void;
   onCopy: () => void;
   onCopyPng: () => Promise<void>;
   onCopySvg: () => Promise<void>;
@@ -648,6 +1346,9 @@ export function KizkattGraphicEditor({
   );
   const canCopySelection =
     selectedElements.length > EMPTY_COLLECTION_LENGTH;
+  const canBreakApart = !viewMode && selectedElements.some(
+    isBreakApartableSvgElement
+  );
   const editingTextElement = canvasState.elements.find(
     (element) => element.id === editingTextElementId && element.type === "text"
   );
@@ -902,9 +1603,25 @@ export function KizkattGraphicEditor({
         height: parsedSvg.size.height,
         name: buildElementName("image", elements, naming),
         svgContent: parsedSvg.content,
+        svgUseElementStyle: parsedSvg.useElementStyle,
         svgViewBox: parsedSvg.viewBox,
         width: parsedSvg.size.width
       };
+      const importedElements = parsedSvg.useElementStyle
+        ? []
+        : breakApartSvgElement(nextElement, elements, nextElement, naming);
+
+      if (importedElements.length > EMPTY_COLLECTION_LENGTH) {
+        commitState({
+          elements: [...elements, ...importedElements],
+          selectedBend: undefined,
+          selectedIds: importedElements.map((element) => element.id)
+        });
+        setPendingImageSrc(null);
+        setTool("select");
+
+        return true;
+      }
 
       commitState({
         elements: [...elements, nextElement],
@@ -1018,6 +1735,49 @@ export function KizkattGraphicEditor({
       selectedIds
     });
   }, [canUngroup, canvasState, commitState]);
+
+  const breakApartSelected = useCallback(() => {
+    if (!canBreakApart) {
+      return;
+    }
+
+    const importedElementsBySourceId = new Map<string, KizkattElement[]>();
+
+    selectedElements.forEach((element) => {
+      if (!isBreakApartableSvgElement(element)) {
+        return;
+      }
+
+      const importedElements = breakApartSvgElement(
+        element,
+        canvasState.elements,
+        element,
+        naming
+      );
+
+      if (importedElements.length > EMPTY_COLLECTION_LENGTH) {
+        importedElementsBySourceId.set(element.id, importedElements);
+      }
+    });
+
+    if (importedElementsBySourceId.size === EMPTY_COLLECTION_LENGTH) {
+      return;
+    }
+
+    const nextElements = canvasState.elements.flatMap(
+      (element) => importedElementsBySourceId.get(element.id) ?? [element]
+    );
+    const nextSelectedIds = Array.from(importedElementsBySourceId.values())
+      .flat()
+      .map((element) => element.id);
+
+    commitState({
+      elements: nextElements,
+      selectedBend: undefined,
+      selectedIds: nextSelectedIds
+    });
+    setEditingTextElementId(null);
+  }, [canBreakApart, canvasState.elements, commitState, naming, selectedElements]);
 
   const copySvgToClipboard = async () => {
     const svg = svgRef.current;
@@ -1626,11 +2386,13 @@ export function KizkattGraphicEditor({
 
       <CanvasContextMenu
         arrowBinding={arrowBinding}
+        canBreakApart={canBreakApart}
         canCopySelection={canCopySelection}
         canGroup={canGroup}
         canUngroup={canUngroup}
         contextMenu={contextMenu}
         onCloseAndRun={runContextMenuAction}
+        onBreakApart={breakApartSelected}
         onCopy={copySelected}
         onCopyPng={copyPngToClipboard}
         onCopySvg={copySvgToClipboard}
