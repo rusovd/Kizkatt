@@ -24,6 +24,8 @@ export {
   getElementIdsInSelectionArea
 } from "./selection";
 export { snapPointToElements, snapPointToGrid } from "./snapping";
+export { transformSvgPathData } from "./svgPathData";
+export type { TransformedSvgPathData } from "./svgPathData";
 export {
   getResizeAnchorPoint,
   getResizeCursor,

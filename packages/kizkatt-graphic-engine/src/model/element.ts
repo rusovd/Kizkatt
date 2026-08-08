@@ -48,6 +48,14 @@ export function normalizeElement(element: KizkattElement): KizkattElement {
   }
 
   if (next.type === "draw") {
+    if (next.pathData) {
+      return {
+        ...next,
+        height: Math.max(MIN_ELEMENT_SIZE, next.height),
+        width: Math.max(MIN_ELEMENT_SIZE, next.width)
+      };
+    }
+
     const points = next.points ?? [];
 
     if (points.length === 0) {

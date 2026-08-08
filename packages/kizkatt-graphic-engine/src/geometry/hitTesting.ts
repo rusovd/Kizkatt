@@ -1,4 +1,4 @@
-import { MIN_ELEMENT_SIZE } from "../config/constants";
+import { MIN_ELEMENT_SIZE, TRANSPARENT_COLOR } from "../config/constants";
 import type { KizkattElement, Point } from "../model/types";
 import { getElementBounds } from "./bounds";
 import { getLinearElementPoints } from "./linearElements";
@@ -26,6 +26,13 @@ function getElementHit(element: KizkattElement, point: Point) {
 
   if (element.type === "draw") {
     const points = element.points ?? [];
+    const fill =
+      Boolean(element.pathData && element.closed) &&
+      element.backgroundColor !== TRANSPARENT_COLOR &&
+      localPoint.x >= bounds.x &&
+      localPoint.x <= bounds.x + bounds.width &&
+      localPoint.y >= bounds.y &&
+      localPoint.y <= bounds.y + bounds.height;
     const stroke = points.some((pointInPath, index) => {
       if (index === 0) {
         return false;
@@ -42,7 +49,7 @@ function getElementHit(element: KizkattElement, point: Point) {
       );
     });
 
-    return { fill: false, stroke };
+    return { fill, stroke };
   }
 
   if (element.type === "line" || element.type === "arrow") {

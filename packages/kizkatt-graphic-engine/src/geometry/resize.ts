@@ -11,6 +11,7 @@ import {
   getElementCenter,
   normalizeDegrees
 } from "./primitives";
+import { transformSvgPathData } from "./svgPathData";
 
 type ResizeHandleConfig = {
   id: ResizeHandle;
@@ -45,6 +46,26 @@ function scaleLocalPoint(point: Point, scaleX: number, scaleY: number) {
     x: point.x * scaleX,
     y: point.y * scaleY
   };
+}
+
+function scalePathData(
+  pathData: string | undefined,
+  scaleX: number,
+  scaleY: number,
+  transformPoint: (point: Point) => Point = (point) =>
+    scaleLocalPoint(point, scaleX, scaleY)
+) {
+  if (!pathData) {
+    return undefined;
+  }
+
+  return transformSvgPathData(pathData, {
+    transformArcRadii: (radii) => ({
+      rx: radii.rx * Math.abs(scaleX),
+      ry: radii.ry * Math.abs(scaleY)
+    }),
+    transformPoint
+  })?.pathData;
 }
 
 function getElementCornerPoint(
@@ -142,6 +163,7 @@ export function resizeElementFromHandle(
         : undefined,
     curve: undefined,
     height: nextHeight,
+    pathData: scalePathData(element.pathData, scaleX, scaleY, scaleElementLocalPoint),
     points: element.points?.map(scaleElementLocalPoint),
     width: nextWidth,
     x: center.x - nextWidth / 2,
@@ -220,6 +242,7 @@ export function resizeElementsFromSelectionHandle(
           : undefined,
       curve: undefined,
       height: Math.max(MIN_ELEMENT_SIZE, element.height * scaleY),
+      pathData: scalePathData(element.pathData, scaleX, scaleY),
       points: element.points?.map((localPoint) =>
         scaleLocalPoint(localPoint, scaleX, scaleY)
       ),
