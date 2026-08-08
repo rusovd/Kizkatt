@@ -19,5 +19,7 @@ export {
   rotatePointAroundPoint,
   rotateElementsAroundPoint,
   selectionBounds,
-  snapPointToElements
+  snapPointToElements,
+  transformSvgPathData
 } from "kizkatt-graphic-engine";
+export type { TransformedSvgPathData } from "kizkatt-graphic-engine";

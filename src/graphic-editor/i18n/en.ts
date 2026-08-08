@@ -89,9 +89,6 @@ export const ENGLISH_TRANSLATIONS = {
     open: "Open",
     pickCanvasBackground: "Pick canvas background",
     reset: "Reset",
-    shortcuts: {
-      open: "Ctrl+O"
-    },
     theme: "Theme",
     uiScale: "UI scale",
     tooltips: {

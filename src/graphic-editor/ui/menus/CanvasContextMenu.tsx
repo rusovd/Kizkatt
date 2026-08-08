@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  formatKeyboardShortcut,
   getStoredContextMenuDefaults,
   storeContextMenuDefaults
 } from "kizkatt-graphic-engine";
@@ -299,13 +300,17 @@ export function CanvasContextMenu({
     setOpenSubmenu(null);
   }, [contextMenu?.x, contextMenu?.y]);
 
+  const copyShortcut = formatKeyboardShortcut("c");
+  const pasteShortcut = formatKeyboardShortcut("v");
+  const selectAllShortcut = formatKeyboardShortcut("a");
+
   const pasteActions: Array<ContextMenuAction<ContextMenuPasteDefault>> = [
     {
       icon: PasteIcon,
       id: "clipboard",
       label: strings.contextMenu.paste,
       run: onPaste,
-      shortcut: "Ctrl+V",
+      shortcut: pasteShortcut,
       title: tooltips.paste
     },
     {
@@ -323,7 +328,7 @@ export function CanvasContextMenu({
       id: "selection",
       label: strings.contextMenu.copy,
       run: onCopy,
-      shortcut: "Ctrl+C",
+      shortcut: copyShortcut,
       title: tooltips.copy
     },
     {
@@ -513,7 +518,7 @@ export function CanvasContextMenu({
       <MenuButton
         icon={SelectAllIcon}
         title={tooltips.selectAll}
-        shortcut="Ctrl+A"
+        shortcut={selectAllShortcut}
         onClick={() => onCloseAndRun(onSelectAll)}
       >
         {strings.contextMenu.selectAll}

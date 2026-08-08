@@ -556,14 +556,18 @@ function SecondaryFreehandStroke({ element }: { element: KizkattElement }) {
   }
 
   const offset = getDoubleStrokeOffset(element);
-  const d = (element.points ?? [])
-    .map((point, index) => {
-      const command =
-        index === ZERO_COORDINATE ? SVG_MOVE_COMMAND : SVG_LINE_COMMAND;
+  const d = element.pathData
+    ? getFreehandPath({ ...element, y: element.y + offset })
+    : (element.points ?? [])
+        .map((point, index) => {
+          const command =
+            index === ZERO_COORDINATE ? SVG_MOVE_COMMAND : SVG_LINE_COMMAND;
 
-      return `${command} ${element.x + point.x} ${element.y + point.y + offset}`;
-    })
-    .join(SVG_COMMAND_SEPARATOR);
+          return `${command} ${element.x + point.x} ${
+            element.y + point.y + offset
+          }`;
+        })
+        .join(SVG_COMMAND_SEPARATOR);
 
   return (
     <path

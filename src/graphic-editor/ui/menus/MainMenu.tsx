@@ -6,6 +6,7 @@ import {
   PERCENT_MAX_VALUE,
   UI_SCALE_STEP
 } from "../../config/constants";
+import { formatKeyboardShortcut } from "../../platform/keyboard";
 import type { KizkattTheme } from "../../model/types";
 import {
   ExportIcon,
@@ -87,7 +88,7 @@ export function MainMenu({
               {OpenIcon}
               <span>{strings.mainMenu.open}</span>
             </span>
-            <kbd>{strings.mainMenu.shortcuts.open}</kbd>
+            <kbd>{formatKeyboardShortcut("o")}</kbd>
           </button>
           <button
             type="button"

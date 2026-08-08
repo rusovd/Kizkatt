@@ -1,5 +1,5 @@
 import { PERCENT_MAX_VALUE } from "../../config/constants";
-import { getElementCenter } from "../../geometry";
+import { getElementCenter, transformSvgPathData } from "../../geometry";
 import type { KizkattElement } from "../../model/types";
 import {
   DASH_VALUE_DECIMALS,
@@ -87,6 +87,17 @@ export function getElementShapeProps(element: KizkattElement) {
 }
 
 export function getFreehandPath(element: KizkattElement) {
+  if (element.pathData) {
+    return (
+      transformSvgPathData(element.pathData, {
+        transformPoint: (point) => ({
+          x: element.x + point.x,
+          y: element.y + point.y
+        })
+      })?.pathData ?? ""
+    );
+  }
+
   return (element.points ?? [])
     .map((point, index) => {
       const command = index === 0 ? "M" : "L";
