@@ -1,5 +1,9 @@
 import { describe, it } from "vitest";
 import {
+  formatKeyboardShortcut,
+  isPrimaryShortcutModifierPressed
+} from "kizkatt-graphic-engine";
+import {
   chooseGroupedTool,
   KizkattGraphicEditor,
   expect,
@@ -18,6 +22,34 @@ function hoverContextSubmenuItem(element: Element) {
 }
 
 describe("KizkattGraphicEditor linear tools and context menus", () => {
+  it("formats editing shortcuts for the current keyboard platform", () => {
+    expect(formatKeyboardShortcut("c", { platform: "MacIntel" })).toBe("⌘C");
+    expect(
+      formatKeyboardShortcut("z", { platform: "MacIntel", shift: true })
+    ).toBe("⇧⌘Z");
+    expect(formatKeyboardShortcut("c", { platform: "Win32" })).toBe("Ctrl+C");
+    expect(formatKeyboardShortcut("z", { platform: "Linux x86_64", shift: true }))
+      .toBe("Ctrl+Shift+Z");
+    expect(
+      isPrimaryShortcutModifierPressed(
+        { altKey: false, ctrlKey: false, key: "z", metaKey: true },
+        "MacIntel"
+      )
+    ).toBe(true);
+    expect(
+      isPrimaryShortcutModifierPressed(
+        { altKey: false, ctrlKey: true, key: "z", metaKey: false },
+        "MacIntel"
+      )
+    ).toBe(false);
+    expect(
+      isPrimaryShortcutModifierPressed(
+        { altKey: false, ctrlKey: true, key: "z", metaKey: false },
+        "Win32"
+      )
+    ).toBe(true);
+  });
+
   it("inserts bend points on straight lines from the midpoint handle", () => {
     render(<KizkattGraphicEditor />);
 
