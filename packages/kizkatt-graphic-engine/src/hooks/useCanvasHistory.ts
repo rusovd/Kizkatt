@@ -3,13 +3,26 @@ import { useCallback, useState } from "react";
 import { HISTORY_LIMIT } from "../config/constants";
 import type { CanvasState } from "../model/types";
 
+type CommitStateOptions = {
+  replace?: boolean;
+};
+
 export function useCanvasHistory(initialState: CanvasState) {
   const [history, setHistory] = useState<CanvasState[]>([initialState]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const canvasState = history[historyIndex];
 
   const commitState = useCallback(
-    (nextState: CanvasState) => {
+    (nextState: CanvasState, options: CommitStateOptions = {}) => {
+      if (options.replace) {
+        setHistory((previousHistory) =>
+          previousHistory.map((state, index) =>
+            index === historyIndex ? nextState : state
+          )
+        );
+        return;
+      }
+
       setHistory((previousHistory) => {
         const activeHistory = previousHistory.slice(0, historyIndex + 1);
         return [...activeHistory, nextState].slice(-HISTORY_LIMIT);

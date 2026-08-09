@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
 import {
@@ -74,7 +74,11 @@ type StylePanelProps = {
   onAction: (action: "delete" | "duplicate" | "link") => void;
   onClosedPathChange: (closed: boolean) => void;
   onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
-  onStyleChange: (patch: Partial<StyleState>) => void;
+  onStyleChange: (
+    patch: Partial<StyleState>,
+    options?: { transient?: boolean }
+  ) => void;
+  onStyleChangeEnd: () => void;
   selectedElements: KizkattElement[];
   style: StyleState;
   theme: KizkattTheme;
@@ -434,6 +438,7 @@ export function StylePanel({
   onClosedPathChange,
   onLayerAction,
   onStyleChange,
+  onStyleChangeEnd,
   selectedElements,
   style,
   theme
@@ -446,7 +451,30 @@ export function StylePanel({
   const [activeFloatingPanel, setActiveFloatingPanelSource] = useState<
     string | null
   >(null);
+  const continuousStyleChangeActiveRef = useRef(false);
   const closeColorPopover = () => setColorPopover(null);
+
+  const beginContinuousStyleChange = () => {
+    continuousStyleChangeActiveRef.current = true;
+  };
+
+  const endContinuousStyleChange = () => {
+    if (!continuousStyleChangeActiveRef.current) {
+      return;
+    }
+
+    continuousStyleChangeActiveRef.current = false;
+    onStyleChangeEnd();
+  };
+
+  const applyContinuousStyleChange = (patch: Partial<StyleState>) => {
+    onStyleChange(
+      patch,
+      continuousStyleChangeActiveRef.current
+        ? { transient: true }
+        : undefined
+    );
+  };
 
   useActiveFloatingPanel(setActiveFloatingPanelSource);
   useCloseOtherFloatingPanels(
@@ -526,6 +554,9 @@ export function StylePanel({
   const updateStrokeWidth = (value: string) => {
     onStyleChange({ strokeWidth: normalizeStrokeWidth(value) });
   };
+  const updateStrokeWidthContinuously = (value: string) => {
+    applyContinuousStyleChange({ strokeWidth: normalizeStrokeWidth(value) });
+  };
   const updateFillWeight = (value: string) => {
     onStyleChange({ fillWeight: normalizeFillWeight(value) });
   };
@@ -534,6 +565,9 @@ export function StylePanel({
   };
   const updateOpacity = (value: string) => {
     onStyleChange({ opacity: normalizeOpacity(value) });
+  };
+  const updateOpacityContinuously = (value: string) => {
+    applyContinuousStyleChange({ opacity: normalizeOpacity(value) });
   };
   const backgroundControlDisabled = isBackgroundControlDisabled(
     activeTool,
@@ -660,7 +694,13 @@ export function StylePanel({
           min={MIN_STROKE_WIDTH}
           max={MAX_STROKE_WIDTH}
           value={style.strokeWidth ?? DEFAULT_STROKE_WIDTH}
-          onChange={(event) => updateStrokeWidth(event.target.value)}
+          onBlur={endContinuousStyleChange}
+          onChange={(event) => updateStrokeWidthContinuously(event.target.value)}
+          onKeyDown={beginContinuousStyleChange}
+          onKeyUp={endContinuousStyleChange}
+          onPointerCancel={endContinuousStyleChange}
+          onPointerDown={beginContinuousStyleChange}
+          onPointerUp={endContinuousStyleChange}
         />
         <input
           aria-label={strings.stylePanel.strokeWidthValue}
@@ -755,7 +795,13 @@ export function StylePanel({
           min={MIN_OPACITY}
           max={MAX_OPACITY}
           value={style.opacity ?? DEFAULT_OPACITY}
-          onChange={(event) => updateOpacity(event.target.value)}
+          onBlur={endContinuousStyleChange}
+          onChange={(event) => updateOpacityContinuously(event.target.value)}
+          onKeyDown={beginContinuousStyleChange}
+          onKeyUp={endContinuousStyleChange}
+          onPointerCancel={endContinuousStyleChange}
+          onPointerDown={beginContinuousStyleChange}
+          onPointerUp={endContinuousStyleChange}
         />
         <input
           aria-label={strings.stylePanel.opacityValue}

@@ -312,6 +312,30 @@ describe("KizkattGraphicEditor shell", () => {
       .toBeInTheDocument();
   });
 
+  it("closes toolbar submenus when clicking outside the toolbar", () => {
+    render(<KizkattGraphicEditor />);
+
+    const rectangleButton = screen.getByRole("button", { name: "Rectangle" });
+
+    vi.useFakeTimers();
+    fireEvent.pointerDown(rectangleButton);
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    fireEvent.pointerUp(rectangleButton);
+    vi.useRealTimers();
+
+    expect(screen.getByRole("menuitem", { name: "Diamond" }))
+      .toBeInTheDocument();
+
+    fireEvent.pointerDown(
+      screen.getByRole("application", { name: "Drawing canvas" })
+    );
+
+    expect(screen.queryByRole("menuitem", { name: "Diamond" })).not
+      .toBeInTheDocument();
+  });
+
   it("opens grouped toolbar menus from the corner indicator", () => {
     render(<KizkattGraphicEditor />);
 

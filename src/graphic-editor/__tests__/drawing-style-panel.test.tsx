@@ -705,6 +705,36 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(elementRect).toHaveAttribute("rx", "0");
   });
 
+  it("groups live range style changes into a single undo step", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    const elementRect = canvas.querySelector("[data-element-id] rect");
+    const strokeWidthRange = screen.getByLabelText("Stroke width");
+
+    expect(elementRect).toHaveAttribute("stroke-width", "10");
+
+    fireEvent.pointerDown(strokeWidthRange);
+    fireEvent.change(strokeWidthRange, { target: { value: "20" } });
+    fireEvent.change(strokeWidthRange, { target: { value: "35" } });
+    fireEvent.change(strokeWidthRange, { target: { value: "50" } });
+    fireEvent.pointerUp(strokeWidthRange);
+
+    expect(elementRect).toHaveAttribute("stroke-width", "50");
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(elementRect).toHaveAttribute("stroke-width", "10");
+
+    fireEvent.click(screen.getByRole("button", { name: "Redo" }));
+    expect(elementRect).toHaveAttribute("stroke-width", "50");
+  });
+
   it("runs duplicate and delete actions from the style panel", () => {
     render(<KizkattGraphicEditor />);
 

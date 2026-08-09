@@ -316,6 +316,7 @@ export function Toolbar({
   const { autohideToolbar, toolbarOrientation } = useGraphicEditorSettings();
   const { strings } = useI18n();
   const [openSubmenu, setOpenSubmenu] = useState<ToolbarSubmenuId | null>(null);
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
 
   const closeSubmenu = () => setOpenSubmenu(null);
   const openToolbarSubmenu = (submenuId: ToolbarSubmenuId | null) => {
@@ -337,6 +338,43 @@ export function Toolbar({
     );
   }, [openSubmenu]);
 
+  useEffect(() => {
+    if (!openSubmenu) {
+      return;
+    }
+
+    const closeSubmenuOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+
+      if (target instanceof Node && toolbarRef.current?.contains(target)) {
+        return;
+      }
+
+      closeSubmenu();
+    };
+    const closeSubmenuOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeSubmenu();
+      }
+    };
+
+    document.addEventListener(
+      "pointerdown",
+      closeSubmenuOnOutsidePointerDown,
+      true
+    );
+    document.addEventListener("keydown", closeSubmenuOnEscape);
+
+    return () => {
+      document.removeEventListener(
+        "pointerdown",
+        closeSubmenuOnOutsidePointerDown,
+        true
+      );
+      document.removeEventListener("keydown", closeSubmenuOnEscape);
+    };
+  }, [openSubmenu]);
+
   return (
     <DraggablePanel
       id="toolbar"
@@ -344,6 +382,7 @@ export function Toolbar({
       topDock
     >
       <div
+        ref={toolbarRef}
         className={[
           "kizkatt-toolbar",
           `kizkatt-toolbar--${toolbarOrientation}`,

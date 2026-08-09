@@ -2230,7 +2230,11 @@ export type StylePanelProps = {
   onAction: (action: "delete" | "duplicate" | "link") => void;
   onClosedPathChange: (closed: boolean) => void;
   onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
-  onStyleChange: (patch: Partial<StyleState>) => void;
+  onStyleChange: (
+    patch: Partial<StyleState>,
+    options?: { transient?: boolean }
+  ) => void;
+  onStyleChangeEnd: () => void;
   selectedElements: KizkattElement[];
   style: StyleState;
   theme: KizkattTheme;
@@ -2432,6 +2436,7 @@ export function KizkattGraphicEditor({
 
   const canvasStateRef = useRef(canvasState);
   canvasStateRef.current = canvasState;
+  const mergingStyleChangeRef = useRef(false);
   useEffect(() => {
     storeCanvasState(canvasState);
   }, [canvasState]);
@@ -2965,12 +2970,19 @@ export function KizkattGraphicEditor({
     }
   };
 
-  const updateSelectedStyle = (patch: Partial<StyleState>) => {
+  const updateSelectedStyle = (
+    patch: Partial<StyleState>,
+    options: { transient?: boolean } = {}
+  ) => {
     setStyle((previousStyle) => ({ ...previousStyle, ...patch }));
 
     if (viewMode || canvasState.selectedIds.length === EMPTY_COLLECTION_LENGTH) {
+      mergingStyleChangeRef.current = false;
       return;
     }
+
+    const replaceHistoryEntry =
+      Boolean(options.transient) && mergingStyleChangeRef.current;
 
     commitState({
       ...canvasState,
@@ -2979,7 +2991,15 @@ export function KizkattGraphicEditor({
           ? { ...element, ...patch }
           : element
       )
+    }, {
+      replace: replaceHistoryEntry
     });
+
+    mergingStyleChangeRef.current = Boolean(options.transient);
+  };
+
+  const endSelectedStyleChange = () => {
+    mergingStyleChangeRef.current = false;
   };
 
   const closeablePathElement =
@@ -3545,6 +3565,7 @@ export function KizkattGraphicEditor({
           theme={theme}
           onClosedPathChange={updateClosedPath}
           onStyleChange={updateSelectedStyle}
+          onStyleChangeEnd={endSelectedStyleChange}
           onAction={applyElementAction}
           onLayerAction={applyLayerAction}
         />
