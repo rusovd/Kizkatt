@@ -1,7 +1,9 @@
 import {
   DEFAULT_CANVAS_BACKGROUND,
+  DEFAULT_CANVAS_BACKGROUND_BY_THEME,
   DEFAULT_ELEMENT_STYLE_BY_THEME,
   DEFAULT_GRID_COLOR,
+  DEFAULT_GRID_COLOR_BY_THEME,
   PERCENT_MAX_VALUE,
   KizkattGraphicEditor as EngineKizkattGraphicEditor,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
@@ -59,7 +61,9 @@ import { GraphicEditorSettingsProvider } from "../ui/settings/GraphicEditorSetti
 
 export {
   DEFAULT_CANVAS_BACKGROUND,
+  DEFAULT_CANVAS_BACKGROUND_BY_THEME,
   DEFAULT_GRID_COLOR,
+  DEFAULT_GRID_COLOR_BY_THEME,
   findElementAtPoint,
   getElementIdsInSelectionArea,
   getResizeAnchorPoint,

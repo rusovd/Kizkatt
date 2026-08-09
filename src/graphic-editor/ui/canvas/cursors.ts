@@ -29,7 +29,7 @@ export function getCanvasCursor({
     return GRABBING_CURSOR;
   }
 
-  if (tool === "select") {
+  if (tool === "select" || tool === "nodeEdit") {
     return "default";
   }
 

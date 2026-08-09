@@ -3,6 +3,8 @@
 .kizkatt-history-controls,
 .kizkatt-menu-button,
 .kizkatt-main-menu,
+.kizkatt-footer-settings-menu,
+.kizkatt-footer-settings-submenu,
 .kizkatt-style-panel,
 .kizkatt-context-menu {
   background: var(--kizkatt-control-bg);
@@ -134,7 +136,11 @@
   padding: 0 7px;
   place-items: center;
   color: var(--kizkatt-text-secondary);
-  cursor: pointer;
+  cursor: grab;
+}
+
+.kizkatt-floating-panel--toolbar.is-dragging .kizkatt-toolbar button {
+  cursor: grabbing;
 }
 
 .kizkatt-toolbar button.has-submenu {
@@ -208,6 +214,7 @@
 .kizkatt-toolbar-flyout button {
   min-width: 42px;
   height: 42px;
+  cursor: pointer;
 }
 
 .kizkatt-toolbar-settings-menu {
@@ -305,8 +312,11 @@
   display: flex;
   height: 38px;
   align-items: center;
-  overflow: hidden;
   border-radius: 8px;
+}
+
+.kizkatt-zoom-controls {
+  position: relative;
 }
 
 .kizkatt-zoom-controls button,
@@ -324,12 +334,102 @@
   min-width: 50px;
 }
 
-.kizkatt-zoom-controls span {
+.kizkatt-zoom-controls > span:not(.kizkatt-zoom-divider) {
   display: inline-flex;
   min-width: 52px;
   justify-content: center;
   color: var(--kizkatt-text-secondary);
   font-size: 12px;
+}
+
+.kizkatt-zoom-controls .kizkatt-zoom-divider {
+  display: block;
+  width: 1px;
+  min-width: 1px;
+  height: 22px;
+  background: var(--kizkatt-divider);
+}
+
+.kizkatt-footer-settings-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 8;
+  display: grid;
+  width: 326px;
+  overflow: visible;
+  padding: 9px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.kizkatt-footer-settings-menu button {
+  box-sizing: border-box;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  background: transparent;
+}
+
+.kizkatt-footer-settings-menu > button,
+.kizkatt-settings-submenu-row > button,
+.kizkatt-footer-settings-submenu > button {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 7px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.kizkatt-footer-settings-menu > button:hover,
+.kizkatt-settings-submenu-row > button:hover,
+.kizkatt-footer-settings-submenu > button:hover {
+  background: var(--kizkatt-control-bg-hover);
+}
+
+.kizkatt-settings-submenu-row {
+  position: relative;
+}
+
+.kizkatt-footer-settings-submenu {
+  position: absolute;
+  right: calc(100% + 8px);
+  bottom: 0;
+  z-index: 9;
+  display: grid;
+  width: 326px;
+  max-height: min(70vh, 620px);
+  overflow: auto;
+  padding: 9px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.kizkatt-footer-settings-menu p {
+  margin: 0;
+  padding: 3px 4px 0;
+  color: var(--kizkatt-panel-label);
+  font-size: 12px;
+}
+
+.kizkatt-footer-settings-menu .kizkatt-swatches {
+  gap: 5px;
+  margin-top: 7px;
+  padding: 0 4px 4px;
+}
+
+.kizkatt-footer-settings-menu .kizkatt-swatches button {
+  display: grid;
+  width: 21px;
+  height: 21px;
+  min-height: 21px;
+  padding: 0;
+  place-items: center;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
 .kizkatt-history-controls button:disabled {

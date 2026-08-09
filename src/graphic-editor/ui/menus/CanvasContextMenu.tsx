@@ -10,8 +10,7 @@ import type {
   ContextMenuDefaults,
   ContextMenuPasteDefault,
   ContextMenuSelectionDefault,
-  ContextMenuSnappingDefault,
-  ContextMenuViewDefault
+  ContextMenuSnappingDefault
 } from "kizkatt-graphic-engine";
 
 import type { ContextMenuState, SelectionAreaMode } from "../../model/types";
@@ -21,7 +20,6 @@ import {
   ChevronRightIcon,
   CodeIcon,
   CopyIcon,
-  GridIcon,
   GroupIcon,
   ImageIcon,
   PasteIcon,
@@ -30,8 +28,6 @@ import {
   SelectionIcon,
   SnapIcon,
   UngroupIcon,
-  ViewModeIcon,
-  ZenIcon
 } from "../icons";
 
 type CanvasContextMenuProps = {
@@ -54,23 +50,15 @@ type CanvasContextMenuProps = {
   selectionAreaMode: SelectionAreaMode;
   setArrowBinding: (updater: (value: boolean) => boolean) => void;
   setSelectionAreaMode: (mode: SelectionAreaMode) => void;
-  setShowGrid: (updater: (value: boolean) => boolean) => void;
-  setSnapToGrid: (updater: (value: boolean) => boolean) => void;
   setSnapToMidpoints: (updater: (value: boolean) => boolean) => void;
   setSnapToObjects: (updater: (value: boolean) => boolean) => void;
-  setViewMode: (updater: (value: boolean) => boolean) => void;
-  setZenMode: (updater: (value: boolean) => boolean) => void;
-  canUseGrid: boolean;
-  showGrid: boolean;
-  snapToGrid: boolean;
   snapToMidpoints: boolean;
   snapToObjects: boolean;
   viewMode: boolean;
-  zenMode: boolean;
 };
 
 type MenuRole = "menuitem" | "menuitemcheckbox" | "menuitemradio";
-type SubmenuId = "copy" | "paste" | "selection" | "snapping" | "view";
+type SubmenuId = "copy" | "paste" | "selection" | "snapping";
 
 type ContextMenuAction<Id extends string> = {
   checked?: boolean;
@@ -262,19 +250,11 @@ export function CanvasContextMenu({
   selectionAreaMode,
   setArrowBinding,
   setSelectionAreaMode,
-  setShowGrid,
-  setSnapToGrid,
   setSnapToMidpoints,
   setSnapToObjects,
-  setViewMode,
-  setZenMode,
-  canUseGrid,
-  showGrid,
-  snapToGrid,
   snapToMidpoints,
   snapToObjects,
-  viewMode,
-  zenMode
+  viewMode
 }: CanvasContextMenuProps) {
   const [openSubmenu, setOpenSubmenu] = useState<SubmenuId | null>(null);
   const [menuDefaults, setMenuDefaults] = useState(
@@ -372,26 +352,6 @@ export function CanvasContextMenu({
   ];
   const snappingActions: Array<ContextMenuAction<ContextMenuSnappingDefault>> = [
     {
-      checked: canUseGrid && showGrid,
-      disabled: !canUseGrid,
-      icon: GridIcon,
-      id: "toggleGrid",
-      label: strings.contextMenu.toggleGrid,
-      role: "menuitemcheckbox",
-      run: () => setShowGrid((value) => !value),
-      title: tooltips.toggleGrid
-    },
-    {
-      checked: canUseGrid && snapToGrid,
-      disabled: !canUseGrid,
-      icon: SnapIcon,
-      id: "snapToGrid",
-      label: strings.contextMenu.snapToGrid,
-      role: "menuitemcheckbox",
-      run: () => setSnapToGrid((value) => !value),
-      title: tooltips.snapToGrid
-    },
-    {
       checked: snapToObjects,
       icon: SelectionContainIcon,
       id: "snapToObjects",
@@ -419,26 +379,6 @@ export function CanvasContextMenu({
       title: tooltips.snapToMidpoints
     }
   ];
-  const viewActions: Array<ContextMenuAction<ContextMenuViewDefault>> = [
-    {
-      checked: zenMode,
-      icon: ZenIcon,
-      id: "zenMode",
-      label: strings.contextMenu.zenMode,
-      role: "menuitemcheckbox",
-      run: () => setZenMode((value) => !value),
-      title: tooltips.zenMode
-    },
-    {
-      checked: viewMode,
-      icon: ViewModeIcon,
-      id: "viewMode",
-      label: strings.contextMenu.viewMode,
-      role: "menuitemcheckbox",
-      run: () => setViewMode((value) => !value),
-      title: tooltips.viewMode
-    }
-  ];
   const pastePrimaryAction = getPreferredAction(
     pasteActions,
     menuDefaults.paste
@@ -452,7 +392,6 @@ export function CanvasContextMenu({
     snappingActions,
     menuDefaults.snapping
   );
-  const viewPrimaryAction = getPreferredAction(viewActions, menuDefaults.view);
 
   if (!contextMenu) {
     return null;
@@ -599,29 +538,6 @@ export function CanvasContextMenu({
             title={action.title}
             onClick={() => {
               setMenuDefault("snapping", action.id);
-              onCloseAndRun(action.run);
-            }}
-          >
-            {action.label}
-          </MenuButton>
-        ))}
-      </SubmenuMenuItem>
-      <SubmenuMenuItem
-        openSubmenu={openSubmenu}
-        primaryAction={viewPrimaryAction}
-        setOpenSubmenu={setOpenSubmenu}
-        submenuId="view"
-        onPrimaryClick={() => onCloseAndRun(viewPrimaryAction.run)}
-      >
-        {viewActions.map((action) => (
-          <MenuButton
-            checked={action.checked}
-            icon={action.icon}
-            key={action.id}
-            role={action.role}
-            title={action.title}
-            onClick={() => {
-              setMenuDefault("view", action.id);
               onCloseAndRun(action.run);
             }}
           >

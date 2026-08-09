@@ -11,6 +11,7 @@ export {
   getGridWorldSizing,
   getLinearElementPath,
   getLinearElementPoints,
+  getLinearElementSegmentMidpoint,
   getResizeAnchorPoint,
   getResizeCursor,
   getSegmentMidpoint,

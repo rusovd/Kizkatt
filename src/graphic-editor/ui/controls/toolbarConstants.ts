@@ -12,9 +12,9 @@ export const SHAPE_TOOL_GROUP: readonly Tool[] = [
 export const LINE_TOOL_GROUP: readonly Tool[] = ["arrow", "line"];
 
 export const SINGLE_TOOL_ORDER: readonly Tool[] = [
-  "lock",
   "hand",
   "select",
+  "nodeEdit",
   "draw",
   "text",
   "image",

@@ -2,7 +2,7 @@ import {
   getElementBends,
   getElementCenter,
   getLinearElementPoints,
-  getSegmentMidpoint,
+  getLinearElementSegmentMidpoint,
   rotatePointAroundPoint
 } from "../../geometry";
 import type { KizkattElement } from "../../model/types";
@@ -81,8 +81,12 @@ export function LinearElementOverlay({
                   r={LINE_BEND_HANDLE_RADIUS}
                 />
               ))}
-              {linePoints.slice(0, -1).map((point, index) => {
-                const midpoint = getSegmentMidpoint(point, linePoints[index + 1]);
+              {linePoints.slice(0, -1).map((_, index) => {
+                const midpoint = getLinearElementSegmentMidpoint(
+                  linePoints,
+                  index,
+                  element.edgeStyle
+                );
 
                 return (
                   <circle

@@ -10,7 +10,7 @@ import {
   FreedrawIcon,
   ImageIcon,
   LineIcon,
-  LockedIcon,
+  NodeEditIcon,
   RectangleIcon,
   SelectionIcon,
   TextIcon,
@@ -26,7 +26,7 @@ export type ToolLabelKey =
   | "hand"
   | "image"
   | "line"
-  | "lock"
+  | "nodeEdit"
   | "rectangle"
   | "select"
   | "text";
@@ -83,7 +83,11 @@ export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
     showsStylePanel: true,
     submenu: "line"
   },
-  lock: { id: "lock", labelKey: "lock", icon: LockedIcon },
+  nodeEdit: {
+    id: "nodeEdit",
+    labelKey: "nodeEdit",
+    icon: NodeEditIcon
+  },
   rectangle: {
     id: "rectangle",
     labelKey: "rectangle",

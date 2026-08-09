@@ -125,7 +125,7 @@ export function DraggablePanel({
       {
         x: nextPosition.x,
         y:
-          topDock && nextPosition.y < TOP_DOCK_THRESHOLD
+          persist && topDock && nextPosition.y < TOP_DOCK_THRESHOLD
             ? TOP_DOCK_Y
             : nextPosition.y
       },

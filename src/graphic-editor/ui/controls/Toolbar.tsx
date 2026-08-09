@@ -2,13 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 
 import type { Tool } from "../../model/types";
-import {
-  EyeIcon,
-  LayoutHorizontalIcon,
-  LayoutVerticalIcon,
-  PinIcon,
-  SettingsIcon
-} from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 import { TOOL_REGISTRY_BY_ID, type ToolDefinition } from "../../tools/toolRegistry";
@@ -27,12 +20,12 @@ import {
 } from "./toolbarConstants";
 import { ToolbarButton } from "./ToolbarButton";
 
-type ToolbarSubmenuId = "line" | "settings" | "shape";
+type ToolbarSubmenuId = "line" | "shape";
 const TOOLBAR_FLOATING_PANEL_SOURCE = "toolbar";
 
 type ToolGroup = {
   defaultTool: Tool;
-  id: Exclude<ToolbarSubmenuId, "settings">;
+  id: ToolbarSubmenuId;
   options: readonly ToolDefinition[];
 };
 
@@ -124,7 +117,6 @@ function ToolGroupButton({
     <div className="kizkatt-toolbar-group">
       <button
         type="button"
-        data-no-panel-drag
         className={[
           groupActive ? "is-active" : "",
           "has-submenu"
@@ -149,8 +141,12 @@ function ToolGroupButton({
           onActivateTool(activeEntry.id);
           onOpenSubmenuChange(null);
         }}
+        onDoubleClick={() => {
+          clearHoldTimer();
+          openedByHoldRef.current = true;
+          onOpenSubmenuChange(open ? null : group.id);
+        }}
         onPointerDown={(event) => {
-          stopPanelDrag(event);
           clearHoldTimer();
           openedByHoldRef.current = false;
           holdTimerRef.current = window.setTimeout(() => {
@@ -160,6 +156,7 @@ function ToolGroupButton({
         }}
         onPointerCancel={clearHoldTimer}
         onPointerLeave={clearHoldTimer}
+        onPointerMove={clearHoldTimer}
         onPointerUp={clearHoldTimer}
       >
         <span aria-hidden="true">{activeEntry.icon}</span>
@@ -191,115 +188,6 @@ function ToolGroupButton({
               )}
             </button>
           ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ToolbarSettings({
-  onOpenSubmenuChange,
-  openSubmenu
-}: {
-  onOpenSubmenuChange: (submenuId: ToolbarSubmenuId | null) => void;
-  openSubmenu: ToolbarSubmenuId | null;
-}) {
-  const {
-    autohideToolbar,
-    dragEnabled,
-    setAutohideToolbar,
-    setDragEnabled,
-    setToolbarOrientation,
-    toolbarOrientation
-  } = useGraphicEditorSettings();
-  const { strings } = useI18n();
-  const open = openSubmenu === "settings";
-  const nextToolbarOrientation =
-    toolbarOrientation === "horizontal" ? "vertical" : "horizontal";
-  const runSettingAction = (action: () => void) => {
-    action();
-    onOpenSubmenuChange(null);
-  };
-
-  return (
-    <div className="kizkatt-toolbar-settings">
-      <button
-        type="button"
-        data-no-panel-drag
-        className="has-submenu"
-        aria-label={strings.settings.toolbarSettings}
-        aria-expanded={open}
-        title={strings.settings.tooltips.toolbarSettings}
-        onPointerDown={stopPanelDrag}
-        onClick={() => onOpenSubmenuChange(open ? null : "settings")}
-      >
-        {SettingsIcon}
-        <i className="kizkatt-submenu-indicator" aria-hidden="true" />
-      </button>
-      {open && (
-        <div className="kizkatt-toolbar-settings-menu" role="menu">
-          <button
-            type="button"
-            data-no-panel-drag
-            role="menuitemcheckbox"
-            aria-checked={!dragEnabled}
-            title={strings.settings.tooltips.panelStickiness}
-            onPointerDown={stopPanelDrag}
-            onClick={() =>
-              runSettingAction(() => setDragEnabled(!dragEnabled))
-            }
-          >
-            <span className="kizkatt-settings-item-label">
-              {PinIcon}
-              <span>
-                {dragEnabled
-                  ? strings.settings.stickPanels
-                  : strings.settings.unstickPanels}
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            data-no-panel-drag
-            role="menuitemcheckbox"
-            aria-checked={autohideToolbar}
-            title={strings.settings.tooltips.autohideToolbar}
-            onPointerDown={stopPanelDrag}
-            onClick={() =>
-              runSettingAction(() => setAutohideToolbar(!autohideToolbar))
-            }
-          >
-            <span className="kizkatt-settings-item-label">
-              {EyeIcon}
-              <span>
-                {autohideToolbar
-                  ? strings.settings.disableAutohide
-                  : strings.settings.enableAutohide}
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            data-no-panel-drag
-            role="menuitemcheckbox"
-            aria-checked={toolbarOrientation === "vertical"}
-            title={strings.settings.tooltips.toolbarOrientation}
-            onPointerDown={stopPanelDrag}
-            onClick={() =>
-              runSettingAction(() => setToolbarOrientation(nextToolbarOrientation))
-            }
-          >
-            <span className="kizkatt-settings-item-label">
-              {toolbarOrientation === "horizontal"
-                ? LayoutVerticalIcon
-                : LayoutHorizontalIcon}
-              <span>
-                {toolbarOrientation === "horizontal"
-                  ? strings.settings.verticalToolbar
-                  : strings.settings.horizontalToolbar}
-              </span>
-            </span>
-          </button>
         </div>
       )}
     </div>
@@ -422,11 +310,6 @@ export function Toolbar({
             onActivateTool={onActivateTool}
           />
         ))}
-        <div className="kizkatt-toolbar-divider" />
-        <ToolbarSettings
-          openSubmenu={openSubmenu}
-          onOpenSubmenuChange={openToolbarSubmenu}
-        />
       </div>
     </DraggablePanel>
   );

@@ -125,6 +125,8 @@ export const ENGLISH_TRANSLATIONS = {
   settings: {
     disableAutohide: "Disable Autohide",
     enableAutohide: "Enable Autohide",
+    editorSettings: "Editor settings",
+    grid: "Grid",
     horizontalToolbar: "Horizontal toolbar",
     stickPanels: "Stick panels",
     toolbarSettings: "Toolbar settings",
@@ -132,6 +134,8 @@ export const ENGLISH_TRANSLATIONS = {
     verticalToolbar: "Vertical toolbar",
     tooltips: {
       autohideToolbar: "Turn toolbar autohide on or off",
+      editorSettings: "Open editor settings",
+      gridSettings: "Open grid settings",
       panelStickiness: "Turn panel dragging on or off",
       toolbarOrientation: "Switch toolbar orientation",
       toolbarSettings: "Open toolbar settings"
@@ -152,7 +156,7 @@ export const ENGLISH_TRANSLATIONS = {
       hand: "Hand",
       image: "Image",
       line: "Line",
-      lock: "Lock",
+      nodeEdit: "Node edit",
       rectangle: "Rectangle",
       select: "Select",
       text: "Text"
@@ -166,7 +170,7 @@ export const ENGLISH_TRANSLATIONS = {
       hand: "Pan around the canvas",
       image: "Insert an image",
       line: "Draw a line",
-      lock: "Keep the current tool active",
+      nodeEdit: "Edit line nodes and bend points",
       rectangle: "Draw a rectangle",
       select: "Select, move, resize, and rotate objects",
       text: "Add text"
