@@ -41,7 +41,7 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
     }
 
     if (args.snapToGrid) {
-      return snapPointToGrid(worldPoint);
+      return snapPointToGrid(worldPoint, args.gridCellSize);
     }
 
     return worldPoint;

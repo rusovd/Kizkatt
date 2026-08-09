@@ -90,6 +90,116 @@ describe("KizkattGraphicEditor shell", () => {
     ).toBe(DEFAULT_GRID_COLOR);
   });
 
+  it("draws and stores configurable grid spacing from the main menu", () => {
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const minorGrid = canvas.querySelector("#kizkatt-grid-minor");
+    const minorPath = minorGrid?.querySelector("path");
+
+    expect(minorGrid).toHaveAttribute("width", "30");
+    expect(minorGrid).toHaveAttribute("height", "30");
+    expect(minorPath?.getAttribute("d")).toContain("M 1.75 3 H 4.25");
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+
+    expect(screen.getByRole("group", { name: "Grid units" }))
+      .toBeInTheDocument();
+    expect(screen.getByLabelText("Major spacing (px)")).toHaveValue(30);
+    expect(screen.getByLabelText("Minor spacing (px)")).toHaveValue(3);
+    expect(screen.getByRole("checkbox", { name: /Major grid/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Minor grid/ })).toBeChecked();
+
+    fireEvent.change(screen.getByLabelText("Major spacing (px)"), {
+      target: { value: "60" }
+    });
+    fireEvent.change(screen.getByLabelText("Minor spacing (px)"), {
+      target: { value: "6" }
+    });
+
+    expect(
+      window.localStorage.getItem("kizkatt:graphic-engine:grid-settings")
+    ).toBe(
+      JSON.stringify({
+        unit: "px",
+        cmScale: 1,
+        majorSize: 60,
+        minorSize: 6,
+        showMajor: true,
+        showMinor: true
+      })
+    );
+    expect(minorGrid).toHaveAttribute("width", "60");
+    expect(minorPath?.getAttribute("d")).toContain("M 4.75 6 H 7.25");
+
+    fireEvent.click(screen.getByRole("button", { name: "Centimeters" }));
+
+    expect(screen.getByLabelText("Major spacing (cm)")).toHaveValue(1);
+    expect(screen.getByLabelText("Minor spacing (mm)")).toHaveValue(5);
+    expect(
+      window.localStorage.getItem("kizkatt:graphic-engine:grid-settings")
+    ).toBe(
+      JSON.stringify({
+        unit: "cm",
+        cmScale: 1,
+        majorSize: 1,
+        minorSize: 5,
+        showMajor: true,
+        showMinor: true
+      })
+    );
+    expect(Number(minorGrid?.getAttribute("width"))).toBeCloseTo(96 / 2.54);
+
+    fireEvent.change(screen.getByLabelText("Calibrate cm"), {
+      target: { value: "1.5" }
+    });
+
+    expect(
+      window.localStorage.getItem("kizkatt:graphic-engine:grid-settings")
+    ).toBe(
+      JSON.stringify({
+        unit: "cm",
+        cmScale: 1.5,
+        majorSize: 1,
+        minorSize: 5,
+        showMajor: true,
+        showMinor: true
+      })
+    );
+    expect(Number(minorGrid?.getAttribute("width"))).toBeCloseTo(
+      (96 / 2.54) * 1.5
+    );
+    expect(
+      Number(
+        screen
+          .getByRole("img", { name: "3 cm calibration ruler" })
+          .style.width.replace("px", "")
+      )
+    ).toBeCloseTo((3 * 96 * 1.5) / 2.54);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Major grid/ }));
+
+    expect(canvas.querySelector(".kizkatt-grid-major")).not
+      .toBeInTheDocument();
+    expect(canvas.querySelector(".kizkatt-grid")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Minor grid/ }));
+
+    expect(canvas.querySelector(".kizkatt-grid-major")).not
+      .toBeInTheDocument();
+    expect(canvas.querySelector(".kizkatt-grid")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
+
+    const toggleGridItem = screen.getByRole("menuitemcheckbox", {
+      name: /Toggle grid/
+    });
+
+    expect(toggleGridItem).toBeDisabled();
+    expect(toggleGridItem).toHaveAttribute("aria-checked", "false");
+  });
+
   it("ignores legacy canvas background storage and applies the default color", () => {
     window.localStorage.setItem("kizkatt:canvas-background", "#121212");
 

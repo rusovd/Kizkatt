@@ -76,6 +76,7 @@ import {
 } from "../model/groups";
 import {
   getElementBends,
+  getGridWorldSizing,
   getResizeCursor,
   reorderElementsByLayerAction,
   selectionBounds,
@@ -94,13 +95,16 @@ import {
   getStoredCanvasState,
   getStoredCustomCanvasBackgroundColor,
   getStoredGridColor,
+  getStoredGridSettings,
   getStoredQuickCanvasState,
   getStoredTheme,
   getStoredUiScale,
+  normalizeGridSettings,
   storeCanvasBackgroundColor,
   storeCanvasState,
   storeCustomCanvasBackgroundColor,
   storeGridColor,
+  storeGridSettings,
   storeQuickCanvasState,
   storeTheme,
   storeUiScale
@@ -109,6 +113,7 @@ import { useToolPointerHandlers } from "../tools/pointer";
 import type {
   Bounds,
   ContextMenuState,
+  GridSettings,
   Interaction,
   KizkattElement,
   Point,
@@ -2197,6 +2202,7 @@ export type CanvasContextMenuProps = {
   setSnapToObjects: (updater: (value: boolean) => boolean) => void;
   setViewMode: (updater: (value: boolean) => boolean) => void;
   setZenMode: (updater: (value: boolean) => boolean) => void;
+  canUseGrid: boolean;
   showGrid: boolean;
   snapToGrid: boolean;
   snapToMidpoints: boolean;
@@ -2209,10 +2215,12 @@ export type MainMenuProps = {
   canvasBackgroundColor: string;
   customCanvasBackgroundColor: string;
   gridColor: string;
+  gridSettings: GridSettings;
   menuOpen: boolean;
   onCanvasBackgroundChange: (color: string) => void;
   onExport: () => void;
   onGridColorChange: (color: string) => void;
+  onGridSettingsChange: (settings: GridSettings) => void;
   onOpen: () => void;
   onPickCanvasBackground: () => void;
   onMenuOpenChange: (open: boolean) => void;
@@ -2250,7 +2258,12 @@ export type TextEditorProps = {
 
 export type KizkattGraphicEditorComponents = {
   CanvasContextMenu: ComponentType<CanvasContextMenuProps>;
-  CanvasGrid: ComponentType<{ pan: Point; visible: boolean; zoom: number }>;
+  CanvasGrid: ComponentType<{
+    gridSettings: GridSettings;
+    pan: Point;
+    visible: boolean;
+    zoom: number;
+  }>;
   FooterControls: ComponentType<{
     canRedo: boolean;
     canUndo: boolean;
@@ -2395,6 +2408,9 @@ export function KizkattGraphicEditor({
   const [gridColor, setGridColor] = useState(() =>
     getStoredGridColor(getStoredTheme())
   );
+  const [gridSettings, setGridSettings] = useState(() =>
+    getStoredGridSettings()
+  );
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pan, setPan] = useState<Point>(() => ({ ...INITIAL_PAN }));
   const [style, setStyle] = useState<StyleState>(
@@ -2437,6 +2453,14 @@ export function KizkattGraphicEditor({
   const canvasStateRef = useRef(canvasState);
   canvasStateRef.current = canvasState;
   const mergingStyleChangeRef = useRef(false);
+  const gridSizing = useMemo(
+    () => getGridWorldSizing(gridSettings),
+    [gridSettings]
+  );
+  const gridHasVisibleLayer = gridSettings.showMajor || gridSettings.showMinor;
+  const gridSnapSize = gridSettings.showMinor
+    ? gridSizing.minorSize
+    : gridSizing.majorSize;
   useEffect(() => {
     storeCanvasState(canvasState);
   }, [canvasState]);
@@ -3153,6 +3177,24 @@ export function KizkattGraphicEditor({
     storeGridColor(color, theme);
   };
 
+  const setStoredGridSettings = (settings: GridSettings) => {
+    const normalizedSettings = normalizeGridSettings(settings);
+    const gridLayerVisibilityChanged =
+      gridSettings.showMajor !== normalizedSettings.showMajor ||
+      gridSettings.showMinor !== normalizedSettings.showMinor;
+    const nextGridHasVisibleLayer =
+      normalizedSettings.showMajor || normalizedSettings.showMinor;
+
+    setGridSettings(normalizedSettings);
+    storeGridSettings(normalizedSettings);
+
+    if (!nextGridHasVisibleLayer) {
+      setShowGrid(false);
+    } else if (gridLayerVisibilityChanged) {
+      setShowGrid(true);
+    }
+  };
+
   const setReadOnlyViewMode = (updater: (value: boolean) => boolean) => {
     setViewMode((previousValue) => {
       const nextValue = updater(previousValue);
@@ -3432,7 +3474,8 @@ export function KizkattGraphicEditor({
       setPan,
       setPendingImageSrc,
       setTool,
-      snapToGrid,
+      gridCellSize: gridSnapSize,
+      snapToGrid: snapToGrid && gridHasVisibleLayer,
       snapToMidpoints,
       snapToObjects,
       style,
@@ -3530,8 +3573,9 @@ export function KizkattGraphicEditor({
         setSnapToObjects={setSnapToObjects}
         setViewMode={setReadOnlyViewMode}
         setZenMode={setZenMode}
-        showGrid={showGrid}
-        snapToGrid={snapToGrid}
+        canUseGrid={gridHasVisibleLayer}
+        showGrid={showGrid && gridHasVisibleLayer}
+        snapToGrid={snapToGrid && gridHasVisibleLayer}
         snapToMidpoints={snapToMidpoints}
         snapToObjects={snapToObjects}
         viewMode={viewMode}
@@ -3542,11 +3586,13 @@ export function KizkattGraphicEditor({
         canvasBackgroundColor={canvasBackgroundColor}
         customCanvasBackgroundColor={customCanvasBackgroundColor}
         gridColor={gridColor}
+        gridSettings={gridSettings}
         menuOpen={menuOpen}
         onExport={quickSaveCanvas}
         onOpen={quickLoadCanvas}
         onCanvasBackgroundChange={setStoredCanvasBackground}
         onGridColorChange={setStoredGridColor}
+        onGridSettingsChange={setStoredGridSettings}
         onMenuOpenChange={setMenuOpen}
         onPickCanvasBackground={() => void pickCanvasBackground()}
         onResetCanvas={resetCanvas}
@@ -3597,7 +3643,12 @@ export function KizkattGraphicEditor({
         onPointerUp={onPointerUp}
         onContextMenu={onCanvasContextMenu}
       >
-        <CanvasGrid pan={pan} visible={showGrid} zoom={zoom} />
+        <CanvasGrid
+          gridSettings={gridSettings}
+          pan={pan}
+          visible={showGrid && gridHasVisibleLayer}
+          zoom={zoom}
+        />
         <defs>
           <marker
             id={arrowMarkerId}

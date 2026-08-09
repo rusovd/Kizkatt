@@ -31,6 +31,17 @@ export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
 export type SelectionAreaMode = "intersect" | "contain";
 
+export type GridUnit = "px" | "cm";
+
+export type GridSettings = {
+  unit: GridUnit;
+  cmScale: number;
+  majorSize: number;
+  minorSize: number;
+  showMajor: boolean;
+  showMinor: boolean;
+};
+
 export type KizkattElement = {
   id: string;
   groupId?: string;

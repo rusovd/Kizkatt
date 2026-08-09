@@ -5,6 +5,12 @@ export {
 } from "./bounds";
 export { isHexColor } from "./colors";
 export { findElementAtPoint } from "./hitTesting";
+export {
+  getCalibratedCentimetersWorldSize,
+  getDefaultGridSettings,
+  getGridWorldSizing,
+  type GridWorldSizing
+} from "./grid";
 export { reorderElementsByLayerAction } from "./layers";
 export {
   getElementBends,

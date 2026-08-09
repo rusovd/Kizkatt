@@ -6,6 +6,9 @@ export {
   getElementCenter,
   getElementIdsInSelectionArea,
   getElementTransformedBounds,
+  getCalibratedCentimetersWorldSize,
+  getDefaultGridSettings,
+  getGridWorldSizing,
   getLinearElementPath,
   getLinearElementPoints,
   getResizeAnchorPoint,
@@ -22,4 +25,4 @@ export {
   snapPointToElements,
   transformSvgPathData
 } from "kizkatt-graphic-engine";
-export type { TransformedSvgPathData } from "kizkatt-graphic-engine";
+export type { GridWorldSizing, TransformedSvgPathData } from "kizkatt-graphic-engine";

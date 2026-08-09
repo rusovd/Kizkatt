@@ -175,6 +175,10 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
   });
 
   it("snaps new shapes to grid points when snap to grid is enabled", () => {
+    window.localStorage.setItem(
+      "kizkatt:graphic-engine:grid-settings",
+      JSON.stringify({ unit: "px", majorSize: 30, minorSize: 10 })
+    );
     render(<KizkattGraphicEditor />);
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
@@ -192,10 +196,10 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
 
     const rectangle = canvas.querySelector("[data-element-type='rectangle'] > rect");
 
-    expect(rectangle).toHaveAttribute("x", "48");
-    expect(rectangle).toHaveAttribute("y", "48");
-    expect(rectangle).toHaveAttribute("width", "120");
-    expect(rectangle).toHaveAttribute("height", "72");
+    expect(rectangle).toHaveAttribute("x", "50");
+    expect(rectangle).toHaveAttribute("y", "50");
+    expect(rectangle).toHaveAttribute("width", "110");
+    expect(rectangle).toHaveAttribute("height", "70");
   });
 
   it("uses view mode as a read-only canvas mode", () => {

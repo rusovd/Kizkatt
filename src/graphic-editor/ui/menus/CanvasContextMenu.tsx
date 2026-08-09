@@ -60,6 +60,7 @@ type CanvasContextMenuProps = {
   setSnapToObjects: (updater: (value: boolean) => boolean) => void;
   setViewMode: (updater: (value: boolean) => boolean) => void;
   setZenMode: (updater: (value: boolean) => boolean) => void;
+  canUseGrid: boolean;
   showGrid: boolean;
   snapToGrid: boolean;
   snapToMidpoints: boolean;
@@ -267,6 +268,7 @@ export function CanvasContextMenu({
   setSnapToObjects,
   setViewMode,
   setZenMode,
+  canUseGrid,
   showGrid,
   snapToGrid,
   snapToMidpoints,
@@ -370,7 +372,8 @@ export function CanvasContextMenu({
   ];
   const snappingActions: Array<ContextMenuAction<ContextMenuSnappingDefault>> = [
     {
-      checked: showGrid,
+      checked: canUseGrid && showGrid,
+      disabled: !canUseGrid,
       icon: GridIcon,
       id: "toggleGrid",
       label: strings.contextMenu.toggleGrid,
@@ -379,7 +382,8 @@ export function CanvasContextMenu({
       title: tooltips.toggleGrid
     },
     {
-      checked: snapToGrid,
+      checked: canUseGrid && snapToGrid,
+      disabled: !canUseGrid,
       icon: SnapIcon,
       id: "snapToGrid",
       label: strings.contextMenu.snapToGrid,

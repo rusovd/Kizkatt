@@ -3,7 +3,7 @@
   top: 46px;
   right: 0;
   z-index: 6;
-  width: 266px;
+  width: 326px;
   padding: 9px;
   border-radius: 8px;
   font-size: 12px;
@@ -188,6 +188,108 @@
 .kizkatt-theme-toggle button.is-active {
   background: #a78bfa;
   color: #ffffff;
+}
+
+.kizkatt-grid-settings-row,
+.kizkatt-grid-calibration-row,
+.kizkatt-grid-checkbox-row,
+.kizkatt-grid-size-row {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 7px;
+  color: var(--kizkatt-panel-label);
+}
+
+.kizkatt-grid-unit-toggle button {
+  width: 38px;
+  font-size: 11px;
+}
+
+.kizkatt-grid-checkbox-row {
+  cursor: pointer;
+}
+
+.kizkatt-grid-checkbox-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--kizkatt-selection);
+  cursor: pointer;
+}
+
+.kizkatt-grid-size-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--kizkatt-muted-text);
+}
+
+.kizkatt-grid-size-input-wrap input {
+  width: 70px;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 6px;
+  background: var(--kizkatt-control-bg-hover);
+  color: var(--kizkatt-text-primary);
+  font: inherit;
+}
+
+.kizkatt-grid-calibration-input {
+  box-sizing: border-box;
+  width: calc(100% - 14px);
+  margin: 5px 7px 0;
+  accent-color: var(--kizkatt-selection);
+}
+
+.kizkatt-grid-calibration-preview {
+  height: 48px;
+  margin: 8px 7px 0;
+  overflow: visible;
+}
+
+.kizkatt-grid-calibration-ruler {
+  position: relative;
+  height: 42px;
+  border-bottom: 2px solid var(--kizkatt-text-secondary);
+  color: var(--kizkatt-muted-text);
+}
+
+.kizkatt-grid-calibration-tick {
+  position: absolute;
+  top: 24px;
+  bottom: 0;
+  width: 1px;
+  background: var(--kizkatt-text-secondary);
+}
+
+.kizkatt-grid-calibration-tick span {
+  position: absolute;
+  top: -23px;
+  left: 0;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  transform: translateX(-50%);
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 999px;
+  background: var(--kizkatt-control-bg);
+  color: var(--kizkatt-text-primary);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.kizkatt-grid-calibration-tick:first-child span {
+  transform: translateX(0);
+}
+
+.kizkatt-grid-calibration-tick:last-child span {
+  transform: translateX(-100%);
 }
 
 .kizkatt-menu-divider {

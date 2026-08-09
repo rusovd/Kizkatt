@@ -4,10 +4,17 @@ import {
   CONTEXT_MENU_DEFAULTS_STORAGE_KEY,
   CUSTOM_CANVAS_BACKGROUND_STORAGE_KEY,
   DEFAULT_CANVAS_BACKGROUND,
+  DEFAULT_CM_GRID_SETTINGS,
   DEFAULT_CUSTOM_CANVAS_BACKGROUND_BY_THEME,
+  DEFAULT_GRID_SETTINGS,
   DEFAULT_GRID_COLOR,
   DEFAULT_GRID_COLOR_BY_THEME,
   GRID_COLOR_STORAGE_KEY,
+  GRID_SETTINGS_STORAGE_KEY,
+  MAX_GRID_SIZE,
+  MAX_GRID_CM_SCALE,
+  MIN_GRID_SIZE,
+  MIN_GRID_CM_SCALE,
   QUICK_SAVE_STORAGE_KEY,
   THEME_STORAGE_KEY,
   DEFAULT_UI_SCALE,
@@ -17,7 +24,13 @@ import {
 } from "../config/constants";
 import { getElementBends } from "../geometry/linearElements";
 import { normalizeElementNames } from "../model/naming";
-import type { CanvasState, KizkattElement, KizkattTheme } from "../model/types";
+import type {
+  CanvasState,
+  GridSettings,
+  GridUnit,
+  KizkattElement,
+  KizkattTheme
+} from "../model/types";
 
 export type ContextMenuPasteDefault = "clipboard" | "svgCode";
 export type ContextMenuCopyDefault = "selection" | "png" | "svg";
@@ -66,6 +79,29 @@ function isTheme(value: unknown): value is KizkattTheme {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isGridUnit(value: unknown): value is GridUnit {
+  return value === "px" || value === "cm";
+}
+
+function normalizeBoolean(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function normalizePositiveNumber(
+  value: unknown,
+  fallback: number,
+  min = MIN_GRID_SIZE,
+  max = MAX_GRID_SIZE
+) {
+  const nextValue = typeof value === "number" ? value : Number(value);
+
+  if (!Number.isFinite(nextValue)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, nextValue));
 }
 
 function isValidContextMenuDefault<Key extends keyof ContextMenuDefaults>(
@@ -244,6 +280,66 @@ export function storeGridColor(
   }
 
   storage.setItem(GRID_COLOR_STORAGE_KEY, color);
+}
+
+export function normalizeGridSettings(value: unknown): GridSettings {
+  const record = isRecord(value) ? value : {};
+  const unit = isGridUnit(record.unit) ? record.unit : "px";
+  const defaults =
+    unit === "cm" ? DEFAULT_CM_GRID_SETTINGS : DEFAULT_GRID_SETTINGS;
+  const minimumSize = unit === "cm" ? MIN_GRID_SIZE : 1;
+  const maximumMajorSize = unit === "cm" ? 100 : MAX_GRID_SIZE;
+  const maximumMinorSize = unit === "cm" ? 1000 : MAX_GRID_SIZE;
+  const cmScale = normalizePositiveNumber(
+    record.cmScale,
+    defaults.cmScale,
+    MIN_GRID_CM_SCALE,
+    MAX_GRID_CM_SCALE
+  );
+  const majorSize = normalizePositiveNumber(
+    record.majorSize,
+    defaults.majorSize,
+    minimumSize,
+    maximumMajorSize
+  );
+  const minorSize = normalizePositiveNumber(
+    record.minorSize,
+    defaults.minorSize,
+    minimumSize,
+    maximumMinorSize
+  );
+  const maxMinorSize = unit === "cm" ? majorSize * 10 : majorSize;
+
+  return {
+    unit,
+    cmScale,
+    majorSize,
+    minorSize: Math.min(minorSize, maxMinorSize),
+    showMajor: normalizeBoolean(record.showMajor, defaults.showMajor),
+    showMinor: normalizeBoolean(record.showMinor, defaults.showMinor)
+  };
+}
+
+export function getStoredGridSettings(
+  storage = window.localStorage
+): GridSettings {
+  try {
+    return normalizeGridSettings(
+      JSON.parse(storage.getItem(GRID_SETTINGS_STORAGE_KEY) ?? "null")
+    );
+  } catch {
+    return DEFAULT_GRID_SETTINGS;
+  }
+}
+
+export function storeGridSettings(
+  settings: GridSettings,
+  storage = window.localStorage
+) {
+  storage.setItem(
+    GRID_SETTINGS_STORAGE_KEY,
+    JSON.stringify(normalizeGridSettings(settings))
+  );
 }
 
 export function getStoredTheme(storage = window.localStorage): KizkattTheme {

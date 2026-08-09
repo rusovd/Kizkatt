@@ -1,5 +1,6 @@
 import type {
   ElementType,
+  GridSettings,
   KizkattTheme,
   ResizeHandle,
   StyleState
@@ -9,6 +10,7 @@ export const KIZKATT_STORAGE_PREFIX = "kizkatt";
 export const CANVAS_BACKGROUND_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:canvas-background`;
 export const CUSTOM_CANVAS_BACKGROUND_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:custom-canvas-background`;
 export const GRID_COLOR_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:grid-color`;
+export const GRID_SETTINGS_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:grid-settings`;
 export const THEME_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:theme`;
 export const UI_SCALE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:ui-scale`;
 export const CANVAS_STATE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:canvas-state`;
@@ -20,7 +22,34 @@ export const MIN_CREATE_DRAG_DISTANCE = 6;
 export const MIN_CREATE_HOLD_DURATION_MS = 150;
 export const MIN_SELECT_DRAG_DISTANCE = 4;
 export const OBJECT_SNAP_DISTANCE = 12;
-export const GRID_CELL_SIZE = 24;
+export const DEFAULT_PX_GRID_MAJOR_SIZE = 30;
+export const DEFAULT_PX_GRID_MINOR_SIZE = 3;
+export const DEFAULT_CM_GRID_MAJOR_SIZE = 1;
+export const DEFAULT_CM_GRID_MINOR_SIZE = 5;
+export const DEFAULT_GRID_CM_SCALE = 1;
+export const MIN_GRID_CM_SCALE = 0.5;
+export const MAX_GRID_CM_SCALE = 2;
+export const GRID_CM_SCALE_STEP = 0.01;
+export const GRID_CALIBRATION_REFERENCE_CM = 3;
+export const DEFAULT_GRID_SETTINGS: GridSettings = {
+  unit: "px",
+  cmScale: DEFAULT_GRID_CM_SCALE,
+  majorSize: DEFAULT_PX_GRID_MAJOR_SIZE,
+  minorSize: DEFAULT_PX_GRID_MINOR_SIZE,
+  showMajor: true,
+  showMinor: true
+};
+export const DEFAULT_CM_GRID_SETTINGS: GridSettings = {
+  unit: "cm",
+  cmScale: DEFAULT_GRID_CM_SCALE,
+  majorSize: DEFAULT_CM_GRID_MAJOR_SIZE,
+  minorSize: DEFAULT_CM_GRID_MINOR_SIZE,
+  showMajor: true,
+  showMinor: true
+};
+export const GRID_CELL_SIZE = DEFAULT_PX_GRID_MINOR_SIZE;
+export const MIN_GRID_SIZE = 0.1;
+export const MAX_GRID_SIZE = 10000;
 export const MIN_PIXEL_SIZE = 1;
 export const TEXT_ELEMENT_DEFAULT_WIDTH = 128;
 export const TEXT_ELEMENT_DEFAULT_HEIGHT = 36;

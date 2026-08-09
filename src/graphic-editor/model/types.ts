@@ -5,6 +5,8 @@ export type {
   ColorTarget,
   ContextMenuState,
   ElementType,
+  GridSettings,
+  GridUnit,
   Interaction,
   KizkattElement,
   KizkattTheme,

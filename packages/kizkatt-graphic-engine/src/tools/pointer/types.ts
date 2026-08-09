@@ -30,6 +30,7 @@ export type UseToolPointerHandlersArgs = {
   setPan: Dispatch<SetStateAction<Point>>;
   setPendingImageSrc: Dispatch<SetStateAction<string | null>>;
   setTool: Dispatch<SetStateAction<Tool>>;
+  gridCellSize: number;
   snapToGrid: boolean;
   snapToMidpoints: boolean;
   snapToObjects: boolean;
