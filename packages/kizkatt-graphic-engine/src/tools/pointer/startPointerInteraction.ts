@@ -1,12 +1,11 @@
 import type { PointerEvent } from "react";
 
 import {
+  CREATABLE_ELEMENT_TOOLS,
   DEFAULT_IMAGE_ELEMENT_TYPE,
   DEFAULT_IMAGE_SIZE,
-  DEFAULT_LOCK_TOOL_ELEMENT_TYPE,
   DEFAULT_SELECT_TOOL,
   HALF_DIVISOR,
-  LOCK_TOOL,
   NEXT_ARRAY_INDEX_OFFSET,
   ROTATE_HANDLE_MIN_RADIUS,
   SINGLE_SELECTION_COUNT,
@@ -18,11 +17,11 @@ import {
   getClientPoint,
   getElementBends,
   getLinearElementPoints,
-  getSegmentMidpoint,
+  getLinearElementSegmentMidpoint,
   selectionBounds
 } from "../../geometry";
 import { createElement } from "../../model/element";
-import type { KizkattElement } from "../../model/types";
+import type { ElementType, KizkattElement, Tool } from "../../model/types";
 import {
   getEventTargetElement,
   isHandleTarget,
@@ -33,6 +32,14 @@ import {
   getNextSelectedIdsForHit
 } from "../../model/groups";
 import type { PointerHandlerContext } from "./types";
+
+function isCreatableElementTool(tool: Tool): tool is ElementType {
+  return CREATABLE_ELEMENT_TOOLS.includes(tool as ElementType);
+}
+
+function isSelectionTool(tool: Tool) {
+  return tool === "select" || tool === "nodeEdit";
+}
 
 function getHandleWorldPoint(target: Element | null, fallback: { x: number; y: number }) {
   const x = Number(target?.getAttribute("data-handle-world-x"));
@@ -79,7 +86,7 @@ export function startPointerInteraction(
       return;
     }
 
-    if (tool === "select") {
+    if (isSelectionTool(tool)) {
       const hitElement = findElementAtPoint(canvasState.elements, worldPoint);
 
       if (hitElement) {
@@ -151,9 +158,10 @@ export function startPointerInteraction(
         bendIndexAttribute === null
           ? Number(segmentIndexAttribute ?? existingBends.length)
           : Number(bendIndexAttribute);
-      const bendMidpoint = getSegmentMidpoint(
-        linePoints[bendIndex],
-        linePoints[bendIndex + NEXT_ARRAY_INDEX_OFFSET]
+      const bendMidpoint = getLinearElementSegmentMidpoint(
+        linePoints,
+        bendIndex,
+        element.edgeStyle
       );
       const originalBends =
         bendIndexAttribute === null
@@ -232,7 +240,7 @@ export function startPointerInteraction(
     return;
   }
 
-  if (tool === "select") {
+  if (isSelectionTool(tool)) {
     const hitElement = findElementAtPoint(canvasState.elements, worldPoint);
 
     if (hitElement) {
@@ -329,11 +337,11 @@ export function startPointerInteraction(
   }
 
   const creationPoint = getSnappedPointerWorldPoint(event);
-  const nextElement = createElement(
-    tool === LOCK_TOOL ? DEFAULT_LOCK_TOOL_ELEMENT_TYPE : tool,
-    creationPoint,
-    style
-  );
+  if (!isCreatableElementTool(tool)) {
+    return;
+  }
+
+  const nextElement = createElement(tool, creationPoint, style);
   nextElement.name = createElementName(nextElement.type, canvasState.elements);
 
   commitState({

@@ -2196,39 +2196,25 @@ export type CanvasContextMenuProps = {
   selectionAreaMode: SelectionAreaMode;
   setArrowBinding: (updater: (value: boolean) => boolean) => void;
   setSelectionAreaMode: (mode: SelectionAreaMode) => void;
-  setShowGrid: (updater: (value: boolean) => boolean) => void;
-  setSnapToGrid: (updater: (value: boolean) => boolean) => void;
   setSnapToMidpoints: (updater: (value: boolean) => boolean) => void;
   setSnapToObjects: (updater: (value: boolean) => boolean) => void;
-  setViewMode: (updater: (value: boolean) => boolean) => void;
-  setZenMode: (updater: (value: boolean) => boolean) => void;
-  canUseGrid: boolean;
-  showGrid: boolean;
-  snapToGrid: boolean;
   snapToMidpoints: boolean;
   snapToObjects: boolean;
   viewMode: boolean;
-  zenMode: boolean;
 };
 
 export type MainMenuProps = {
   canvasBackgroundColor: string;
   customCanvasBackgroundColor: string;
-  gridColor: string;
-  gridSettings: GridSettings;
   menuOpen: boolean;
   onCanvasBackgroundChange: (color: string) => void;
   onExport: () => void;
-  onGridColorChange: (color: string) => void;
-  onGridSettingsChange: (settings: GridSettings) => void;
   onOpen: () => void;
   onPickCanvasBackground: () => void;
   onMenuOpenChange: (open: boolean) => void;
   onResetCanvas: () => void;
   onThemeChange: (theme: KizkattTheme) => void;
-  onUiScaleChange: (scale: number) => void;
   theme: KizkattTheme;
-  uiScale: number;
 };
 
 export type StylePanelProps = {
@@ -2265,12 +2251,28 @@ export type KizkattGraphicEditorComponents = {
     zoom: number;
   }>;
   FooterControls: ComponentType<{
+    canUseGrid: boolean;
     canRedo: boolean;
     canUndo: boolean;
+    gridColor: string;
+    gridSettings: GridSettings;
     onRedo: () => void;
+    onGridColorChange: (color: string) => void;
+    onGridSettingsChange: (settings: GridSettings) => void;
+    onToggleGrid: () => void;
+    onToggleSnapToGrid: () => void;
+    onToggleViewMode: () => void;
+    onToggleZenMode: () => void;
     onUndo: () => void;
+    onUiScaleChange: (scale: number) => void;
     onZoomIn: () => void;
     onZoomOut: () => void;
+    showGrid: boolean;
+    snapToGrid: boolean;
+    theme: KizkattTheme;
+    uiScale: number;
+    viewMode: boolean;
+    zenMode: boolean;
     zoom: number;
   }>;
   MainMenu: ComponentType<MainMenuProps>;
@@ -3516,7 +3518,8 @@ export function KizkattGraphicEditor({
           canvasState.selectedBend?.elementId === element.id
             ? canvasState.selectedBend.bendIndex
             : undefined,
-        showLinearBendHandles: !isCreatingLinearElement,
+        showLinearBendHandles:
+          tool === "nodeEdit" && !isCreatingLinearElement,
         showRotateHoverIcon: !isRotatingSelection,
         showRotateHandle: !isCreatingElement,
         showSelectionBounds: !isRotatingSelection
@@ -3567,39 +3570,25 @@ export function KizkattGraphicEditor({
         selectionAreaMode={selectionAreaMode}
         setArrowBinding={setArrowBinding}
         setSelectionAreaMode={setSelectionAreaMode}
-        setShowGrid={setShowGrid}
-        setSnapToGrid={setSnapToGrid}
         setSnapToMidpoints={setSnapToMidpoints}
         setSnapToObjects={setSnapToObjects}
-        setViewMode={setReadOnlyViewMode}
-        setZenMode={setZenMode}
-        canUseGrid={gridHasVisibleLayer}
-        showGrid={showGrid && gridHasVisibleLayer}
-        snapToGrid={snapToGrid && gridHasVisibleLayer}
         snapToMidpoints={snapToMidpoints}
         snapToObjects={snapToObjects}
         viewMode={viewMode}
-        zenMode={zenMode}
       />
 
       <MainMenu
         canvasBackgroundColor={canvasBackgroundColor}
         customCanvasBackgroundColor={customCanvasBackgroundColor}
-        gridColor={gridColor}
-        gridSettings={gridSettings}
         menuOpen={menuOpen}
         onExport={quickSaveCanvas}
         onOpen={quickLoadCanvas}
         onCanvasBackgroundChange={setStoredCanvasBackground}
-        onGridColorChange={setStoredGridColor}
-        onGridSettingsChange={setStoredGridSettings}
         onMenuOpenChange={setMenuOpen}
         onPickCanvasBackground={() => void pickCanvasBackground()}
         onResetCanvas={resetCanvas}
         onThemeChange={setStoredTheme}
-        onUiScaleChange={setStoredUiScale}
         theme={theme}
-        uiScale={uiScale}
       />
       {showStylePanel && (
         <StylePanel
@@ -3705,29 +3694,43 @@ export function KizkattGraphicEditor({
         </g>
       </svg>
 
-      {!zenMode && (
-        <FooterControls
-          canRedo={!viewMode && canRedo}
-          canUndo={!viewMode && canUndo}
-          zoom={zoom}
-          onRedo={() => {
-            if (!viewMode) {
-              redo();
-            }
-          }}
-          onUndo={() => {
-            if (!viewMode) {
-              undo();
-            }
-          }}
-          onZoomIn={() =>
-            setZoom((value) => Math.min(MAX_ZOOM, value + ZOOM_STEP))
+      <FooterControls
+        canRedo={!viewMode && canRedo}
+        canUndo={!viewMode && canUndo}
+        canUseGrid={gridHasVisibleLayer}
+        gridColor={gridColor}
+        gridSettings={gridSettings}
+        showGrid={showGrid && gridHasVisibleLayer}
+        snapToGrid={snapToGrid && gridHasVisibleLayer}
+        theme={theme}
+        uiScale={uiScale}
+        viewMode={viewMode}
+        zenMode={zenMode}
+        zoom={zoom}
+        onGridColorChange={setStoredGridColor}
+        onGridSettingsChange={setStoredGridSettings}
+        onRedo={() => {
+          if (!viewMode) {
+            redo();
           }
-          onZoomOut={() =>
-            setZoom((value) => Math.max(MIN_ZOOM, value - ZOOM_STEP))
+        }}
+        onToggleGrid={() => setShowGrid((value) => !value)}
+        onToggleSnapToGrid={() => setSnapToGrid((value) => !value)}
+        onToggleViewMode={() => setReadOnlyViewMode((value) => !value)}
+        onToggleZenMode={() => setZenMode((value) => !value)}
+        onUiScaleChange={setStoredUiScale}
+        onUndo={() => {
+          if (!viewMode) {
+            undo();
           }
-        />
-      )}
+        }}
+        onZoomIn={() =>
+          setZoom((value) => Math.min(MAX_ZOOM, value + ZOOM_STEP))
+        }
+        onZoomOut={() =>
+          setZoom((value) => Math.max(MIN_ZOOM, value - ZOOM_STEP))
+        }
+      />
     </section>
   );
 }

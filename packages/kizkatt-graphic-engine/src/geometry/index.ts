@@ -15,7 +15,8 @@ export { reorderElementsByLayerAction } from "./layers";
 export {
   getElementBends,
   getLinearElementPath,
-  getLinearElementPoints
+  getLinearElementPoints,
+  getLinearElementSegmentMidpoint
 } from "./linearElements";
 export { getClientPoint, getWorldPoint } from "./pointerEvents";
 export {

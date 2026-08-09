@@ -4,6 +4,7 @@ import {
   CONTEXT_MENU_DEFAULTS_STORAGE_KEY,
   CUSTOM_CANVAS_BACKGROUND_STORAGE_KEY,
   DEFAULT_CANVAS_BACKGROUND,
+  DEFAULT_CANVAS_BACKGROUND_BY_THEME,
   DEFAULT_CM_GRID_SETTINGS,
   DEFAULT_CUSTOM_CANVAS_BACKGROUND_BY_THEME,
   DEFAULT_GRID_SETTINGS,
@@ -179,8 +180,11 @@ export function getStoredCanvasBackgroundColor(
     ? storage.getItem(getThemedStorageKey(CANVAS_BACKGROUND_STORAGE_KEY, theme))
     : null;
 
+  if (theme) {
+    return storedColor || DEFAULT_CANVAS_BACKGROUND_BY_THEME[theme];
+  }
+
   return (
-    storedColor ||
     storage.getItem(CANVAS_BACKGROUND_STORAGE_KEY) ||
     DEFAULT_CANVAS_BACKGROUND
   );
@@ -198,6 +202,7 @@ export function storeCanvasBackgroundColor(
 
   if (theme) {
     storage.setItem(getThemedStorageKey(CANVAS_BACKGROUND_STORAGE_KEY, theme), color);
+    return;
   }
 
   storage.setItem(CANVAS_BACKGROUND_STORAGE_KEY, color);
@@ -217,12 +222,13 @@ export function getStoredCustomCanvasBackgroundColor(
       )
     : null;
 
+  if (theme) {
+    return storedColor || DEFAULT_CUSTOM_CANVAS_BACKGROUND_BY_THEME[theme];
+  }
+
   return (
-    storedColor ||
     storage.getItem(CUSTOM_CANVAS_BACKGROUND_STORAGE_KEY) ||
-    (theme
-      ? DEFAULT_CUSTOM_CANVAS_BACKGROUND_BY_THEME[theme]
-      : DEFAULT_CANVAS_BACKGROUND)
+    DEFAULT_CANVAS_BACKGROUND
   );
 }
 
@@ -241,6 +247,7 @@ export function storeCustomCanvasBackgroundColor(
       getThemedStorageKey(CUSTOM_CANVAS_BACKGROUND_STORAGE_KEY, theme),
       color
     );
+    return;
   }
 
   storage.setItem(CUSTOM_CANVAS_BACKGROUND_STORAGE_KEY, color);
@@ -258,11 +265,11 @@ export function getStoredGridColor(
     ? storage.getItem(getThemedStorageKey(GRID_COLOR_STORAGE_KEY, theme))
     : null;
 
-  return (
-    storedColor ||
-    storage.getItem(GRID_COLOR_STORAGE_KEY) ||
-    (theme ? DEFAULT_GRID_COLOR_BY_THEME[theme] : DEFAULT_GRID_COLOR)
-  );
+  if (theme) {
+    return storedColor || DEFAULT_GRID_COLOR_BY_THEME[theme];
+  }
+
+  return storage.getItem(GRID_COLOR_STORAGE_KEY) || DEFAULT_GRID_COLOR;
 }
 
 export function storeGridColor(
@@ -277,6 +284,7 @@ export function storeGridColor(
 
   if (theme) {
     storage.setItem(getThemedStorageKey(GRID_COLOR_STORAGE_KEY, theme), color);
+    return;
   }
 
   storage.setItem(GRID_COLOR_STORAGE_KEY, color);

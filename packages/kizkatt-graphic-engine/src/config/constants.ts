@@ -137,10 +137,18 @@ export const SINGLE_SELECTION_COUNT = 1;
 export const FIRST_ARRAY_INDEX = 0;
 export const NEXT_ARRAY_INDEX_OFFSET = 1;
 export const DEFAULT_SELECT_TOOL = "select";
-export const LOCK_TOOL = "lock";
 export const TEXT_TOOL = "text";
-export const DEFAULT_LOCK_TOOL_ELEMENT_TYPE = "rectangle";
 export const DEFAULT_IMAGE_ELEMENT_TYPE = "image";
+export const CREATABLE_ELEMENT_TOOLS: readonly ElementType[] = [
+  "arrow",
+  "diamond",
+  "draw",
+  "ellipse",
+  "image",
+  "line",
+  "rectangle",
+  "text"
+];
 export const EMPTY_PATH_DATA = "";
 export const SVG_MOVE_COMMAND = "M";
 export const SVG_LINE_COMMAND = "L";
@@ -149,6 +157,7 @@ export const SVG_COMMAND_SEPARATOR = " ";
 export const LINEAR_PATH_MIN_POINT_COUNT = 1;
 export const LINEAR_PATH_STRAIGHT_POINT_COUNT = 2;
 export const CUBIC_CONTROL_POINT_DIVISOR = 6;
+export const CUBIC_BEZIER_WEIGHT = 3;
 export const SHARP_EDGE_STYLE = "sharp";
 export const NO_ROTATION_ANGLE = 0;
 export const DRAW_ELEMENT_TYPE = "draw";
@@ -160,6 +169,12 @@ export const MAX_UI_SCALE = 1.2;
 export const UI_SCALE_STEP = 0.05;
 
 export const DEFAULT_CANVAS_BACKGROUND = "#fdf8f6";
+export const DARK_DEFAULT_CANVAS_BACKGROUND = "#121212";
+export const DEFAULT_CANVAS_BACKGROUND_BY_THEME: Record<KizkattTheme, string> =
+  {
+    dark: DARK_DEFAULT_CANVAS_BACKGROUND,
+    light: DEFAULT_CANVAS_BACKGROUND
+  };
 export const DEFAULT_GRID_COLOR = "rgba(255, 255, 255, 0.1)";
 
 export const DEFAULT_CUSTOM_CANVAS_BACKGROUND_BY_THEME: Record<
@@ -395,7 +410,13 @@ export const DEFAULT_ELEMENT_STYLE_BY_THEME: Record<KizkattTheme, StyleState> = 
 export const DEFAULT_ELEMENT_STYLE = DEFAULT_ELEMENT_STYLE_BY_THEME.dark;
 
 export const CANVAS_BACKGROUNDS_BY_THEME: Record<KizkattTheme, string[]> = {
-  dark: ["#121212", "#161719", "#0f1518", "#1d1b04", "#211a16"],
+  dark: [
+    DARK_DEFAULT_CANVAS_BACKGROUND,
+    "#161719",
+    "#0f1518",
+    "#1d1b04",
+    "#211a16"
+  ],
   light: ["#ffffff", "#f8f9fa", "#f5faff", "#fffce8", "#fdf8f6"]
 };
 

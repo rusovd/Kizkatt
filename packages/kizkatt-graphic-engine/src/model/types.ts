@@ -1,7 +1,7 @@
 export type Tool =
-  | "lock"
   | "hand"
   | "select"
+  | "nodeEdit"
   | "rectangle"
   | "diamond"
   | "ellipse"
