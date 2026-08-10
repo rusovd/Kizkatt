@@ -23,11 +23,14 @@ import {
   GroupIcon,
   ImageIcon,
   PasteIcon,
+  RefreshPageIcon,
+  RevertObjectBaseIcon,
   SelectAllIcon,
   SelectionContainIcon,
   SelectionIcon,
   SnapIcon,
   UngroupIcon,
+  UpdateObjectBaseIcon
 } from "../icons";
 
 type CanvasContextMenuProps = {
@@ -35,7 +38,9 @@ type CanvasContextMenuProps = {
   canBreakApart: boolean;
   canCopySelection: boolean;
   canGroup: boolean;
+  canRevertObjectBase: boolean;
   canUngroup: boolean;
+  canUpdateObjectBase: boolean;
   contextMenu: ContextMenuState | null;
   onCloseAndRun: (action: () => void | Promise<void>) => void;
   onBreakApart: () => void;
@@ -45,7 +50,10 @@ type CanvasContextMenuProps = {
   onGroup: () => void;
   onPaste: () => void | Promise<void>;
   onPasteSvgCode: () => void | Promise<void>;
+  onRefreshPage: () => void;
+  onRevertObjectBase: () => void;
   onSelectAll: () => void;
+  onUpdateObjectBase: () => void;
   onUngroup: () => void;
   selectionAreaMode: SelectionAreaMode;
   setArrowBinding: (updater: (value: boolean) => boolean) => void;
@@ -120,6 +128,7 @@ function MenuButton({
   disabled,
   icon,
   onClick,
+  onMouseEnter,
   role = "menuitem",
   shortcut,
   title
@@ -129,6 +138,7 @@ function MenuButton({
   disabled?: boolean;
   icon: ReactNode;
   onClick: () => void;
+  onMouseEnter?: () => void;
   role?: MenuRole;
   shortcut?: string;
   title: string;
@@ -146,6 +156,7 @@ function MenuButton({
       aria-checked={ariaChecked}
       disabled={disabled}
       title={title}
+      onMouseEnter={onMouseEnter}
       onClick={onClick}
     >
       <MenuItemLabel icon={icon}>{children}</MenuItemLabel>
@@ -235,7 +246,9 @@ export function CanvasContextMenu({
   canBreakApart,
   canCopySelection,
   canGroup,
+  canRevertObjectBase,
   canUngroup,
+  canUpdateObjectBase,
   contextMenu,
   onCloseAndRun,
   onBreakApart,
@@ -245,7 +258,10 @@ export function CanvasContextMenu({
   onGroup,
   onPaste,
   onPasteSvgCode,
+  onRefreshPage,
+  onRevertObjectBase,
   onSelectAll,
+  onUpdateObjectBase,
   onUngroup,
   selectionAreaMode,
   setArrowBinding,
@@ -402,11 +418,27 @@ export function CanvasContextMenu({
       className="kizkatt-context-menu"
       role="menu"
       aria-label={strings.contextMenu.ariaLabel}
+      onMouseMove={(event) => {
+        if (
+          event.target instanceof Element &&
+          !event.target.closest(".kizkatt-context-menu-submenu-item")
+        ) {
+          setOpenSubmenu(null);
+        }
+      }}
       style={{
         left: contextMenu.x,
         top: contextMenu.y
       }}
     >
+      <MenuButton
+        icon={RefreshPageIcon}
+        title={tooltips.refreshPage}
+        onClick={() => onCloseAndRun(onRefreshPage)}
+      >
+        {strings.contextMenu.refreshPage}
+      </MenuButton>
+      <div className="kizkatt-context-divider" />
       {!viewMode && (
         <>
           <SubmenuMenuItem
@@ -519,6 +551,27 @@ export function CanvasContextMenu({
               {strings.contextMenu.ungroup}
             </MenuButton>
           )}
+        </>
+      )}
+      {!viewMode && (canUpdateObjectBase || canRevertObjectBase) && (
+        <>
+          <div className="kizkatt-context-divider" />
+          <MenuButton
+            disabled={!canUpdateObjectBase}
+            icon={UpdateObjectBaseIcon}
+            title={tooltips.updateObjectBase}
+            onClick={() => onCloseAndRun(onUpdateObjectBase)}
+          >
+            {strings.contextMenu.updateObjectBase}
+          </MenuButton>
+          <MenuButton
+            disabled={!canRevertObjectBase}
+            icon={RevertObjectBaseIcon}
+            title={tooltips.revertObjectBase}
+            onClick={() => onCloseAndRun(onRevertObjectBase)}
+          >
+            {strings.contextMenu.revertObjectBase}
+          </MenuButton>
         </>
       )}
       <div className="kizkatt-context-divider" />

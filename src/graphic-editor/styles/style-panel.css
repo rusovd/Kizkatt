@@ -9,6 +9,11 @@
   font-size: 12px;
 }
 
+.kizkatt-style-panel > .kizkatt-panel-drag-handle {
+  margin: -5px -5px 1px;
+  border-radius: 6px 6px 0 0;
+}
+
 .kizkatt-swatches {
   display: flex;
   flex-wrap: wrap;

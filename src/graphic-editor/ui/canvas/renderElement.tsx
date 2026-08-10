@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import {
   getElementBends,
   getElementCenter,
+  getElementTransformedCorners,
   getLinearElementPath,
   getLinearElementPoints
 } from "../../geometry";
@@ -10,7 +11,11 @@ import { canElementUseBackground, isElementPathClosed } from "../../model/elemen
 import type { KizkattElement } from "../../model/types";
 import { PERCENT_MAX_VALUE } from "../../config/constants";
 import { ElementGroup } from "./ElementGroup";
-import { ElementOverlay } from "./ElementOverlay";
+import {
+  ElementOverlay,
+  WorldResizeOverlay,
+  WorldSkewOverlay
+} from "./ElementOverlay";
 import {
   getElementShapeProps,
   getElementTransform,
@@ -386,6 +391,8 @@ function SelectedElementOverlay({
   return (
     <ElementOverlay
       element={element}
+      selectionTransformCenter={options.selectionTransformCenter}
+      selectionTransformMode={options.selectionTransformMode}
       showBounds={options.showSelectionBounds ?? true}
       showRotateHoverIcon={options.showRotateHoverIcon ?? true}
       showRotateHandle={options.showRotateHandle ?? true}
@@ -582,6 +589,31 @@ export function renderElementOverlay(
   options: RenderElementOptions = {}
 ) {
   const isInternalOverlay = options.overlayVariant === "internal";
+  const isSkewMode = options.selectionTransformMode === "skew";
+
+  if (!isInternalOverlay && isSkewMode) {
+    return (
+      <WorldSkewOverlay
+        key={`overlay-${element.id}`}
+        center={options.selectionTransformCenter ?? getElementCenter(element)}
+        points={getElementTransformedCorners(element)}
+      />
+    );
+  }
+
+  if (
+    !isInternalOverlay &&
+    element.type !== "line" &&
+    element.type !== "arrow"
+  ) {
+    return (
+      <WorldResizeOverlay
+        key={`overlay-${element.id}`}
+        center={options.selectionTransformCenter}
+        element={element}
+      />
+    );
+  }
 
   if (isInternalOverlay) {
     return (
@@ -593,8 +625,10 @@ export function renderElementOverlay(
         transform={getElementTransform(element)}
       >
         <ElementOverlay
-          element={element}
-          internal
+            element={element}
+            internal
+            selectionTransformCenter={options.selectionTransformCenter}
+            selectionTransformMode={options.selectionTransformMode}
           showBounds={options.showSelectionBounds ?? true}
           showResizeHandles={false}
           showRotateHandle={false}
@@ -616,24 +650,28 @@ export function renderElementOverlay(
         data-element-overlay-variant="primary"
         transform={getElementTransform(element)}
       >
-        {hasBends ? (
+        {hasBends || isSkewMode ? (
           <ElementOverlay
             element={element}
+            selectionTransformCenter={options.selectionTransformCenter}
+            selectionTransformMode={options.selectionTransformMode}
             showBounds={options.showSelectionBounds ?? true}
             showRotateHoverIcon={options.showRotateHoverIcon ?? true}
             showRotateHandle={options.showRotateHandle ?? true}
           />
         ) : null}
-        <LinearElementOverlay
-          element={element}
-          bends={bends}
-          linePoints={linePoints}
-          selectedBendIndex={options.selectedBendIndex}
-          showBounds={options.showSelectionBounds ?? true}
-          showBendHandles={options.showLinearBendHandles ?? true}
-          showRotateHoverIcon={options.showRotateHoverIcon ?? true}
-          showRotateHandle={!hasBends && (options.showRotateHandle ?? true)}
-        />
+        {!isSkewMode && (
+          <LinearElementOverlay
+            element={element}
+            bends={bends}
+            linePoints={linePoints}
+            selectedBendIndex={options.selectedBendIndex}
+            showBounds={options.showSelectionBounds ?? true}
+            showBendHandles={options.showLinearBendHandles ?? true}
+            showRotateHoverIcon={options.showRotateHoverIcon ?? true}
+            showRotateHandle={!hasBends && (options.showRotateHandle ?? true)}
+          />
+        )}
       </g>
     );
   }
@@ -775,6 +813,7 @@ export function renderElement(
     const bends = getElementBends(element);
     const linePoints = getLinearElementPoints(element, bends);
     const hasBends = bends.length > ZERO_COORDINATE;
+    const isSkewMode = options.selectionTransformMode === "skew";
     const canUseFill = canElementUseBackground(element);
     const pathData = getLinearElementPath(linePoints, element.edgeStyle);
     const markerEnd =
@@ -809,22 +848,26 @@ export function renderElement(
         <SecondaryLineStroke element={element} linePoints={linePoints} />
         {selected && (
           <>
-            {hasBends ? (
+            {hasBends || isSkewMode ? (
               <ElementOverlay
                 element={element}
+                selectionTransformCenter={options.selectionTransformCenter}
+                selectionTransformMode={options.selectionTransformMode}
                 showBounds={options.showSelectionBounds ?? true}
                 showRotateHandle={options.showRotateHandle ?? true}
               />
             ) : null}
-            <LinearElementOverlay
-              element={element}
-              bends={bends}
-              linePoints={linePoints}
-              selectedBendIndex={options.selectedBendIndex}
-              showBounds={options.showSelectionBounds ?? true}
-              showBendHandles={options.showLinearBendHandles ?? true}
-              showRotateHandle={!hasBends && (options.showRotateHandle ?? true)}
-            />
+            {!isSkewMode && (
+              <LinearElementOverlay
+                element={element}
+                bends={bends}
+                linePoints={linePoints}
+                selectedBendIndex={options.selectedBendIndex}
+                showBounds={options.showSelectionBounds ?? true}
+                showBendHandles={options.showLinearBendHandles ?? true}
+                showRotateHandle={!hasBends && (options.showRotateHandle ?? true)}
+              />
+            )}
           </>
         )}
       </ElementGroup>

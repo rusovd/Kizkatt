@@ -13,6 +13,8 @@ export type {
   Point,
   ResizeHandle,
   SelectionAreaMode,
+  SelectionTransformMode,
+  SkewHandle,
   StyleState,
   Tool
 } from "kizkatt-graphic-engine";

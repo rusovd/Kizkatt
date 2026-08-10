@@ -13,6 +13,7 @@
   --kizkatt-shadow: rgba(0, 0, 0, 0.28);
   --kizkatt-text: #f5f5f8;
   --kizkatt-text-secondary: #d6d6df;
+  --kizkatt-transform-icon: #ffffff;
   --kizkatt-ui-scale: 1;
   position: relative;
   width: 100vw;
@@ -38,5 +39,6 @@
   --kizkatt-shadow: rgba(22, 22, 28, 0.16);
   --kizkatt-text: #1e1e28;
   --kizkatt-text-secondary: #34343f;
+  --kizkatt-transform-icon: #050505;
   background: #f8f8fb;
 }

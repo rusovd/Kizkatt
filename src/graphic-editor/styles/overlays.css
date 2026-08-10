@@ -1,4 +1,4 @@
-.kizkatt-selection-overlay rect:first-child,
+.kizkatt-selection-overlay > rect:first-child,
 .kizkatt-multi-selection,
 .kizkatt-area-selection {
   stroke: var(--kizkatt-selection);
@@ -50,6 +50,66 @@
   cursor: nwse-resize;
 }
 
+.kizkatt-skew-handle,
+.kizkatt-corner-rotate-handle {
+  pointer-events: all;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-skew-handle rect,
+.kizkatt-corner-rotate-handle rect {
+  fill: transparent;
+  stroke: transparent;
+}
+
+.kizkatt-skew-handle > path {
+  fill: none;
+  stroke: var(--kizkatt-transform-icon);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-corner-rotate-handle {
+  color: var(--kizkatt-transform-icon);
+  cursor: grab;
+}
+
+.kizkatt-corner-rotate-handle path {
+  fill: currentColor;
+  stroke: none;
+}
+
+.kizkatt-transform-center-marker {
+  color: var(--kizkatt-transform-icon);
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-transform-center-marker--cross {
+  pointer-events: none;
+}
+
+.kizkatt-transform-center-marker--cross path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-transform-center-marker--target {
+  cursor: move;
+  pointer-events: all;
+}
+
+.kizkatt-transform-center-marker--target .kizkatt-tool-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 2px 4px var(--kizkatt-shadow));
+}
+
 .kizkatt-endpoint-handle {
   fill: var(--kizkatt-handle-bg);
   stroke: var(--kizkatt-selection-strong);
@@ -89,7 +149,7 @@
 }
 
 .kizkatt-rotate-hover-icon {
-  color: var(--kizkatt-selection-strong);
+  color: var(--kizkatt-transform-icon);
   opacity: 0;
   pointer-events: none;
   transition: opacity 100ms ease;
@@ -108,4 +168,16 @@
 
 .kizkatt-rotate-handle:active + .kizkatt-rotate-hover-icon {
   opacity: 0;
+}
+
+.kizkatt-transform-preview {
+  pointer-events: none;
+}
+
+.kizkatt-transform-preview path {
+  fill: none;
+  stroke: var(--kizkatt-selection-strong);
+  stroke-dasharray: 7 5;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
 }

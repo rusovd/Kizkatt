@@ -13,7 +13,7 @@ import {
   ROTATE_HANDLE_OFFSET,
   ROTATE_HANDLE_RADIUS
 } from "./renderingConstants";
-import { RotateHoverIcon } from "./ElementOverlay";
+import { RotateHoverIcon, TransformCenterMarker } from "./ElementOverlay";
 
 export function LinearElementOverlay({
   bends,
@@ -104,6 +104,7 @@ export function LinearElementOverlay({
           )}
         </>
       )}
+      <TransformCenterMarker center={center} mode="resize" />
       {showRotateHandle && (
         <>
           <circle

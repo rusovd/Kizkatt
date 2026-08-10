@@ -63,10 +63,17 @@ function getStrokeDasharray(element: KizkattElement) {
 
 export function getElementTransform(element: KizkattElement) {
   const center = getElementCenter(element);
+  const rotate = element.angle * SVG_DEGREES_PER_RADIAN;
+  const skewX = (element.skewX ?? 0) * SVG_DEGREES_PER_RADIAN;
+  const skewY = (element.skewY ?? 0) * SVG_DEGREES_PER_RADIAN;
 
-  return `rotate(${
-    element.angle * SVG_DEGREES_PER_RADIAN
-  } ${center.x} ${center.y})`;
+  return [
+    `translate(${center.x} ${center.y})`,
+    `rotate(${rotate})`,
+    `skewX(${skewX})`,
+    `skewY(${skewY})`,
+    `translate(${-center.x} ${-center.y})`
+  ].join(" ");
 }
 
 export function getElementShapeProps(element: KizkattElement) {

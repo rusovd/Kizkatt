@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 
 import type { Tool } from "../../model/types";
 import { DraggablePanel } from "../positioning/DraggablePanel";
+import { PanelDragHandle } from "../positioning/PanelDragHandle";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 import { TOOL_REGISTRY_BY_ID, type ToolDefinition } from "../../tools/toolRegistry";
 import { useI18n } from "../../i18n";
@@ -278,6 +279,10 @@ export function Toolbar({
         ].join(" ")}
         aria-label={strings.toolbar.ariaLabel}
       >
+        <PanelDragHandle
+          placement={toolbarOrientation === "vertical" ? "top" : "left"}
+          title={strings.settings.tooltips.panelDragHandle}
+        />
         {SINGLE_TOOL_ORDER.slice(0, 3).map((tool) => (
           <ToolButton
             key={tool}

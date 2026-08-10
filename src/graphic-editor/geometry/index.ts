@@ -3,8 +3,11 @@ export {
   getBoundsFromPoints,
   getDistance,
   getElementBends,
+  getElementBoundsCorners,
   getElementCenter,
+  getElementLocalPoint,
   getElementIdsInSelectionArea,
+  getElementTransformedCorners,
   getElementTransformedBounds,
   getCalibratedCentimetersWorldSize,
   getDefaultGridSettings,
@@ -24,6 +27,7 @@ export {
   rotateElementsAroundPoint,
   selectionBounds,
   snapPointToElements,
+  transformElementPoint,
   transformSvgPathData
 } from "kizkatt-graphic-engine";
 export type { GridWorldSizing, TransformedSvgPathData } from "kizkatt-graphic-engine";

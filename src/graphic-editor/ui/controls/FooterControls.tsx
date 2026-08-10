@@ -41,6 +41,7 @@ import {
   useCloseOtherFloatingPanels
 } from "../overlays/floatingPanels";
 import { DraggablePanel } from "../positioning/DraggablePanel";
+import { PanelDragHandle } from "../positioning/PanelDragHandle";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 
 const FOOTER_SETTINGS_PANEL_SOURCE = "footer-settings";
@@ -641,95 +642,96 @@ export function FooterControls({
   }, [settingsOpen]);
 
   return (
-    <>
-      <DraggablePanel id="zoom-controls" topDock>
-        <div
-          ref={controlsRef}
-          className="kizkatt-zoom-controls"
-          aria-label={strings.footer.zoomControls}
+    <DraggablePanel id="footer-controls" topDock>
+      <div
+        ref={controlsRef}
+        className="kizkatt-footer-controls"
+        aria-label={`${strings.footer.historyControls}. ${strings.footer.zoomControls}`}
+      >
+        <PanelDragHandle
+          placement="left"
+          title={strings.settings.tooltips.panelDragHandle}
+        />
+        <button
+          type="button"
+          className="kizkatt-footer-history-button"
+          data-no-panel-drag
+          aria-label={strings.footer.undo}
+          title={strings.footer.tooltips.undo}
+          onPointerDown={stopPanelDrag}
+          onClick={onUndo}
+          disabled={!canUndo}
         >
-          <button
-            type="button"
-            data-no-panel-drag
-            aria-label={strings.settings.editorSettings}
-            aria-expanded={settingsOpen}
-            title={strings.settings.tooltips.editorSettings}
-            onPointerDown={stopPanelDrag}
-            onClick={toggleSettings}
-          >
-            {SettingsIcon}
-          </button>
-          <span className="kizkatt-zoom-divider" aria-hidden="true" />
-          <button
-            type="button"
-            data-no-panel-drag
-            aria-label={strings.footer.zoomOut}
-            title={strings.footer.tooltips.zoomOut}
-            onPointerDown={stopPanelDrag}
-            onClick={onZoomOut}
-          >
-            {ZOOM_OUT_SYMBOL}
-          </button>
-          <span>{Math.round(zoom * PERCENT_MAX_VALUE)}%</span>
-          <button
-            type="button"
-            data-no-panel-drag
-            aria-label={strings.footer.zoomIn}
-            title={strings.footer.tooltips.zoomIn}
-            onPointerDown={stopPanelDrag}
-            onClick={onZoomIn}
-          >
-            {ZOOM_IN_SYMBOL}
-          </button>
-          {settingsOpen && (
-            <EditorSettingsMenu
-              canUseGrid={canUseGrid}
-              gridColor={gridColor}
-              gridSettings={gridSettings}
-              onGridColorChange={onGridColorChange}
-              onGridSettingsChange={onGridSettingsChange}
-              onToggleGrid={onToggleGrid}
-              onToggleSnapToGrid={onToggleSnapToGrid}
-              onToggleViewMode={onToggleViewMode}
-              onToggleZenMode={onToggleZenMode}
-              onUiScaleChange={onUiScaleChange}
-              onRequestClose={closeSettings}
-              showGrid={showGrid}
-              snapToGrid={snapToGrid}
-              theme={theme}
-              uiScale={uiScale}
-              viewMode={viewMode}
-              zenMode={zenMode}
-            />
-          )}
-        </div>
-      </DraggablePanel>
-
-      <DraggablePanel id="history-controls" topDock>
-        <div
-          className="kizkatt-history-controls"
-          aria-label={strings.footer.historyControls}
+          {UndoIcon}
+        </button>
+        <button
+          type="button"
+          className="kizkatt-footer-history-button"
+          data-no-panel-drag
+          aria-label={strings.footer.redo}
+          title={strings.footer.tooltips.redo}
+          onPointerDown={stopPanelDrag}
+          onClick={onRedo}
+          disabled={!canRedo}
         >
-          <button
-            type="button"
-            aria-label={strings.footer.undo}
-            title={strings.footer.tooltips.undo}
-            onClick={onUndo}
-            disabled={!canUndo}
-          >
-            {UndoIcon}
-          </button>
-          <button
-            type="button"
-            aria-label={strings.footer.redo}
-            title={strings.footer.tooltips.redo}
-            onClick={onRedo}
-            disabled={!canRedo}
-          >
-            {RedoIcon}
-          </button>
-        </div>
-      </DraggablePanel>
-    </>
+          {RedoIcon}
+        </button>
+        <span className="kizkatt-zoom-divider" aria-hidden="true" />
+        <button
+          type="button"
+          data-no-panel-drag
+          aria-label={strings.settings.editorSettings}
+          aria-expanded={settingsOpen}
+          title={strings.settings.tooltips.editorSettings}
+          onPointerDown={stopPanelDrag}
+          onClick={toggleSettings}
+        >
+          {SettingsIcon}
+        </button>
+        <span className="kizkatt-zoom-divider" aria-hidden="true" />
+        <button
+          type="button"
+          data-no-panel-drag
+          aria-label={strings.footer.zoomOut}
+          title={strings.footer.tooltips.zoomOut}
+          onPointerDown={stopPanelDrag}
+          onClick={onZoomOut}
+        >
+          {ZOOM_OUT_SYMBOL}
+        </button>
+        <span>{Math.round(zoom * PERCENT_MAX_VALUE)}%</span>
+        <button
+          type="button"
+          data-no-panel-drag
+          aria-label={strings.footer.zoomIn}
+          title={strings.footer.tooltips.zoomIn}
+          onPointerDown={stopPanelDrag}
+          onClick={onZoomIn}
+        >
+          {ZOOM_IN_SYMBOL}
+        </button>
+        {settingsOpen && (
+          <EditorSettingsMenu
+            canUseGrid={canUseGrid}
+            gridColor={gridColor}
+            gridSettings={gridSettings}
+            onGridColorChange={onGridColorChange}
+            onGridSettingsChange={onGridSettingsChange}
+            onToggleGrid={onToggleGrid}
+            onToggleSnapToGrid={onToggleSnapToGrid}
+            onToggleViewMode={onToggleViewMode}
+            onToggleZenMode={onToggleZenMode}
+            onUiScaleChange={onUiScaleChange}
+            onRequestClose={closeSettings}
+            showGrid={showGrid}
+            snapToGrid={snapToGrid}
+            theme={theme}
+            uiScale={uiScale}
+            viewMode={viewMode}
+            zenMode={zenMode}
+          />
+        )}
+      </div>
+    </DraggablePanel>
   );
 }

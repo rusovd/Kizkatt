@@ -47,6 +47,7 @@ import {
   TrashIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
+import { PanelDragHandle } from "../positioning/PanelDragHandle";
 import {
   closeOtherFloatingPanels,
   useActiveFloatingPanel,
@@ -584,6 +585,10 @@ export function StylePanel({
         className="kizkatt-style-panel"
         aria-label={strings.stylePanel.elementStyle}
       >
+        <PanelDragHandle
+          placement="top"
+          title={strings.settings.tooltips.panelDragHandle}
+        />
         <label>{strings.stylePanel.background}</label>
         <ColorSwatches
           activeColor={style.backgroundColor}

@@ -1,6 +1,7 @@
 .kizkatt-toolbar,
 .kizkatt-zoom-controls,
 .kizkatt-history-controls,
+.kizkatt-footer-controls,
 .kizkatt-menu-button,
 .kizkatt-main-menu,
 .kizkatt-footer-settings-menu,
@@ -22,12 +23,13 @@
   z-index: 3;
   touch-action: none;
   user-select: none;
-  cursor: grab;
+  cursor: default;
   transform: scale(var(--kizkatt-ui-scale));
   transform-origin: top left;
 }
 
-.kizkatt-floating-panel.is-dragging {
+.kizkatt-floating-panel.is-dragging,
+.kizkatt-floating-panel.is-dragging .kizkatt-panel-drag-handle {
   cursor: grabbing;
 }
 
@@ -55,6 +57,7 @@
 .kizkatt-floating-panel--toolbar.is-positioned,
 .kizkatt-floating-panel--history-controls.is-positioned,
 .kizkatt-floating-panel--zoom-controls.is-positioned,
+.kizkatt-floating-panel--footer-controls.is-positioned,
 .kizkatt-floating-panel--main-menu.is-positioned,
 .kizkatt-floating-panel--style-panel.is-positioned {
   right: auto;
@@ -69,6 +72,12 @@
 }
 
 .kizkatt-floating-panel--zoom-controls {
+  right: 16px;
+  bottom: 16px;
+  transform-origin: bottom right;
+}
+
+.kizkatt-floating-panel--footer-controls {
   right: 16px;
   bottom: 16px;
   transform-origin: bottom right;
@@ -97,6 +106,48 @@
     transform 120ms ease;
 }
 
+.kizkatt-panel-drag-handle {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  align-self: stretch;
+  place-items: center;
+  color: var(--kizkatt-muted-text);
+  cursor: grab;
+  opacity: 0.86;
+  touch-action: none;
+}
+
+.kizkatt-panel-drag-handle::before {
+  width: 10px;
+  height: 22px;
+  background-image: radial-gradient(currentColor 1.1px, transparent 1.2px);
+  background-size: 5px 6px;
+  content: "";
+}
+
+.kizkatt-panel-drag-handle--left {
+  width: 28px;
+  border-right: 1px solid var(--kizkatt-divider);
+}
+
+.kizkatt-panel-drag-handle--top {
+  width: auto;
+  height: 18px;
+  border-bottom: 1px solid var(--kizkatt-divider);
+}
+
+.kizkatt-panel-drag-handle--top::before {
+  width: 28px;
+  height: 10px;
+  background-size: 6px 5px;
+}
+
+.kizkatt-panel-drag-handle:hover {
+  color: var(--kizkatt-text-secondary);
+  background: var(--kizkatt-control-bg-hover);
+}
+
 .kizkatt-toolbar--vertical {
   width: 44px;
   height: auto;
@@ -117,6 +168,7 @@
 .kizkatt-toolbar button,
 .kizkatt-zoom-controls button,
 .kizkatt-history-controls button,
+.kizkatt-footer-controls button,
 .kizkatt-main-menu button,
 .kizkatt-swatches button,
 .kizkatt-segmented button,
@@ -136,11 +188,7 @@
   padding: 0 7px;
   place-items: center;
   color: var(--kizkatt-text-secondary);
-  cursor: grab;
-}
-
-.kizkatt-floating-panel--toolbar.is-dragging .kizkatt-toolbar button {
-  cursor: grabbing;
+  cursor: pointer;
 }
 
 .kizkatt-toolbar button.has-submenu {
@@ -260,6 +308,7 @@
 .kizkatt-toolbar button.is-active,
 .kizkatt-zoom-controls button:hover,
 .kizkatt-history-controls button:hover,
+.kizkatt-footer-controls button:hover,
 .kizkatt-main-menu button:hover,
 .kizkatt-segmented button:hover,
 .kizkatt-segmented button.is-active {
@@ -308,19 +357,22 @@
 }
 
 .kizkatt-zoom-controls,
-.kizkatt-history-controls {
+.kizkatt-history-controls,
+.kizkatt-footer-controls {
   display: flex;
   height: 38px;
   align-items: center;
   border-radius: 8px;
 }
 
-.kizkatt-zoom-controls {
+.kizkatt-zoom-controls,
+.kizkatt-footer-controls {
   position: relative;
 }
 
 .kizkatt-zoom-controls button,
-.kizkatt-history-controls button {
+.kizkatt-history-controls button,
+.kizkatt-footer-controls button {
   display: grid;
   min-width: 38px;
   height: 36px;
@@ -334,7 +386,12 @@
   min-width: 50px;
 }
 
-.kizkatt-zoom-controls > span:not(.kizkatt-zoom-divider) {
+.kizkatt-footer-history-button {
+  min-width: 42px;
+}
+
+.kizkatt-zoom-controls > span:not(.kizkatt-zoom-divider),
+.kizkatt-footer-controls > span:not(.kizkatt-zoom-divider) {
   display: inline-flex;
   min-width: 52px;
   justify-content: center;
@@ -342,7 +399,8 @@
   font-size: 12px;
 }
 
-.kizkatt-zoom-controls .kizkatt-zoom-divider {
+.kizkatt-zoom-controls .kizkatt-zoom-divider,
+.kizkatt-footer-controls .kizkatt-zoom-divider {
   display: block;
   width: 1px;
   min-width: 1px;
@@ -432,7 +490,8 @@
   cursor: pointer;
 }
 
-.kizkatt-history-controls button:disabled {
+.kizkatt-history-controls button:disabled,
+.kizkatt-footer-controls button:disabled {
   color: #777784;
   cursor: default;
 }

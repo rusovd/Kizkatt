@@ -17,6 +17,8 @@ export function ElementGroup({
     groupName: element.groupName,
     id: element.id,
     name,
+    skewX: element.skewX ?? 0,
+    skewY: element.skewY ?? 0,
     type: element.type
   });
 

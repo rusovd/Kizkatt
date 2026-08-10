@@ -16,6 +16,7 @@ export {
   resizeElementFromHandle,
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,
+  skewElementsFromSelectionHandle,
   stopDrawingEngineShortcuts,
   storeCanvasBackgroundColor,
   storeCustomCanvasBackgroundColor,

@@ -32,6 +32,8 @@ export const ENGLISH_TRANSLATIONS = {
     group: "Group",
     paste: "Paste",
     pasteSvgCode: "Paste SVG code as object",
+    refreshPage: "Refresh page",
+    revertObjectBase: "Revert object base",
     selectAll: "Select all",
     selectEnclosed: "Select enclosed objects",
     selectTouching: "Select touching objects",
@@ -40,6 +42,7 @@ export const ENGLISH_TRANSLATIONS = {
     snapToObjects: "Snap to objects",
     toggleGrid: "Toggle grid",
     ungroup: "Ungroup",
+    updateObjectBase: "Update object base",
     viewMode: "View mode",
     zenMode: "Zen mode",
     tooltips: {
@@ -51,6 +54,8 @@ export const ENGLISH_TRANSLATIONS = {
       group: "Group selected objects",
       paste: "Paste text or image from the clipboard",
       pasteSvgCode: "Read SVG code from the clipboard and insert it as an object",
+      refreshPage: "Reload the page and restore the saved canvas",
+      revertObjectBase: "Restore selected objects from their saved base state",
       selectAll: "Select every object on the canvas",
       selectEnclosed: "Area selection includes only fully enclosed objects",
       selectTouching: "Area selection includes every touched object",
@@ -59,6 +64,7 @@ export const ENGLISH_TRANSLATIONS = {
       snapToObjects: "Snap pointers to nearby objects",
       toggleGrid: "Show or hide the canvas grid",
       ungroup: "Ungroup the selected group",
+      updateObjectBase: "Save selected objects' current state as their base",
       viewMode: "Toggle view-only mode",
       zenMode: "Toggle zen mode"
     }
@@ -136,6 +142,7 @@ export const ENGLISH_TRANSLATIONS = {
       autohideToolbar: "Turn toolbar autohide on or off",
       editorSettings: "Open editor settings",
       gridSettings: "Open grid settings",
+      panelDragHandle: "Drag this panel",
       panelStickiness: "Turn panel dragging on or off",
       toolbarOrientation: "Switch toolbar orientation",
       toolbarSettings: "Open toolbar settings"

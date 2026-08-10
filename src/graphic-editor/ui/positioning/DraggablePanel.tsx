@@ -17,6 +17,7 @@ const STORAGE_PREFIX = "kizkatt:graphic-editor:panel";
 const TOP_DOCK_Y = 16;
 const TOP_DOCK_THRESHOLD = 28;
 const DRAG_CLICK_THRESHOLD = 4;
+const PANEL_DRAG_HANDLE_SELECTOR = "[data-panel-drag-handle]";
 
 function getStorageKey(id: string) {
   return `${STORAGE_PREFIX}:${id}`;
@@ -42,6 +43,13 @@ function readStoredPosition(id: string): PanelPosition | null {
 
 function storePosition(id: string, position: PanelPosition) {
   window.localStorage.setItem(getStorageKey(id), JSON.stringify(position));
+}
+
+function isPanelDragHandle(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest(PANEL_DRAG_HANDLE_SELECTOR))
+  );
 }
 
 function blocksPanelDrag(target: EventTarget | null) {
@@ -147,6 +155,7 @@ export function DraggablePanel({
       !dragEnabled ||
       dragRef.current ||
       event.button > 0 ||
+      !isPanelDragHandle(event.target) ||
       blocksPanelDrag(event.target)
     ) {
       return false;

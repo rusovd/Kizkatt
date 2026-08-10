@@ -104,6 +104,20 @@ export const ArcArrowsIcon = createIcon(
 );
 
 
+export const CurvedArrowIcon = createIcon(
+  <path
+    fill="currentColor"
+    d="M4 20c1.5-7.3 5.8-12.1 12-13.4V2l5 5-5 5V8.7C10.9 10 7.5 14.1 6.2 20.5z"
+  />
+);
+
+export const CurvedDownArrowIcon = createIcon(
+  <path
+    fill="currentColor"
+    d="M3 4h6l-1.8 1.8A10 10 0 0 1 18 15.7V13l3 4-3 4v-2.8A7.5 7.5 0 0 0 9.3 8.3L11 10H8z"
+  />
+);
+
 export const ShovelIcon = createIcon(
   <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
@@ -122,6 +136,13 @@ export const NodeEditIcon = createIcon(
     <path d="m15.5 14.5 5.5 5.5" />
     <path fill="currentColor" stroke="none" d="M12.7 12.7 3 6.2 8.8 1.5z" />
     <path d="M12 13h4v4h-4z" />
+  </g>
+);
+
+export const TargetPointIcon = createIcon(
+  <g fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="5" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
   </g>
 );
 
@@ -375,6 +396,31 @@ export const ResetIcon = createIcon(
     <path d="M21 21l-6 -6" />
     <path d="M3.268 12.043a7.017 7.017 0 0 0 6.634 4.957a7.012 7.012 0 0 0 7.043 -6.131a7 7 0 0 0 -5.314 -7.672a7.021 7.021 0 0 0 -8.241 4.403" />
     <path d="M3 4v4h4" />
+  </g>
+);
+
+export const RefreshPageIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M20 6v5h-5" />
+    <path d="M4 18v-5h5" />
+    <path d="M18.3 10A6.6 6.6 0 0 0 6.8 6.1L4 8.8" />
+    <path d="M5.7 14A6.6 6.6 0 0 0 17.2 17.9L20 15.2" />
+  </g>
+);
+
+export const UpdateObjectBaseIcon = createIcon(
+  <g strokeWidth="1.5">
+    <rect x="5" y="5" width="14" height="14" rx="2" />
+    <path d="M12 16V8" />
+    <path d="M8.8 11.2L12 8l3.2 3.2" />
+  </g>
+);
+
+export const RevertObjectBaseIcon = createIcon(
+  <g strokeWidth="1.5">
+    <rect x="6" y="6" width="12" height="12" rx="2" />
+    <path d="M5 11a7 7 0 0 1 11.2-5.6" />
+    <path d="M16.2 2.8v2.6h-2.6" />
   </g>
 );
 
