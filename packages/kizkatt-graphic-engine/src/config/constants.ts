@@ -68,6 +68,8 @@ export const VIEWPORT_CENTER_DIVISOR = 2;
 export const HALF_DIVISOR = 2;
 export const DUPLICATED_ELEMENT_OFFSET = 24;
 export const ROTATE_HANDLE_MIN_RADIUS = 24;
+export const DEFAULT_SKEW_ANGLE = 0;
+export const SKEW_TRANSFORM_MIN_DENOMINATOR = 1;
 export const DEFAULT_IMAGE_SIZE = {
   height: 160,
   width: 240
@@ -128,6 +130,7 @@ export const DEFAULT_SLOPPINESS_GAP = 16;
 export const DEFAULT_STROKE_STYLE = "solid";
 export const DEFAULT_STROKE_WIDTH = 10;
 export const DEFAULT_OPACITY = PERCENT_MAX_VALUE;
+export const DEFAULT_SHOW_ROTATE_HANDLE = false;
 export const IMAGE_MIME_TYPE_PREFIX = "image/";
 export const SELECTION_LINK_PREFIX = "kizkatt://selection/";
 export const ID_RANDOM_RADIX = 36;

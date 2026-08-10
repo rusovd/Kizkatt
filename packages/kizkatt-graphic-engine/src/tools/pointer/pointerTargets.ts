@@ -1,16 +1,31 @@
 import type { PointerEvent } from "react";
 
 import { RESIZE_HANDLES } from "../../config/constants";
-import type { ResizeHandle } from "../../model/types";
+import type { ResizeHandle, SkewHandle } from "../../model/types";
+
+const SKEW_HANDLES: readonly SkewHandle[] = [
+  "top",
+  "right",
+  "bottom",
+  "left"
+];
 
 export function getEventTargetElement(event: PointerEvent<SVGSVGElement>) {
   return event.target instanceof Element ? event.target : null;
 }
 
+export function getHandleTarget(target: Element | null, handle: string) {
+  return target?.closest(`[data-handle="${handle}"]`) ?? null;
+}
+
 export function isHandleTarget(target: Element | null, handle: string) {
-  return target?.getAttribute("data-handle") === handle;
+  return getHandleTarget(target, handle) !== null;
 }
 
 export function isResizeHandle(value: string | null): value is ResizeHandle {
   return RESIZE_HANDLES.some((entry) => entry.id === value);
+}
+
+export function isSkewHandle(value: string | null): value is SkewHandle {
+  return SKEW_HANDLES.includes(value as SkewHandle);
 }

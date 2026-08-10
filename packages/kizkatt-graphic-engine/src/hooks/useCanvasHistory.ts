@@ -4,6 +4,7 @@ import { HISTORY_LIMIT } from "../config/constants";
 import type { CanvasState } from "../model/types";
 
 type CommitStateOptions = {
+  baseState?: CanvasState;
   replace?: boolean;
 };
 
@@ -24,7 +25,12 @@ export function useCanvasHistory(initialState: CanvasState) {
       }
 
       setHistory((previousHistory) => {
-        const activeHistory = previousHistory.slice(0, historyIndex + 1);
+        const historyWithBaseState = options.baseState
+          ? previousHistory.map((state, index) =>
+              index === historyIndex ? options.baseState ?? state : state
+            )
+          : previousHistory;
+        const activeHistory = historyWithBaseState.slice(0, historyIndex + 1);
         return [...activeHistory, nextState].slice(-HISTORY_LIMIT);
       });
       setHistoryIndex((index) => Math.min(index + 1, HISTORY_LIMIT - 1));

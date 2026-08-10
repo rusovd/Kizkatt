@@ -1,5 +1,7 @@
 export {
+  getElementBoundsCorners,
   getElementBounds,
+  getElementTransformedCorners,
   getElementTransformedBounds,
   selectionBounds
 } from "./bounds";
@@ -23,7 +25,9 @@ export {
   getBoundsFromPoints,
   getDistance,
   getElementCenter,
+  getElementLocalPoint,
   getElementLocalVector,
+  transformElementPoint,
   rotatePointAroundPoint,
   getSegmentMidpoint
 } from "./primitives";
@@ -38,5 +42,6 @@ export {
   getResizeCursor,
   resizeElementFromHandle,
   resizeElementsFromSelectionHandle,
-  rotateElementsAroundPoint
+  rotateElementsAroundPoint,
+  skewElementsFromSelectionHandle
 } from "./resize";

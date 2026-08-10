@@ -9,9 +9,16 @@ import {
   MIN_CREATE_HOLD_DURATION_MS,
   MIN_SELECT_DRAG_DISTANCE
 } from "../../config/constants";
-import { normalizeElement } from "../../model/element";
-import type { Interaction } from "../../model/types";
+import { normalizeElement, withUpdatedObjectBase } from "../../model/element";
+import type { CanvasState, Interaction, KizkattElement } from "../../model/types";
 import type { PointerHandlerContext } from "./types";
+
+function hasElementPreviewChanged(
+  currentElements: KizkattElement[],
+  originalElements: KizkattElement[]
+) {
+  return currentElements !== originalElements;
+}
 
 export function finishPointerInteraction(
   _event: PointerEvent<SVGSVGElement>,
@@ -20,8 +27,11 @@ export function finishPointerInteraction(
 ) {
   const {
     canvasStateRef,
+    commitState,
     replaceActiveState,
     selectionAreaMode,
+    setSelectionTransformCenter,
+    setSelectionTransformMode,
     setTool,
     updateInteraction
   } = context;
@@ -76,7 +86,7 @@ export function finishPointerInteraction(
       ...activeCanvasState,
       elements: activeCanvasState.elements.map((element) =>
         element.id === activeInteraction.elementId
-          ? normalizeElement(element)
+          ? withUpdatedObjectBase(normalizeElement(element))
           : element
       )
     });
@@ -85,17 +95,77 @@ export function finishPointerInteraction(
     return;
   }
 
-  if (activeInteraction.type === "resize") {
-    const selectedIdSet = new Set(activeInteraction.selectedIds);
+  if (activeInteraction.type === "move") {
+    const isClick =
+      getDistance(activeInteraction.start, activeInteraction.current) <
+      MIN_SELECT_DRAG_DISTANCE;
 
-    replaceActiveState({
+    if (isClick && activeInteraction.canToggleTransformMode) {
+      setSelectionTransformMode((mode) =>
+        mode === "resize" ? "skew" : "resize"
+      );
+    }
+
+    if (!isClick) {
+      commitState(activeCanvasState, {
+        baseState: {
+          ...activeCanvasState,
+          elements: activeInteraction.originalElements
+        }
+      });
+    }
+  }
+
+  if (activeInteraction.type === "resize" || activeInteraction.type === "skew") {
+    const selectedIdSet = new Set(activeInteraction.selectedIds);
+    const finalState: CanvasState = {
       ...activeCanvasState,
       elements: activeCanvasState.elements.map((element) =>
         selectedIdSet.has(element.id)
           ? normalizeElement(element)
           : element
       )
+    };
+
+    commitState(finalState, {
+      baseState: {
+        ...activeCanvasState,
+        elements: activeInteraction.originalElements
+      }
     });
+
+    if (activeInteraction.type === "resize") {
+      setSelectionTransformCenter(null);
+    }
+  }
+
+  if (
+    activeInteraction.type === "rotate" &&
+    hasElementPreviewChanged(
+      activeCanvasState.elements,
+      activeInteraction.originalElements
+    )
+  ) {
+    commitState(activeCanvasState, {
+      baseState: {
+        ...activeCanvasState,
+        elements: activeInteraction.originalElements
+      }
+    });
+  }
+
+  if (activeInteraction.type === "bend") {
+    const baseState: CanvasState = {
+      ...activeCanvasState,
+      elements: activeCanvasState.elements.map((element) =>
+        element.id === activeInteraction.elementId
+          ? activeInteraction.originalElement
+          : element
+      ),
+      selectedBend: undefined
+    };
+
+    commitState(activeCanvasState, { baseState });
   }
 
   updateInteraction(null);

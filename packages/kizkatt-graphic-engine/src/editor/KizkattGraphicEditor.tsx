@@ -25,6 +25,7 @@ import {
   DEFAULT_FILL_STYLE,
   DEFAULT_FILL_WEIGHT,
   DEFAULT_IMAGE_INPUT_ARIA_LABEL,
+  DEFAULT_SHOW_ROTATE_HANDLE,
   DEFAULT_ZOOM,
   DEFAULT_SELECTED_SLOPPINESS,
   EMPTY_COLLECTION_LENGTH,
@@ -59,7 +60,13 @@ import {
   VIEWPORT_CENTER_DIVISOR,
   ZOOM_STEP
 } from "../config/constants";
-import { createElement, createId, normalizeElement } from "../model/element";
+import {
+  createElement,
+  createId,
+  normalizeElement,
+  revertElementToObjectBase,
+  withUpdatedObjectBase
+} from "../model/element";
 import {
   createElementName as buildElementName,
   createGroupName,
@@ -76,6 +83,7 @@ import {
 } from "../model/groups";
 import {
   getElementBends,
+  getElementTransformedCorners,
   getGridWorldSizing,
   getResizeCursor,
   reorderElementsByLayerAction,
@@ -116,6 +124,7 @@ import type {
   GridSettings,
   Interaction,
   KizkattElement,
+  SelectionTransformMode,
   Point,
   SelectionAreaMode,
   StyleState,
@@ -2099,7 +2108,7 @@ function breakApartSvgElement(
   });
 
   if (root.classList.contains("kizkatt-canvas") || groups.length > 0) {
-    return importedElements;
+    return importedElements.map(withUpdatedObjectBase);
   }
 
   return breakApartGenericSvgElement(
@@ -2109,7 +2118,7 @@ function breakApartSvgElement(
     existingElements,
     fallbackStyle,
     naming
-  );
+  ).map(withUpdatedObjectBase);
 }
 
 function inflateBounds(bounds: Bounds, padding: number) {
@@ -2165,6 +2174,8 @@ function isExpectedCopiedPngSize(
 export type KizkattRenderElementOptions = {
   overlayVariant?: "primary" | "internal";
   selectedBendIndex?: number;
+  selectionTransformCenter?: Point | null;
+  selectionTransformMode?: SelectionTransformMode;
   showLinearBendHandles?: boolean;
   showRotateHoverIcon?: boolean;
   showRotateHandle?: boolean;
@@ -2181,7 +2192,9 @@ export type CanvasContextMenuProps = {
   canBreakApart: boolean;
   canCopySelection: boolean;
   canGroup: boolean;
+  canRevertObjectBase: boolean;
   canUngroup: boolean;
+  canUpdateObjectBase: boolean;
   contextMenu: ContextMenuState | null;
   onCloseAndRun: (action: () => void | Promise<void>) => void;
   onBreakApart: () => void;
@@ -2191,7 +2204,10 @@ export type CanvasContextMenuProps = {
   onGroup: () => void;
   onPaste: () => void | Promise<void>;
   onPasteSvgCode: () => void | Promise<void>;
+  onRefreshPage: () => void;
+  onRevertObjectBase: () => void;
   onSelectAll: () => void;
+  onUpdateObjectBase: () => void;
   onUngroup: () => void;
   selectionAreaMode: SelectionAreaMode;
   setArrowBinding: (updater: (value: boolean) => boolean) => void;
@@ -2279,6 +2295,10 @@ export type KizkattGraphicEditorComponents = {
   SelectedBounds: ComponentType<{
     elements: KizkattElement[];
     interaction: Interaction | null;
+    selectionTransformCenter?: Point | null;
+    selectionTransformMode?: SelectionTransformMode;
+    showRotateHandle?: boolean;
+    showRotateHoverIcon?: boolean;
   }>;
   SelectionArea: ComponentType<{ interaction: Interaction | null }>;
   StylePanel: ComponentType<StylePanelProps>;
@@ -2356,12 +2376,82 @@ function getActiveInteractionCursor(interaction: Interaction | null) {
   if (
     interaction.type === "bend" ||
     interaction.type === "move" ||
-    interaction.type === "rotate"
+    interaction.type === "rotate" ||
+    interaction.type === "skew"
   ) {
     return "grabbing";
   }
 
   return null;
+}
+
+function isPreviewTransformInteraction(
+  interaction: Interaction | null
+): interaction is Extract<Interaction, { originalElements: KizkattElement[] }> {
+  return (
+    interaction?.type === "move" ||
+    interaction?.type === "resize" ||
+    interaction?.type === "rotate" ||
+    interaction?.type === "skew"
+  );
+}
+
+function getPreviewDisplayElements(
+  elements: KizkattElement[],
+  interaction: Interaction | null
+) {
+  if (!isPreviewTransformInteraction(interaction)) {
+    return elements;
+  }
+
+  const selectedIdSet = new Set(interaction.selectedIds);
+  const originalElementById = new Map(
+    interaction.originalElements.map((element) => [element.id, element])
+  );
+
+  return elements.map((element) =>
+    selectedIdSet.has(element.id)
+      ? originalElementById.get(element.id) ?? element
+      : element
+  );
+}
+
+function TransformPreview({
+  elements,
+  selectedIds
+}: {
+  elements: KizkattElement[];
+  selectedIds: string[];
+}) {
+  const selectedIdSet = new Set(selectedIds);
+  const selectedElements = elements.filter((element) =>
+    selectedIdSet.has(element.id)
+  );
+
+  if (selectedElements.length === EMPTY_COLLECTION_LENGTH) {
+    return null;
+  }
+
+  return (
+    <g className="kizkatt-transform-preview">
+      {selectedElements.map((element) => {
+        const points = getElementTransformedCorners(element);
+        const [firstPoint, ...remainingPoints] = points;
+
+        if (!firstPoint) {
+          return null;
+        }
+
+        const pathData = [
+          `M ${firstPoint.x} ${firstPoint.y}`,
+          ...remainingPoints.map((point) => `L ${point.x} ${point.y}`),
+          "Z"
+        ].join(" ");
+
+        return <path key={element.id} d={pathData} />;
+      })}
+    </g>
+  );
 }
 
 export function KizkattGraphicEditor({
@@ -2444,6 +2534,10 @@ export function KizkattGraphicEditor({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [selectionAreaMode, setSelectionAreaMode] =
     useState<SelectionAreaMode>("intersect");
+  const [selectionTransformMode, setSelectionTransformMode] =
+    useState<SelectionTransformMode>("resize");
+  const [selectionTransformCenter, setSelectionTransformCenter] =
+    useState<Point | null>(null);
   const [showGrid, setShowGrid] = useState(true);
   const [snapToGrid, setSnapToGrid] = useState(false);
   const [snapToObjects, setSnapToObjects] = useState(false);
@@ -2470,6 +2564,10 @@ export function KizkattGraphicEditor({
     () => new Set(canvasState.selectedIds),
     [canvasState.selectedIds]
   );
+  const selectedIdsKey = canvasState.selectedIds.join("\u0000");
+  useEffect(() => {
+    setSelectionTransformCenter(null);
+  }, [selectedIdsKey]);
   const selectedElements = useMemo(
     () =>
       canvasState.elements.filter((element) => selectedIdSet.has(element.id)),
@@ -2513,6 +2611,24 @@ export function KizkattGraphicEditor({
     canvasState.elements,
     canvasState.selectedIds
   );
+  const objectBaseElementIds = useMemo(
+    () =>
+      new Set(
+        expandElementIdsToGroups(canvasState.elements, canvasState.selectedIds)
+      ),
+    [canvasState.elements, canvasState.selectedIds]
+  );
+  const objectBaseElements = useMemo(
+    () =>
+      canvasState.elements.filter((element) =>
+        objectBaseElementIds.has(element.id)
+      ),
+    [canvasState.elements, objectBaseElementIds]
+  );
+  const canUpdateObjectBase =
+    !viewMode && objectBaseElements.length > EMPTY_COLLECTION_LENGTH;
+  const canRevertObjectBase =
+    !viewMode && objectBaseElements.some((element) => Boolean(element.base));
 
   const selectAll = useCallback(() => {
     replaceActiveState({
@@ -2537,7 +2653,7 @@ export function KizkattGraphicEditor({
       DUPLICATED_ELEMENT_OFFSET,
       canvasState.elements,
       naming
-    );
+    ).map(withUpdatedObjectBase);
 
     commitState({
       elements: [...canvasState.elements, ...pastedElements],
@@ -2557,7 +2673,7 @@ export function KizkattGraphicEditor({
       DUPLICATED_ELEMENT_OFFSET,
       canvasState.elements,
       naming
-    );
+    ).map(withUpdatedObjectBase);
 
     commitState({
       elements: [...canvasState.elements, ...duplicatedElements],
@@ -2603,7 +2719,7 @@ export function KizkattGraphicEditor({
         1
       );
       const elements = canvasStateRef.current.elements;
-      const nextElement: KizkattElement = {
+      const nextElement: KizkattElement = withUpdatedObjectBase({
         ...createElement("text", pastePoint, style),
         height: Math.max(
           TEXT_ELEMENT_DEFAULT_HEIGHT,
@@ -2618,7 +2734,7 @@ export function KizkattGraphicEditor({
             longestLineLength * PASTED_TEXT_CHARACTER_WIDTH
           )
         )
-      };
+      });
 
       commitState({
         elements: [...elements, nextElement],
@@ -2655,7 +2771,7 @@ export function KizkattGraphicEditor({
         }
 
         committed = true;
-        const nextElement = { ...baseElement, ...size };
+        const nextElement = withUpdatedObjectBase({ ...baseElement, ...size });
 
         commitState({
           elements: [...canvasStateRef.current.elements, nextElement],
@@ -2728,7 +2844,7 @@ export function KizkattGraphicEditor({
       }
 
       const elements = canvasStateRef.current.elements;
-      const nextElement: KizkattElement = {
+      const nextElement: KizkattElement = withUpdatedObjectBase({
         ...createElement("image", pastePoint, style),
         backgroundColor: TRANSPARENT_COLOR,
         height: parsedSvg.size.height,
@@ -2737,7 +2853,7 @@ export function KizkattGraphicEditor({
         svgUseElementStyle: parsedSvg.useElementStyle,
         svgViewBox: parsedSvg.viewBox,
         width: parsedSvg.size.width
-      };
+      });
       const importedElements = parsedSvg.useElementStyle
         ? []
         : breakApartSvgElement(nextElement, elements, nextElement, naming);
@@ -2909,6 +3025,38 @@ export function KizkattGraphicEditor({
     });
     setEditingTextElementId(null);
   }, [canBreakApart, canvasState.elements, commitState, naming, selectedElements]);
+
+  const updateSelectedObjectBase = useCallback(() => {
+    if (!canUpdateObjectBase) {
+      return;
+    }
+
+    commitState({
+      ...canvasState,
+      elements: canvasState.elements.map((element) =>
+        objectBaseElementIds.has(element.id)
+          ? withUpdatedObjectBase(element)
+          : element
+      )
+    });
+  }, [canUpdateObjectBase, canvasState, commitState, objectBaseElementIds]);
+
+  const revertSelectedObjectBase = useCallback(() => {
+    if (!canRevertObjectBase) {
+      return;
+    }
+
+    setSelectionTransformCenter(null);
+    commitState({
+      ...canvasState,
+      elements: canvasState.elements.map((element) =>
+        objectBaseElementIds.has(element.id)
+          ? revertElementToObjectBase(element)
+          : element
+      ),
+      selectedBend: undefined
+    });
+  }, [canRevertObjectBase, canvasState, commitState, objectBaseElementIds]);
 
   const copySvgToClipboard = async () => {
     const svg = svgRef.current;
@@ -3110,6 +3258,10 @@ export function KizkattGraphicEditor({
     setMenuOpen(false);
   };
 
+  const refreshPage = () => {
+    window.location.reload();
+  };
+
   const quickSaveCanvas = () => {
     storeQuickCanvasState(canvasStateRef.current);
     setMenuOpen(false);
@@ -3221,6 +3373,8 @@ export function KizkattGraphicEditor({
       return;
     }
 
+    setSelectionTransformMode("resize");
+    setSelectionTransformCenter(null);
     setTool(nextTool);
   };
 
@@ -3471,10 +3625,14 @@ export function KizkattGraphicEditor({
       pendingImageSrc,
       replaceActiveState,
       selectionAreaMode,
+      selectionTransformCenter,
+      selectionTransformMode,
       selectedElements,
       setEditingTextElementId,
       setPan,
       setPendingImageSrc,
+      setSelectionTransformCenter,
+      setSelectionTransformMode,
       setTool,
       gridCellSize: gridSnapSize,
       snapToGrid: snapToGrid && gridHasVisibleLayer,
@@ -3493,13 +3651,26 @@ export function KizkattGraphicEditor({
       isPanning: interaction?.type === "pan",
       tool
     });
+  const previewTransformInteraction = isPreviewTransformInteraction(interaction)
+    ? interaction
+    : null;
+  const displayElements = getPreviewDisplayElements(
+    canvasState.elements,
+    previewTransformInteraction
+  );
   const renderInlineSelection = !renderElementOverlay;
   const getElementSelectionRenderState = (element: KizkattElement) => {
     const isSelected = selectedIdSet.has(element.id);
     const showPrimaryOverlay =
-      !viewMode && selectedElements.length <= SINGLE_SELECTION_COUNT && isSelected;
+      !previewTransformInteraction &&
+      !viewMode &&
+      selectedElements.length <= SINGLE_SELECTION_COUNT &&
+      isSelected;
     const showInternalOverlay =
-      !viewMode && selectedElements.length > SINGLE_SELECTION_COUNT && isSelected;
+      !previewTransformInteraction &&
+      !viewMode &&
+      selectedElements.length > SINGLE_SELECTION_COUNT &&
+      isSelected;
     const isDrawingFreehand =
       interaction?.type === "create" &&
       interaction.elementId === element.id &&
@@ -3518,10 +3689,12 @@ export function KizkattGraphicEditor({
           canvasState.selectedBend?.elementId === element.id
             ? canvasState.selectedBend.bendIndex
             : undefined,
+        selectionTransformCenter,
+        selectionTransformMode,
         showLinearBendHandles:
           tool === "nodeEdit" && !isCreatingLinearElement,
         showRotateHoverIcon: !isRotatingSelection,
-        showRotateHandle: !isCreatingElement,
+        showRotateHandle: DEFAULT_SHOW_ROTATE_HANDLE && !isCreatingElement,
         showSelectionBounds: !isRotatingSelection
       },
       showInternalOverlay,
@@ -3555,7 +3728,9 @@ export function KizkattGraphicEditor({
         canBreakApart={canBreakApart}
         canCopySelection={canCopySelection}
         canGroup={canGroup}
+        canRevertObjectBase={canRevertObjectBase}
         canUngroup={canUngroup}
+        canUpdateObjectBase={canUpdateObjectBase}
         contextMenu={contextMenu}
         onCloseAndRun={runContextMenuAction}
         onBreakApart={breakApartSelected}
@@ -3565,7 +3740,10 @@ export function KizkattGraphicEditor({
         onGroup={groupSelected}
         onPaste={pasteFromContextMenu}
         onPasteSvgCode={pasteSvgCodeFromContextMenu}
+        onRefreshPage={refreshPage}
+        onRevertObjectBase={revertSelectedObjectBase}
         onSelectAll={selectAll}
+        onUpdateObjectBase={updateSelectedObjectBase}
         onUngroup={ungroupSelected}
         selectionAreaMode={selectionAreaMode}
         setArrowBinding={setArrowBinding}
@@ -3652,7 +3830,7 @@ export function KizkattGraphicEditor({
           </marker>
         </defs>
         <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
-          {canvasState.elements.map((element) => {
+          {displayElements.map((element) => {
             const { options, showPrimaryOverlay } =
               getElementSelectionRenderState(element);
 
@@ -3663,7 +3841,7 @@ export function KizkattGraphicEditor({
             );
           })}
           {renderElementOverlay &&
-            canvasState.elements.map((element) => {
+            displayElements.map((element) => {
               const { options, showInternalOverlay, showPrimaryOverlay } =
                 getElementSelectionRenderState(element);
 
@@ -3684,10 +3862,19 @@ export function KizkattGraphicEditor({
               return null;
             })}
           <SelectionArea interaction={interaction} />
-          {!viewMode && (
+          {previewTransformInteraction && (
+            <TransformPreview
+              elements={canvasState.elements}
+              selectedIds={previewTransformInteraction.selectedIds}
+            />
+          )}
+          {!viewMode && !previewTransformInteraction && (
             <SelectedBounds
               elements={selectedElements}
               interaction={interaction}
+              selectionTransformCenter={selectionTransformCenter}
+              selectionTransformMode={selectionTransformMode}
+              showRotateHandle={DEFAULT_SHOW_ROTATE_HANDLE}
               showRotateHoverIcon={interaction?.type !== "rotate"}
             />
           )}

@@ -7,7 +7,8 @@ import {
   getElementLocalVector,
   resizeElementFromHandle,
   resizeElementsFromSelectionHandle,
-  rotateElementsAroundPoint
+  rotateElementsAroundPoint,
+  skewElementsFromSelectionHandle
 } from "../../geometry";
 import {
   MIN_SELECT_DRAG_DISTANCE,
@@ -27,6 +28,7 @@ export function updatePointerInteraction(
     getSnappedPointerWorldPoint,
     replaceActiveState,
     selectionAreaMode,
+    setSelectionTransformCenter,
     setPan,
     updateInteraction
   } = context;
@@ -120,7 +122,14 @@ export function updatePointerInteraction(
   if (activeInteraction.type === "move") {
     const dx = worldPoint.x - activeInteraction.start.x;
     const dy = worldPoint.y - activeInteraction.start.y;
-    const selectedIds = new Set(activeCanvasState.selectedIds);
+    const selectedIds = new Set(activeInteraction.selectedIds);
+
+    if (activeInteraction.originalTransformCenter) {
+      setSelectionTransformCenter({
+        x: activeInteraction.originalTransformCenter.x + dx,
+        y: activeInteraction.originalTransformCenter.y + dy
+      });
+    }
 
     replaceActiveState({
       ...activeCanvasState,
@@ -129,6 +138,26 @@ export function updatePointerInteraction(
           ? { ...element, x: element.x + dx, y: element.y + dy }
           : element
       )
+    });
+    updateInteraction({
+      ...activeInteraction,
+      current: worldPoint
+    });
+    return;
+  }
+
+  if (activeInteraction.type === "moveTransformCenter") {
+    const dx = rawWorldPoint.x - activeInteraction.start.x;
+    const dy = rawWorldPoint.y - activeInteraction.start.y;
+    const nextCenter = {
+      x: activeInteraction.originalCenter.x + dx,
+      y: activeInteraction.originalCenter.y + dy
+    };
+
+    setSelectionTransformCenter(nextCenter);
+    updateInteraction({
+      ...activeInteraction,
+      current: rawWorldPoint
     });
     return;
   }
@@ -173,6 +202,22 @@ export function updatePointerInteraction(
     replaceActiveState({
       ...activeCanvasState,
       elements: nextElements
+    });
+    return;
+  }
+
+  if (activeInteraction.type === "skew") {
+    replaceActiveState({
+      ...activeCanvasState,
+      elements: skewElementsFromSelectionHandle(
+        activeInteraction.originalElements,
+        activeInteraction.selectedIds,
+        activeInteraction.originalBounds,
+        activeInteraction.center,
+        activeInteraction.handle,
+        activeInteraction.start,
+        worldPoint
+      )
     });
     return;
   }

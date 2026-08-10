@@ -7,6 +7,7 @@ import type {
   KizkattElement,
   Point,
   SelectionAreaMode,
+  SelectionTransformMode,
   StyleState,
   Tool
 } from "../../model/types";
@@ -15,7 +16,10 @@ export type UseToolPointerHandlersArgs = {
   canvasState: CanvasState;
   canvasStateRef: RefObject<CanvasState>;
   closeContextMenu: () => void;
-  commitState: (nextState: CanvasState) => void;
+  commitState: (
+    nextState: CanvasState,
+    options?: { baseState?: CanvasState; replace?: boolean }
+  ) => void;
   createElementName: (
     type: ElementType,
     elements: readonly KizkattElement[]
@@ -25,10 +29,14 @@ export type UseToolPointerHandlersArgs = {
   pendingImageSrc: string | null;
   replaceActiveState: (nextState: CanvasState) => void;
   selectionAreaMode: SelectionAreaMode;
+  selectionTransformCenter: Point | null;
+  selectionTransformMode: SelectionTransformMode;
   selectedElements: KizkattElement[];
   setEditingTextElementId: Dispatch<SetStateAction<string | null>>;
   setPan: Dispatch<SetStateAction<Point>>;
   setPendingImageSrc: Dispatch<SetStateAction<string | null>>;
+  setSelectionTransformCenter: Dispatch<SetStateAction<Point | null>>;
+  setSelectionTransformMode: Dispatch<SetStateAction<SelectionTransformMode>>;
   setTool: Dispatch<SetStateAction<Tool>>;
   gridCellSize: number;
   snapToGrid: boolean;

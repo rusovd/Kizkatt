@@ -29,6 +29,10 @@ export type Point = {
 
 export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
+export type SelectionTransformMode = "resize" | "skew";
+
+export type SkewHandle = "top" | "right" | "bottom" | "left";
+
 export type SelectionAreaMode = "intersect" | "contain";
 
 export type GridUnit = "px" | "cm";
@@ -44,6 +48,7 @@ export type GridSettings = {
 
 export type KizkattElement = {
   id: string;
+  base?: ObjectBase;
   groupId?: string;
   groupName?: string;
   name?: string;
@@ -53,6 +58,8 @@ export type KizkattElement = {
   width: number;
   height: number;
   angle: number;
+  skewX?: number;
+  skewY?: number;
   strokeColor: string;
   backgroundColor: string;
   fillStyle?: "hachure" | "crossHatch" | "solid";
@@ -75,6 +82,13 @@ export type KizkattElement = {
   points?: Point[];
 };
 
+export type ObjectBase = Omit<
+  KizkattElement,
+  "base" | "groupId" | "groupName" | "id" | "name" | "x" | "y"
+> & {
+  center: Point;
+};
+
 export type CanvasState = {
   elements: KizkattElement[];
   selectedBend?: {
@@ -95,6 +109,10 @@ export type Interaction =
     }
   | {
       type: "move";
+      canToggleTransformMode?: boolean;
+      current: Point;
+      originalTransformCenter?: Point | null;
+      selectedIds: string[];
       start: Point;
       originalElements: KizkattElement[];
     }
@@ -114,6 +132,21 @@ export type Interaction =
       originalElements: KizkattElement[];
       selectedIds: string[];
       startAngle: number;
+    }
+  | {
+      type: "skew";
+      center: Point;
+      handle: SkewHandle;
+      originalBounds: Bounds;
+      originalElements: KizkattElement[];
+      selectedIds: string[];
+      start: Point;
+    }
+  | {
+      type: "moveTransformCenter";
+      current: Point;
+      originalCenter: Point;
+      start: Point;
     }
   | {
       type: "bend";

@@ -1,4 +1,4 @@
-import { MIN_ELEMENT_SIZE } from "../config/constants";
+import { DEFAULT_SKEW_ANGLE, MIN_ELEMENT_SIZE } from "../config/constants";
 import type { Bounds, KizkattElement, Point } from "../model/types";
 
 export function getElementCenter(element: KizkattElement) {
@@ -89,26 +89,57 @@ export function getElementAxes(angle: number) {
   };
 }
 
+export function transformElementPoint(
+  element: KizkattElement,
+  point: Point
+) {
+  const center = getElementCenter(element);
+  const skewX = Math.tan(element.skewX ?? DEFAULT_SKEW_ANGLE);
+  const skewY = Math.tan(element.skewY ?? DEFAULT_SKEW_ANGLE);
+  const localX = point.x - center.x;
+  const localY = point.y - center.y;
+  const skewedX = localX + localY * skewX;
+  const skewedY = localY + skewedX * skewY;
+  const cos = Math.cos(element.angle);
+  const sin = Math.sin(element.angle);
+
+  return {
+    x: center.x + skewedX * cos - skewedY * sin,
+    y: center.y + skewedX * sin + skewedY * cos
+  };
+}
+
 export function getElementLocalPoint(element: KizkattElement, point: Point) {
   const center = getElementCenter(element);
   const dx = point.x - center.x;
   const dy = point.y - center.y;
   const cos = Math.cos(element.angle);
   const sin = Math.sin(element.angle);
+  const rotatedX = dx * cos + dy * sin;
+  const rotatedY = -dx * sin + dy * cos;
+  const skewX = Math.tan(element.skewX ?? DEFAULT_SKEW_ANGLE);
+  const skewY = Math.tan(element.skewY ?? DEFAULT_SKEW_ANGLE);
+  const localY = rotatedY - rotatedX * skewY;
+  const localX = rotatedX - localY * skewX;
 
   return {
-    x: center.x + dx * cos + dy * sin,
-    y: center.y - dx * sin + dy * cos
+    x: center.x + localX,
+    y: center.y + localY
   };
 }
 
 export function getElementLocalVector(element: KizkattElement, vector: Point) {
   const cos = Math.cos(element.angle);
   const sin = Math.sin(element.angle);
+  const rotatedX = vector.x * cos + vector.y * sin;
+  const rotatedY = -vector.x * sin + vector.y * cos;
+  const skewX = Math.tan(element.skewX ?? DEFAULT_SKEW_ANGLE);
+  const skewY = Math.tan(element.skewY ?? DEFAULT_SKEW_ANGLE);
+  const localY = rotatedY - rotatedX * skewY;
 
   return {
-    x: vector.x * cos + vector.y * sin,
-    y: -vector.x * sin + vector.y * cos
+    x: rotatedX - localY * skewX,
+    y: localY
   };
 }
 

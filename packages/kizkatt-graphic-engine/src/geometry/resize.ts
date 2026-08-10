@@ -1,9 +1,15 @@
-import { MIN_ELEMENT_SIZE, RESIZE_HANDLES } from "../config/constants";
+import {
+  DEFAULT_SKEW_ANGLE,
+  MIN_ELEMENT_SIZE,
+  RESIZE_HANDLES,
+  SKEW_TRANSFORM_MIN_DENOMINATOR
+} from "../config/constants";
 import type {
   Bounds,
   KizkattElement,
   Point,
-  ResizeHandle
+  ResizeHandle,
+  SkewHandle
 } from "../model/types";
 import { getElementBends } from "./linearElements";
 import {
@@ -279,6 +285,65 @@ export function rotateElementsAroundPoint(
     return {
       ...element,
       angle: element.angle + angleDelta,
+      x: nextCenter.x - element.width / 2,
+      y: nextCenter.y - element.height / 2
+    };
+  });
+}
+
+export function skewElementsFromSelectionHandle(
+  elements: KizkattElement[],
+  selectedIds: string[],
+  originalBounds: Bounds,
+  center: Point,
+  handle: SkewHandle,
+  start: Point,
+  point: Point
+) {
+  const selectedIdSet = new Set(selectedIds);
+  const width = Math.max(
+    SKEW_TRANSFORM_MIN_DENOMINATOR,
+    originalBounds.width
+  );
+  const height = Math.max(
+    SKEW_TRANSFORM_MIN_DENOMINATOR,
+    originalBounds.height
+  );
+  const rawSkewDelta =
+    handle === "top" || handle === "bottom"
+      ? Math.atan((point.x - start.x) / height)
+      : Math.atan((point.y - start.y) / width);
+  const skewDelta =
+    handle === "top" || handle === "left" ? -rawSkewDelta : rawSkewDelta;
+  const skewTangent = Math.tan(skewDelta);
+
+  return elements.map((element) => {
+    if (!selectedIdSet.has(element.id)) {
+      return element;
+    }
+
+    const elementCenter = getElementCenter(element);
+    const nextCenter =
+      handle === "top" || handle === "bottom"
+        ? {
+            x: elementCenter.x + (elementCenter.y - center.y) * skewTangent,
+            y: elementCenter.y
+          }
+        : {
+            x: elementCenter.x,
+            y: elementCenter.y + (elementCenter.x - center.x) * skewTangent
+          };
+
+    return {
+      ...element,
+      skewX:
+        handle === "top" || handle === "bottom"
+          ? (element.skewX ?? DEFAULT_SKEW_ANGLE) + skewDelta
+          : element.skewX,
+      skewY:
+        handle === "left" || handle === "right"
+          ? (element.skewY ?? DEFAULT_SKEW_ANGLE) + skewDelta
+          : element.skewY,
       x: nextCenter.x - element.width / 2,
       y: nextCenter.y - element.height / 2
     };

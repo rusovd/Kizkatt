@@ -8,7 +8,13 @@ import {
   TEXT_ELEMENT_DEFAULT_HEIGHT,
   TEXT_ELEMENT_DEFAULT_WIDTH
 } from "../config/constants";
-import type { ElementType, KizkattElement, Point, StyleState } from "./types";
+import type {
+  ElementType,
+  KizkattElement,
+  ObjectBase,
+  Point,
+  StyleState
+} from "./types";
 import { createElementName } from "./naming";
 import type { ElementNamingConfig } from "./naming";
 
@@ -34,6 +40,8 @@ export function createElement(
     width: type === "text" ? TEXT_ELEMENT_DEFAULT_WIDTH : MIN_PIXEL_SIZE,
     height: type === "text" ? TEXT_ELEMENT_DEFAULT_HEIGHT : MIN_PIXEL_SIZE,
     angle: 0,
+    skewX: 0,
+    skewY: 0,
     text: type === "text" ? TEXT_ELEMENT_DEFAULT_CONTENT : undefined,
     points: type === "draw" ? [{ x: 0, y: 0 }] : undefined,
     ...style
@@ -100,6 +108,80 @@ export function normalizeElement(element: KizkattElement): KizkattElement {
   next.height = Math.max(MIN_ELEMENT_SIZE, next.height);
 
   return next;
+}
+
+function clonePoint(point: Point): Point {
+  return { x: point.x, y: point.y };
+}
+
+function cloneOptionalPoint(point?: Point) {
+  return point ? clonePoint(point) : undefined;
+}
+
+function cloneOptionalPointList(points?: Point[]) {
+  return points?.map(clonePoint);
+}
+
+export function getObjectBase(element: KizkattElement): ObjectBase {
+  const {
+    base: _base,
+    groupId: _groupId,
+    groupName: _groupName,
+    id: _id,
+    name: _name,
+    x,
+    y,
+    ...baseElement
+  } = element;
+
+  return {
+    ...baseElement,
+    bends: cloneOptionalPointList(element.bends),
+    center: {
+      x: x + element.width / 2,
+      y: y + element.height / 2
+    },
+    curve: cloneOptionalPoint(element.curve),
+    points: cloneOptionalPointList(element.points)
+  };
+}
+
+export function cloneObjectBase(base: ObjectBase): ObjectBase {
+  return {
+    ...base,
+    bends: cloneOptionalPointList(base.bends),
+    center: clonePoint(base.center),
+    curve: cloneOptionalPoint(base.curve),
+    points: cloneOptionalPointList(base.points)
+  };
+}
+
+export function withUpdatedObjectBase(
+  element: KizkattElement
+): KizkattElement {
+  return {
+    ...element,
+    base: getObjectBase(element)
+  };
+}
+
+export function revertElementToObjectBase(
+  element: KizkattElement
+): KizkattElement {
+  if (!element.base) {
+    return element;
+  }
+
+  const base = cloneObjectBase(element.base);
+  const { center, ...baseElement } = base;
+
+  return {
+    ...element,
+    ...baseElement,
+    base,
+    x: center.x - base.width / 2,
+    y: center.y - base.height / 2
+  };
 }
 
 export function getElementPathEndpoints(element: KizkattElement) {

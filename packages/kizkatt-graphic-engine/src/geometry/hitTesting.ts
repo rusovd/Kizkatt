@@ -11,7 +11,11 @@ import {
 
 function getElementHit(element: KizkattElement, point: Point) {
   const localPoint =
-    element.angle === 0 ? point : getElementLocalPoint(element, point);
+    element.angle === 0 &&
+    (element.skewX ?? 0) === 0 &&
+    (element.skewY ?? 0) === 0
+      ? point
+      : getElementLocalPoint(element, point);
   const tolerance = Math.max(8, element.strokeWidth + 6);
   const bounds = getElementBounds(element);
   const withinBounds =

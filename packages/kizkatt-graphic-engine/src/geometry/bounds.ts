@@ -12,9 +12,8 @@ import { getElementBends, getLinearElementPoints } from "./linearElements";
 import {
   getBoundsFromPointList,
   getBoundsFromPoints,
-  getElementAxes,
-  getElementCenter,
-  getElementEnd
+  getElementEnd,
+  transformElementPoint
 } from "./primitives";
 
 export function getElementBounds(element: KizkattElement) {
@@ -59,28 +58,34 @@ export function getElementBounds(element: KizkattElement) {
 
 export function getElementTransformedBounds(element: KizkattElement) {
   const bounds = getElementBounds(element);
+  const transformedCorners = getElementTransformedCorners(element);
 
-  if (element.angle === NO_ROTATION_ANGLE) {
+  if (
+    element.angle === NO_ROTATION_ANGLE &&
+    (element.skewX ?? 0) === 0 &&
+    (element.skewY ?? 0) === 0
+  ) {
     return bounds;
   }
 
-  const center = getElementCenter(element);
-  const { xAxis, yAxis } = getElementAxes(element.angle);
-  const localCorners = [
-    { x: bounds.x - center.x, y: bounds.y - center.y },
-    { x: bounds.x + bounds.width - center.x, y: bounds.y - center.y },
-    {
-      x: bounds.x + bounds.width - center.x,
-      y: bounds.y + bounds.height - center.y
-    },
-    { x: bounds.x - center.x, y: bounds.y + bounds.height - center.y }
-  ];
-  const transformedCorners = localCorners.map((corner) => ({
-    x: center.x + corner.x * xAxis.x + corner.y * yAxis.x,
-    y: center.y + corner.x * xAxis.y + corner.y * yAxis.y
-  }));
-
   return getBoundsFromPointList(transformedCorners) ?? bounds;
+}
+
+export function getElementBoundsCorners(element: KizkattElement) {
+  const bounds = getElementBounds(element);
+
+  return [
+    { x: bounds.x, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    { x: bounds.x, y: bounds.y + bounds.height }
+  ];
+}
+
+export function getElementTransformedCorners(element: KizkattElement) {
+  return getElementBoundsCorners(element).map((point) =>
+    transformElementPoint(element, point)
+  );
 }
 
 export function selectionBounds(
