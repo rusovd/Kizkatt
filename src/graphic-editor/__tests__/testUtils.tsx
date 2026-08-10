@@ -12,7 +12,9 @@ export { act, fireEvent, render, screen, waitFor };
 export { expect, vi } from "vitest";
 export {
   DEFAULT_CANVAS_BACKGROUND,
+  DEFAULT_CANVAS_BACKGROUND_BY_THEME,
   DEFAULT_GRID_COLOR,
+  DEFAULT_GRID_COLOR_BY_THEME,
   KizkattGraphicEditor,
   storeCanvasBackgroundColor,
   storeGridColor,

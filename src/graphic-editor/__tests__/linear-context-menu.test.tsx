@@ -21,6 +21,44 @@ function hoverContextSubmenuItem(element: Element) {
   fireEvent.mouseEnter(submenuItem as Element);
 }
 
+function ensureEditorSettingsOpen() {
+  const settingsButton = screen.getByRole("button", {
+    name: "Editor settings"
+  });
+
+  if (settingsButton.getAttribute("aria-expanded") !== "true") {
+    fireEvent.click(settingsButton);
+  }
+}
+
+function openEditorSettingsSubmenu(name: string) {
+  ensureEditorSettingsOpen();
+
+  const submenuButton = screen.getByRole("menuitem", { name });
+
+  if (submenuButton.getAttribute("aria-expanded") !== "true") {
+    fireEvent.mouseEnter(submenuButton);
+  }
+}
+
+function openGridSettings() {
+  openEditorSettingsSubmenu("Grid");
+}
+
+function openViewSettings() {
+  openEditorSettingsSubmenu("View mode");
+}
+
+function getPrimaryCheckbox(name: RegExp) {
+  return screen.getAllByRole("menuitemcheckbox", { name })[0];
+}
+
+function getSubmenuCheckbox(name: RegExp) {
+  const items = screen.getAllByRole("menuitemcheckbox", { name });
+
+  return items[items.length - 1];
+}
+
 describe("KizkattGraphicEditor linear tools and context menus", () => {
   it("formats editing shortcuts for the current keyboard platform", () => {
     expect(formatKeyboardShortcut("c", { platform: "MacIntel" })).toBe("⌘C");
@@ -64,9 +102,13 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     firePointerEvent(canvas, "pointerup");
 
     expect(canvas.querySelector("[data-element-id] line")).toBeInTheDocument();
-    expect(canvas.querySelector(".kizkatt-bend-handle")).toBeInTheDocument();
+    expect(canvas.querySelector(".kizkatt-bend-handle")).not
+      .toBeInTheDocument();
     expect(canvas.querySelector(".kizkatt-selection-overlay")).not
       .toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
+    expect(canvas.querySelector(".kizkatt-bend-handle")).toBeInTheDocument();
 
     const bendHandle = canvas.querySelector(".kizkatt-bend-handle");
     firePointerEvent(bendHandle as Element, "pointerdown", { clientX: 100, clientY: 50 });
@@ -82,9 +124,13 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(canvas.querySelector(".kizkatt-selection-overlay")).toBeInTheDocument();
     expect(canvas.querySelector(".kizkatt-bend-handle")).toBeInTheDocument();
 
+    chooseGroupedTool("Arrow", "Line");
     fireEvent.click(screen.getByRole("button", { name: "Edges sharp" }));
     expect(curvePath?.getAttribute("d")).not.toContain(" C ");
     expect(curvePath?.getAttribute("d")).toContain(" L ");
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
     expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(1);
 
     fireEvent.keyDown(screen.getByLabelText("Kizkatt diagram canvas"), {
@@ -116,12 +162,14 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     ).toBeDisabled();
     expect(screen.getByRole("menuitem", { name: /Select all/ }))
       .toBeInTheDocument();
-    expect(screen.getByRole("menuitemcheckbox", { name: /Toggle grid/ }))
-      .toBeInTheDocument();
-    hoverContextSubmenuItem(
-      screen.getByRole("menuitemcheckbox", { name: /Toggle grid/ })
-    );
-    expect(screen.getByRole("menuitemcheckbox", { name: /Snap to grid/ }))
+    expect(screen.queryByRole("menuitemcheckbox", { name: /Toggle grid/ }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitemcheckbox", { name: /Snap to grid/ }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitemcheckbox", { name: /View mode/ }))
+      .not.toBeInTheDocument();
+    hoverContextSubmenuItem(getPrimaryCheckbox(/Snap to objects/));
+    expect(getSubmenuCheckbox(/Snap to objects/))
       .toBeInTheDocument();
     expect(screen.getByRole("menuitemradio", { name: /Select touching objects/ }))
       .toHaveAttribute("aria-checked", "true");
@@ -136,39 +184,29 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
       .toHaveAttribute("aria-checked", "false");
   });
 
-  it("toggles the grid from the canvas context menu", () => {
+  it("toggles the grid from the editor settings menu", () => {
     render(<KizkattGraphicEditor />);
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
     expect(canvas.querySelector(".kizkatt-grid")).toBeInTheDocument();
 
-    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
+    openGridSettings();
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Toggle grid/ }));
 
     expect(canvas.querySelector(".kizkatt-grid")).not.toBeInTheDocument();
   });
 
-  it("toggles snap to grid from the canvas context menu", () => {
+  it("toggles snap to grid from the editor settings menu", () => {
     render(<KizkattGraphicEditor />);
 
-    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    openGridSettings();
+    const snapToGridItem = screen.getByRole("menuitemcheckbox", {
+      name: /Snap to grid/
+    });
 
-    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
-    hoverContextSubmenuItem(
-      screen.getByRole("menuitemcheckbox", { name: /Toggle grid/ })
-    );
-    expect(
-      screen.getByRole("menuitemcheckbox", { name: /Snap to grid/ })
-    ).toHaveAttribute("aria-checked", "false");
+    expect(snapToGridItem).toHaveAttribute("aria-checked", "false");
 
-    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Snap to grid/ }));
-    expect(
-      window.localStorage.getItem(
-        "kizkatt:graphic-engine:context-menu-defaults"
-      )
-    ).toContain('"snapping":"snapToGrid"');
-    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
-
+    fireEvent.click(snapToGridItem);
     expect(
       screen.getByRole("menuitemcheckbox", { name: /Snap to grid/ })
     ).toHaveAttribute("aria-checked", "true");
@@ -183,10 +221,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
 
-    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
-    hoverContextSubmenuItem(
-      screen.getByRole("menuitemcheckbox", { name: /Toggle grid/ })
-    );
+    openGridSettings();
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Snap to grid/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
@@ -207,10 +242,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
 
-    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
-    hoverContextSubmenuItem(
-      screen.getByRole("menuitemcheckbox", { name: /Zen mode/ })
-    );
+    openViewSettings();
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /View mode/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
@@ -229,7 +261,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
       .toBeInTheDocument();
   });
 
-  it("hides editing panels in zen mode while keeping the main menu available", () => {
+  it("hides editing panels in zen mode while keeping zoom controls available", () => {
     render(<KizkattGraphicEditor />);
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
@@ -237,13 +269,12 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(screen.getByRole("button", { name: "Rectangle" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
 
-    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
+    openViewSettings();
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Zen mode/ }));
 
     expect(screen.queryByRole("button", { name: "Rectangle" })).not
       .toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Zoom in" })).not
-      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Main menu" })).toBeInTheDocument();
   });
 
@@ -258,12 +289,8 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     firePointerEvent(canvas, "pointerup");
 
     fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
-    hoverContextSubmenuItem(
-      screen.getByRole("menuitemcheckbox", { name: /Toggle grid/ })
-    );
-    fireEvent.click(
-      screen.getByRole("menuitemcheckbox", { name: /Snap to objects/ })
-    );
+    hoverContextSubmenuItem(getPrimaryCheckbox(/Snap to objects/));
+    fireEvent.click(getSubmenuCheckbox(/Snap to objects/));
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
     firePointerEvent(canvas, "pointerdown", { clientX: 200, clientY: 200 });

@@ -1,7 +1,9 @@
 import { describe, it } from "vitest";
 import {
   DEFAULT_CANVAS_BACKGROUND,
+  DEFAULT_CANVAS_BACKGROUND_BY_THEME,
   DEFAULT_GRID_COLOR,
+  DEFAULT_GRID_COLOR_BY_THEME,
   Icons,
   KizkattGraphicEditor,
   act,
@@ -17,6 +19,38 @@ import {
   vi,
   waitFor
 } from "./testUtils";
+
+function openEditorSettings() {
+  fireEvent.click(screen.getByRole("button", { name: "Editor settings" }));
+}
+
+function ensureEditorSettingsOpen() {
+  const settingsButton = screen.getByRole("button", {
+    name: "Editor settings"
+  });
+
+  if (settingsButton.getAttribute("aria-expanded") !== "true") {
+    fireEvent.click(settingsButton);
+  }
+}
+
+function openEditorSettingsSubmenu(name: string) {
+  ensureEditorSettingsOpen();
+
+  const submenuButton = screen.getByRole("menuitem", { name });
+
+  if (submenuButton.getAttribute("aria-expanded") !== "true") {
+    fireEvent.mouseEnter(submenuButton);
+  }
+}
+
+function openGridSettings() {
+  openEditorSettingsSubmenu("Grid");
+}
+
+function openViewSettings() {
+  openEditorSettingsSubmenu("View mode");
+}
 
 describe("KizkattGraphicEditor shell", () => {
   it("renders a full viewport Kizkatt editor with the initial toolset", () => {
@@ -35,7 +69,11 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByRole("button", { name: "Select" })).toHaveClass(
       "is-active"
     );
+    expect(screen.getByRole("button", { name: "Node edit" }))
+      .toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Library" })).not
+      .toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Lock" })).not
       .toBeInTheDocument();
   });
 
@@ -43,16 +81,18 @@ describe("KizkattGraphicEditor shell", () => {
     render(<KizkattGraphicEditor />);
 
     expect(screen.getByRole("application", { name: "Drawing canvas" }))
-      .toHaveStyle({ backgroundColor: DEFAULT_CANVAS_BACKGROUND });
+      .toHaveStyle({
+        backgroundColor: DEFAULT_CANVAS_BACKGROUND_BY_THEME.dark
+      });
   });
 
   it("restores and stores the canvas background in the Kizkatt namespace", () => {
-    storeCanvasBackgroundColor("#121212");
+    storeCanvasBackgroundColor("#161719", "dark");
 
     render(<KizkattGraphicEditor />);
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-    expect(canvas).toHaveStyle({ backgroundColor: "#121212" });
+    expect(canvas).toHaveStyle({ backgroundColor: "#161719" });
 
     fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
     fireEvent.click(
@@ -62,14 +102,19 @@ describe("KizkattGraphicEditor shell", () => {
     );
 
     expect(
-      window.localStorage.getItem("kizkatt:graphic-engine:canvas-background")
+      window.localStorage.getItem(
+        "kizkatt:graphic-engine:canvas-background:dark"
+      )
     ).toBe("#211a16");
+    expect(
+      window.localStorage.getItem("kizkatt:graphic-engine:canvas-background")
+    ).toBeNull();
   });
 
   it("restores and stores the grid color in the Kizkatt namespace", () => {
     const blueGridColor = "rgba(132, 190, 255, 0.18)";
 
-    storeGridColor(blueGridColor);
+    storeGridColor(blueGridColor, "dark");
 
     render(<KizkattGraphicEditor />);
 
@@ -78,7 +123,7 @@ describe("KizkattGraphicEditor shell", () => {
       blueGridColor
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    openGridSettings();
     fireEvent.click(
       screen.getByRole("button", {
         name: `Grid color ${DEFAULT_GRID_COLOR}`
@@ -86,11 +131,14 @@ describe("KizkattGraphicEditor shell", () => {
     );
 
     expect(
-      window.localStorage.getItem("kizkatt:graphic-engine:grid-color")
+      window.localStorage.getItem("kizkatt:graphic-engine:grid-color:dark")
     ).toBe(DEFAULT_GRID_COLOR);
+    expect(
+      window.localStorage.getItem("kizkatt:graphic-engine:grid-color")
+    ).toBeNull();
   });
 
-  it("draws and stores configurable grid spacing from the main menu", () => {
+  it("draws and stores configurable grid spacing from the editor settings", () => {
     render(<KizkattGraphicEditor />);
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
@@ -101,7 +149,7 @@ describe("KizkattGraphicEditor shell", () => {
     expect(minorGrid).toHaveAttribute("height", "30");
     expect(minorPath?.getAttribute("d")).toContain("M 1.75 3 H 4.25");
 
-    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    openGridSettings();
 
     expect(screen.getByRole("group", { name: "Grid units" }))
       .toBeInTheDocument();
@@ -189,9 +237,6 @@ describe("KizkattGraphicEditor shell", () => {
       .toBeInTheDocument();
     expect(canvas.querySelector(".kizkatt-grid")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
-    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
-
     const toggleGridItem = screen.getByRole("menuitemcheckbox", {
       name: /Toggle grid/
     });
@@ -206,7 +251,32 @@ describe("KizkattGraphicEditor shell", () => {
     render(<KizkattGraphicEditor />);
 
     expect(screen.getByRole("application", { name: "Drawing canvas" }))
-      .toHaveStyle({ backgroundColor: DEFAULT_CANVAS_BACKGROUND });
+      .toHaveStyle({
+        backgroundColor: DEFAULT_CANVAS_BACKGROUND_BY_THEME.dark
+      });
+  });
+
+  it("does not let the legacy shared background override the stored dark theme", () => {
+    storeTheme("dark");
+    window.localStorage.setItem(
+      "kizkatt:graphic-engine:canvas-background",
+      DEFAULT_CANVAS_BACKGROUND
+    );
+    window.localStorage.setItem(
+      "kizkatt:graphic-engine:grid-color",
+      DEFAULT_GRID_COLOR_BY_THEME.light
+    );
+
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    expect(canvas).toHaveStyle({
+      backgroundColor: DEFAULT_CANVAS_BACKGROUND_BY_THEME.dark
+    });
+    expect(canvas.style.getPropertyValue("--kizkatt-canvas-grid")).toBe(
+      DEFAULT_GRID_COLOR_BY_THEME.dark
+    );
   });
 
   it("renders the Kizkatt main menu actions, theme picker, and canvas backgrounds", () => {
@@ -238,23 +308,9 @@ describe("KizkattGraphicEditor shell", () => {
     expect(
       screen.getByRole("button", { name: "Pick canvas background" })
     ).toBeInTheDocument();
-    expect(board.style.getPropertyValue("--kizkatt-ui-scale")).toBe("1");
-    fireEvent.change(screen.getByLabelText(/UI scale/), {
-      target: { value: "0.85" }
-    });
-    expect(board.style.getPropertyValue("--kizkatt-ui-scale")).toBe("0.85");
-    expect(window.localStorage.getItem("kizkatt:graphic-engine:ui-scale"))
-      .toBe("0.85");
-    expect(
-      screen.getByRole("button", {
-        name: "Grid color rgba(210, 72, 115, 0.34)"
-      })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: "Grid color rgba(37, 126, 220, 0.34)"
-      })
-    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/UI scale/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Grid color" })).not
+      .toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Find on canvas/ })).not
       .toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Help" })).not
@@ -270,6 +326,10 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByRole("button", { name: "Select" })).toHaveAttribute(
       "title",
       "Select, move, resize, and rotate objects"
+    );
+    expect(screen.getByRole("button", { name: "Node edit" })).toHaveAttribute(
+      "title",
+      "Edit line nodes and bend points"
     );
     expect(screen.getByRole("button", { name: "Zoom in" })).toHaveAttribute(
       "title",
@@ -327,6 +387,36 @@ describe("KizkattGraphicEditor shell", () => {
     expect(rectangleButton).not.toHaveClass("is-active");
   });
 
+  it("lets docked panels move freely before snapping on release", () => {
+    render(<KizkattGraphicEditor />);
+
+    const nodeEditButton = screen.getByRole("button", { name: "Node edit" });
+    const toolbarPanel = nodeEditButton.closest(".kizkatt-floating-panel");
+
+    expect(toolbarPanel).not.toBeNull();
+
+    fireEvent.mouseDown(toolbarPanel as Element, {
+      button: 0,
+      clientX: 20,
+      clientY: 20
+    });
+    fireEvent.mouseMove(toolbarPanel as Element, {
+      clientX: 160,
+      clientY: 30
+    });
+
+    expect(toolbarPanel).toHaveStyle({ left: "140px", top: "10px" });
+
+    fireEvent.mouseUp(toolbarPanel as Element, {
+      clientX: 160,
+      clientY: 30
+    });
+
+    expect(
+      window.localStorage.getItem("kizkatt:graphic-editor:panel:toolbar")
+    ).toBe(JSON.stringify({ x: 140, y: 16 }));
+  });
+
   it("opens grouped toolbar tools and stores toolbar settings", () => {
     render(<KizkattGraphicEditor />);
 
@@ -346,7 +436,7 @@ describe("KizkattGraphicEditor shell", () => {
       "is-active"
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Toolbar settings" }));
+    openEditorSettings();
     fireEvent.click(
       screen.getByRole("menuitemcheckbox", { name: /Stick panels/ })
     );
@@ -357,12 +447,12 @@ describe("KizkattGraphicEditor shell", () => {
       )
     ).toBe("false");
     expect(
-      screen.getByRole("button", { name: "Toolbar settings" })
+      screen.getByLabelText("Kizkatt tools")
         .closest(".kizkatt-floating-panel")
     ).toHaveClass("is-drag-disabled");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Toolbar settings" }));
+    openEditorSettings();
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Autohide/ }));
 
     expect(
@@ -375,7 +465,7 @@ describe("KizkattGraphicEditor shell", () => {
     );
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Toolbar settings" }));
+    openEditorSettings();
     fireEvent.click(
       screen.getByRole("menuitemcheckbox", { name: /Vertical toolbar/ })
     );
@@ -415,7 +505,7 @@ describe("KizkattGraphicEditor shell", () => {
       .toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Line" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Toolbar settings" }));
+    openEditorSettings();
     expect(screen.queryByRole("menuitem", { name: "Line" })).not
       .toBeInTheDocument();
     expect(screen.getByRole("menuitemcheckbox", { name: /Stick panels/ }))
@@ -465,6 +555,21 @@ describe("KizkattGraphicEditor shell", () => {
     );
   });
 
+  it("opens grouped toolbar menus from a double click on the button", () => {
+    render(<KizkattGraphicEditor />);
+
+    const rectangleButton = screen.getByRole("button", { name: "Rectangle" });
+
+    fireEvent.doubleClick(rectangleButton);
+
+    expect(screen.getByRole("menuitem", { name: "Diamond" }))
+      .toBeInTheDocument();
+    expect(rectangleButton).not.toHaveClass("is-active");
+    expect(screen.getByRole("button", { name: "Select" })).toHaveClass(
+      "is-active"
+    );
+  });
+
   it("closes the current tool style panel when switching to text", () => {
     render(<KizkattGraphicEditor />);
 
@@ -505,11 +610,11 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByRole("dialog", { name: "Background colors" }))
       .toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Toolbar settings" }));
+    openEditorSettings();
 
     expect(screen.queryByRole("dialog", { name: "Background colors" })).not
       .toBeInTheDocument();
-    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
     expect(screen.getByRole("menuitemcheckbox", { name: /Stick panels/ }))
       .toBeInTheDocument();
   });
@@ -528,6 +633,45 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByLabelText("Kizkatt tools")).toHaveClass(
       "kizkatt-toolbar--autohide"
     );
+  });
+
+  it("exposes UI scale, grid controls, and zen mode from editor settings", () => {
+    render(<KizkattGraphicEditor />);
+
+    const board = screen.getByLabelText("Kizkatt diagram canvas");
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    openEditorSettings();
+
+    expect(board.style.getPropertyValue("--kizkatt-ui-scale")).toBe("1");
+    fireEvent.change(screen.getByLabelText(/UI scale/), {
+      target: { value: "0.85" }
+    });
+    expect(board.style.getPropertyValue("--kizkatt-ui-scale")).toBe("0.85");
+    expect(window.localStorage.getItem("kizkatt:graphic-engine:ui-scale"))
+      .toBe("0.85");
+
+    openGridSettings();
+    expect(
+      screen.getByRole("button", {
+        name: "Grid color rgba(244, 164, 190, 0.18)"
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Grid color rgba(132, 190, 255, 0.18)"
+      })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Toggle grid/ }));
+    expect(canvas.querySelector(".kizkatt-grid")).not.toBeInTheDocument();
+
+    openViewSettings();
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Zen mode/ }));
+
+    expect(screen.queryByRole("button", { name: "Rectangle" })).not
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
   });
 
   it("quick saves and quick loads the canvas from the main menu", () => {
@@ -721,13 +865,13 @@ describe("KizkattGraphicEditor shell", () => {
   });
 
   it("keeps copied toolbar icons under the original source names", () => {
-    expect(Icons.LockedIcon).toBeTruthy();
     expect(Icons.SelectionIcon).toBeTruthy();
     expect(Icons.RectangleIcon).toBeTruthy();
     expect(Icons.DiamondIcon).toBeTruthy();
     expect(Icons.EllipseIcon).toBeTruthy();
     expect(Icons.ArrowIcon).toBeTruthy();
     expect(Icons.LineIcon).toBeTruthy();
+    expect(Icons.NodeEditIcon).toBeTruthy();
     expect(Icons.FreedrawIcon).toBeTruthy();
     expect(Icons.TextIcon).toBeTruthy();
     expect(Icons.ImageIcon).toBeTruthy();
