@@ -550,6 +550,9 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     const elementGroup = canvas.querySelector("[data-element-id]");
     expect(elementGroup?.getAttribute("transform")).toContain("rotate(0");
 
+    firePointerEvent(canvas, "pointerdown", { clientX: 80, clientY: 80 });
+    firePointerEvent(canvas, "pointerup");
+
     const rotateHandle = canvas.querySelector("[data-handle='rotate']");
     expect(rotateHandle).toBeInTheDocument();
     const rotateHandlePoint = getCirclePoint(rotateHandle);
@@ -606,6 +609,9 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
       clientY: 180
     });
     firePointerEvent(canvas, "pointermove", { clientX: 260, clientY: 240 });
+    firePointerEvent(canvas, "pointerup");
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 132, clientY: 170 });
     firePointerEvent(canvas, "pointerup");
 
     const rotateHandle = canvas.querySelector("[data-handle='rotate']");

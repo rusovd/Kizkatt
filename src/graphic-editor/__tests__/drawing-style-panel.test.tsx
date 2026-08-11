@@ -20,6 +20,17 @@ import {
   type KizkattElement
 } from "./testUtils";
 
+function getTranslatePoint(element: Element | null) {
+  const match = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(
+    element?.getAttribute("transform") ?? ""
+  );
+
+  return {
+    x: Number(match?.[1] ?? 0),
+    y: Number(match?.[2] ?? 0)
+  };
+}
+
 describe("KizkattGraphicEditor drawing and style panel", () => {
   it("creates a rectangle on the SVG canvas", () => {
     render(<KizkattGraphicEditor />);
@@ -149,7 +160,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows rotate handles only after drawing finishes", () => {
+  it("keeps the top rotate handle hidden by default", () => {
     render(<KizkattGraphicEditor />);
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
@@ -163,7 +174,8 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     firePointerEvent(canvas, "pointerup");
 
-    expect(canvas.querySelector(".kizkatt-rotate-handle")).toBeInTheDocument();
+    expect(canvas.querySelector(".kizkatt-rotate-handle")).not
+      .toBeInTheDocument();
 
     chooseGroupedTool("Arrow", "Line");
     firePointerEvent(canvas, "pointerdown", { clientX: 220, clientY: 50 });
@@ -176,10 +188,11 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     firePointerEvent(canvas, "pointerup");
 
-    expect(canvas.querySelector(".kizkatt-rotate-handle")).toBeInTheDocument();
+    expect(canvas.querySelector(".kizkatt-rotate-handle")).not
+      .toBeInTheDocument();
   });
 
-  it("keeps the rectangle rotate handle on the element rotation orbit", () => {
+  it("shows corner rotate handles in the second-click transform mode", () => {
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
@@ -189,35 +202,30 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
     firePointerEvent(canvas, "pointerup");
 
-    const initialRotateHandle = canvas.querySelector(
-      "[data-element-overlay-id] .kizkatt-rotate-handle"
-    );
-    const initialCx = initialRotateHandle?.getAttribute("cx");
-    const initialCy = initialRotateHandle?.getAttribute("cy");
-    expect(initialCx).toBeTruthy();
-    expect(initialCy).toBeTruthy();
-    const initialPoint = getCirclePoint(initialRotateHandle);
+    firePointerEvent(canvas, "pointerdown", { clientX: 80, clientY: 80 });
+    firePointerEvent(canvas, "pointerup");
 
-    firePointerEvent(initialRotateHandle as Element, "pointerdown", {
+    const cornerRotateHandle = canvas.querySelector("[data-handle='rotate']");
+    expect(cornerRotateHandle).toBeInTheDocument();
+    const initialPoint = getCirclePoint(cornerRotateHandle);
+
+    firePointerEvent(cornerRotateHandle as Element, "pointerdown", {
       clientX: initialPoint.x,
       clientY: initialPoint.y
     });
     expect(canvas.querySelector("[data-resize-handle]")).not
       .toBeInTheDocument();
-    expect(canvas.querySelector(".kizkatt-rotate-handle")).toBeInTheDocument();
+    expect(canvas.querySelector(".kizkatt-transform-preview"))
+      .toBeInTheDocument();
     firePointerEvent(canvas, "pointermove", {
       clientX: initialPoint.x + 48,
       clientY: initialPoint.y
     });
+    expect(canvas.querySelector(".kizkatt-transform-preview")).toBeInTheDocument();
     firePointerEvent(canvas, "pointerup");
 
     const elementGroup = canvas.querySelector("[data-element-id]");
-    const rotatedHandle = canvas.querySelector(
-      "[data-element-overlay-id] .kizkatt-rotate-handle"
-    );
     expect(elementGroup?.getAttribute("transform")).not.toContain("rotate(0");
-    expect(rotatedHandle).toHaveAttribute("cx", initialCx);
-    expect(rotatedHandle).toHaveAttribute("cy", initialCy);
   });
 
   it("shows resize handles on every selected rectangle corner and edge", () => {
@@ -235,6 +243,42 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     ).map((handle) => handle.getAttribute("data-resize-handle"));
 
     expect(resizeHandles).toEqual(["nw", "n", "ne", "e", "se", "s", "sw", "w"]);
+  });
+
+  it("recomputes the selection center and keeps resize handles screen-aligned after resize", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    expect(
+      getTranslatePoint(
+        canvas.querySelector(".kizkatt-transform-center-marker--cross")
+      )
+    ).toEqual({ x: 100, y: 85 });
+
+    const resizeHandle = canvas.querySelector("[data-resize-handle='se']");
+    expect(resizeHandle).toBeInTheDocument();
+    expect(resizeHandle?.closest(".kizkatt-selection-overlay--world"))
+      .toBeInTheDocument();
+    expect(resizeHandle).not.toHaveAttribute("transform");
+
+    firePointerEvent(resizeHandle as Element, "pointerdown", {
+      clientX: 160,
+      clientY: 120
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 220, clientY: 180 });
+    firePointerEvent(canvas, "pointerup");
+
+    expect(
+      getTranslatePoint(
+        canvas.querySelector(".kizkatt-transform-center-marker--cross")
+      )
+    ).toEqual({ x: 130, y: 115 });
   });
 
   it("keeps active transform cursors after the pointer leaves a handle", () => {
@@ -261,9 +305,11 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     firePointerEvent(canvas, "pointerup");
     expect(canvas).toHaveStyle({ cursor: "default" });
 
-    const rotateHandle = canvas.querySelector(
-      "[data-element-overlay-id] .kizkatt-rotate-handle"
-    );
+    firePointerEvent(canvas, "pointerdown", { clientX: 100, clientY: 80 });
+    firePointerEvent(canvas, "pointerup");
+
+    const rotateHandle = canvas.querySelector("[data-handle='rotate']");
+    expect(rotateHandle).toBeInTheDocument();
     const rotatePoint = getCirclePoint(rotateHandle);
 
     firePointerEvent(rotateHandle as Element, "pointerdown", {
@@ -329,6 +375,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       clientX: nextPoint.x,
       clientY: nextPoint.y
     });
+    firePointerEvent(canvas, "pointerup");
 
     const elementRect = canvas.querySelector("[data-element-id] rect");
 

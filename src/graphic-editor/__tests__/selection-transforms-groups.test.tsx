@@ -14,12 +14,15 @@ import {
   groupSelectedElements,
   render,
   resizeElementsFromSelectionHandle,
+  revertElementToObjectBase,
   rotateElementsAroundPoint,
   screen,
   selectionBounds,
+  skewElementsFromSelectionHandle,
   ungroupSelectedElements,
   vi,
   waitFor,
+  withUpdatedObjectBase,
   type KizkattElement
 } from "./testUtils";
 
@@ -28,6 +31,13 @@ function hoverContextSubmenuItem(element: Element) {
 
   expect(submenuItem).toBeInTheDocument();
   fireEvent.mouseEnter(submenuItem as Element);
+}
+
+function getHandleWorldPoint(element: Element | null) {
+  return {
+    x: Number(element?.getAttribute("data-handle-world-x") ?? 0),
+    y: Number(element?.getAttribute("data-handle-world-y") ?? 0)
+  };
 }
 
 describe("KizkattGraphicEditor selection, transforms, and groups", () => {
@@ -194,12 +204,16 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     const groupHandle = canvas.querySelector(
       "[data-group-handle='resize'][data-resize-handle='se']"
     );
-    const rotateHandle = canvas.querySelector(
-      "[data-group-handle='rotate']"
-    );
-
     expect(groupHandle).toBeInTheDocument();
-    expect(rotateHandle).toBeInTheDocument();
+    expect(canvas.querySelector("[data-group-handle='rotate']")).not
+      .toBeInTheDocument();
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 80, clientY: 80 });
+    firePointerEvent(canvas, "pointerup");
+
+    expect(canvas.querySelectorAll("[data-skew-handle]")).toHaveLength(4);
+    expect(canvas.querySelectorAll(".kizkatt-corner-rotate-handle"))
+      .toHaveLength(4);
   });
 
   it("keeps the current selection when opening the context menu with right click", () => {
@@ -228,7 +242,7 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       .toBeInTheDocument();
   });
 
-  it("shows faint internal overlays for multi-selections with one shared rotate handle", () => {
+  it("shows faint internal overlays for multi-selections without the hidden top rotate handle", () => {
     render(<KizkattGraphicEditor />);
 
     const board = screen.getByLabelText("Kizkatt diagram canvas");
@@ -262,11 +276,11 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       )
     ).toHaveLength(0);
     expect(canvas.querySelectorAll("[data-group-handle='rotate']")).toHaveLength(
-      1
+      0
     );
     expect(
       canvas.querySelector(".kizkatt-group-selection .kizkatt-rotate-hover-icon")
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
   });
 
   it("normalizes shapes created from a reverse drag direction", () => {
@@ -340,7 +354,7 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     ).toBeTruthy();
   });
 
-  it("keeps only the moving rotate handle visible while rotating a multi-selection", () => {
+  it("shows only a transform preview while rotating a multi-selection", () => {
     render(<KizkattGraphicEditor />);
 
     const board = screen.getByLabelText("Kizkatt diagram canvas");
@@ -358,7 +372,10 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
 
     fireEvent.keyDown(board, { ctrlKey: true, key: "a" });
 
-    const rotateHandle = canvas.querySelector("[data-group-handle='rotate']");
+    firePointerEvent(canvas, "pointerdown", { clientX: 80, clientY: 80 });
+    firePointerEvent(canvas, "pointerup");
+
+    const rotateHandle = canvas.querySelector("[data-handle='rotate']");
     const startPoint = getCirclePoint(rotateHandle);
     expect(canvas.querySelector(".kizkatt-multi-selection")).toBeInTheDocument();
 
@@ -371,18 +388,16 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       .toBeInTheDocument();
     expect(canvas.querySelector("[data-group-handle='resize']")).not
       .toBeInTheDocument();
-    expect(canvas.querySelector("[data-group-handle='rotate']")).toBeInTheDocument();
+    expect(canvas.querySelector("[data-handle='rotate']")).not
+      .toBeInTheDocument();
 
     firePointerEvent(canvas, "pointermove", {
       clientX: startPoint.x + 48,
       clientY: startPoint.y
     });
 
-    const movedPoint = getCirclePoint(
-      canvas.querySelector("[data-group-handle='rotate']")
-    );
-    expect(movedPoint.x).not.toBe(startPoint.x);
-    expect(movedPoint.y).not.toBe(startPoint.y);
+    expect(canvas.querySelector(".kizkatt-transform-preview"))
+      .toBeInTheDocument();
   });
 
   it("groups selected elements from the context menu", async () => {
@@ -657,6 +672,267 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(rotated[1].y).toBeCloseTo(180);
   });
 
+  it("skews selected elements around a shared center", () => {
+    const elements = [
+      {
+        angle: 0,
+        backgroundColor: "#ffec99",
+        height: 40,
+        id: "top",
+        opacity: 100,
+        strokeColor: "#d6d6d6",
+        strokeStyle: "solid" as const,
+        strokeWidth: 2,
+        type: "rectangle" as const,
+        width: 80,
+        x: 80,
+        y: 60
+      },
+      {
+        angle: 0,
+        backgroundColor: "#ffec99",
+        height: 40,
+        id: "bottom",
+        opacity: 100,
+        strokeColor: "#d6d6d6",
+        strokeStyle: "solid" as const,
+        strokeWidth: 2,
+        type: "rectangle" as const,
+        width: 80,
+        x: 80,
+        y: 180
+      }
+    ] as KizkattElement[];
+    const skewed = skewElementsFromSelectionHandle(
+      elements,
+      ["top", "bottom"],
+      { height: 160, width: 80, x: 80, y: 60 },
+      { x: 120, y: 140 },
+      "top",
+      { x: 120, y: 60 },
+      { x: 160, y: 60 }
+    );
+
+    expect(skewed[0].skewX).toBeLessThan(0);
+    expect(skewed[1].skewX).toBeLessThan(0);
+    expect(skewed[0].x).toBeGreaterThan(elements[0].x);
+    expect(skewed[1].x).toBeLessThan(elements[1].x);
+  });
+
+  it("skews each dragged edge toward the pointer direction", () => {
+    const element = {
+      angle: 0,
+      backgroundColor: "#ffec99",
+      height: 80,
+      id: "rectangle",
+      opacity: 100,
+      strokeColor: "#d6d6d6",
+      strokeStyle: "solid" as const,
+      strokeWidth: 2,
+      type: "rectangle" as const,
+      width: 100,
+      x: 50,
+      y: 60
+    } as KizkattElement;
+    const elements = [element];
+    const bounds = { height: 80, width: 100, x: 50, y: 60 };
+    const center = { x: 100, y: 100 };
+
+    const topRight = skewElementsFromSelectionHandle(
+      elements,
+      ["rectangle"],
+      bounds,
+      center,
+      "top",
+      { x: 100, y: 60 },
+      { x: 140, y: 60 }
+    )[0];
+    const bottomRight = skewElementsFromSelectionHandle(
+      elements,
+      ["rectangle"],
+      bounds,
+      center,
+      "bottom",
+      { x: 100, y: 140 },
+      { x: 140, y: 140 }
+    )[0];
+    const leftDown = skewElementsFromSelectionHandle(
+      elements,
+      ["rectangle"],
+      bounds,
+      center,
+      "left",
+      { x: 50, y: 100 },
+      { x: 50, y: 140 }
+    )[0];
+    const rightDown = skewElementsFromSelectionHandle(
+      elements,
+      ["rectangle"],
+      bounds,
+      center,
+      "right",
+      { x: 150, y: 100 },
+      { x: 150, y: 140 }
+    )[0];
+
+    expect(topRight.skewX).toBeLessThan(0);
+    expect(bottomRight.skewX).toBeGreaterThan(0);
+    expect(leftDown.skewY).toBeLessThan(0);
+    expect(rightDown.skewY).toBeGreaterThan(0);
+  });
+
+  it("switches a repeat-clicked selection into skew mode and skews from an edge handle", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "#ffec99",
+          height: 70,
+          id: "rectangle",
+          name: "Rectangle 1",
+          opacity: 100,
+          skewX: 0,
+          skewY: 0,
+          strokeColor: "#d6d6d6",
+          strokeStyle: "solid",
+          strokeWidth: 2,
+          type: "rectangle",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    expect(canvas.querySelector("[data-skew-handle]")).not.toBeInTheDocument();
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 80, clientY: 80 });
+    firePointerEvent(canvas, "pointerup");
+
+    expect(canvas.querySelectorAll("[data-skew-handle]")).toHaveLength(4);
+    expect(canvas.querySelectorAll(".kizkatt-corner-rotate-handle"))
+      .toHaveLength(4);
+
+    const topSkewHandle = canvas.querySelector('[data-skew-handle="top"]');
+    const topSkewHandlePath = topSkewHandle?.querySelector("path");
+
+    expect(topSkewHandle).toBeInTheDocument();
+    expect(topSkewHandlePath).toBeInTheDocument();
+
+    firePointerEvent(topSkewHandlePath as Element, "pointerdown", {
+      clientX: 100,
+      clientY: 25
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 150, clientY: 25 });
+    firePointerEvent(canvas, "pointerup");
+
+    const elementGroup = canvas.querySelector("[data-element-id='rectangle']");
+
+    expect(elementGroup?.getAttribute("transform")).toContain("skewX(");
+    expect(elementGroup?.getAttribute("transform")).not.toContain("skewX(0)");
+  });
+
+  it("keeps skew and rotate icons on the selection bounding rectangle", () => {
+    const element: KizkattElement = {
+      angle: Math.PI / 10,
+      backgroundColor: "#0b3556",
+      height: 70,
+      id: "rectangle",
+      name: "Rectangle 1",
+      opacity: 100,
+      skewX: 0.35,
+      skewY: 0,
+      strokeColor: "#1971c2",
+      strokeStyle: "solid",
+      strokeWidth: 6,
+      type: "rectangle",
+      width: 140,
+      x: 60,
+      y: 70
+    };
+    storeCanvasState({
+      elements: [element],
+      selectedIds: ["rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 130, clientY: 105 });
+    firePointerEvent(canvas, "pointerup");
+
+    const bounds = selectionBounds([element], { includeRotation: true });
+
+    expect(bounds).not.toBeNull();
+
+    const expectedCenter = {
+      x: bounds!.x + bounds!.width / 2,
+      y: bounds!.y + bounds!.height / 2
+    };
+    const topHandle = getHandleWorldPoint(
+      canvas.querySelector('[data-skew-handle="top"]')
+    );
+    const rightHandle = getHandleWorldPoint(
+      canvas.querySelector('[data-skew-handle="right"]')
+    );
+    const northWestRotateHandle = getHandleWorldPoint(
+      canvas.querySelector(".kizkatt-corner-rotate-handle")
+    );
+
+    expect(topHandle.x).toBeCloseTo(expectedCenter.x);
+    expect(topHandle.y).toBeLessThan(bounds!.y);
+    expect(rightHandle.x).toBeGreaterThan(bounds!.x + bounds!.width);
+    expect(rightHandle.y).toBeCloseTo(expectedCenter.y);
+    expect(northWestRotateHandle.x).toBeLessThan(bounds!.x);
+    expect(northWestRotateHandle.y).toBeLessThan(bounds!.y);
+  });
+
+  it("undoes a dragged move as a single history step", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "#ffec99",
+          height: 70,
+          id: "rectangle",
+          name: "Rectangle 1",
+          opacity: 100,
+          strokeColor: "#d6d6d6",
+          strokeStyle: "solid",
+          strokeWidth: 2,
+          type: "rectangle",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const elementRect = canvas.querySelector("[data-element-id='rectangle'] rect");
+
+    expect(elementRect).toHaveAttribute("x", "40");
+    expect(elementRect).toHaveAttribute("y", "50");
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 80, clientY: 80 });
+    firePointerEvent(canvas, "pointermove", { clientX: 110, clientY: 100 });
+    firePointerEvent(canvas, "pointerup");
+
+    expect(elementRect).toHaveAttribute("x", "70");
+    expect(elementRect).toHaveAttribute("y", "70");
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+    expect(elementRect).toHaveAttribute("x", "40");
+    expect(elementRect).toHaveAttribute("y", "50");
+  });
+
   it("supports undo and redo for element creation", () => {
     render(<KizkattGraphicEditor />);
 
@@ -674,6 +950,159 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Redo" }));
     expect(canvas.querySelector("[data-element-id]")).toBeInTheDocument();
+  });
+
+  it("stores and restores an element object base snapshot", () => {
+    const element: KizkattElement = {
+      angle: Math.PI / 8,
+      backgroundColor: "#653b00",
+      height: 40,
+      id: "rectangle",
+      opacity: 72,
+      skewX: 0.2,
+      skewY: -0.1,
+      strokeColor: "#f08c00",
+      strokeStyle: "dashed",
+      strokeWidth: 12,
+      type: "rectangle",
+      width: 80,
+      x: 10,
+      y: 20
+    };
+    const based = withUpdatedObjectBase(element);
+    const changed = {
+      ...based,
+      angle: 0,
+      backgroundColor: "#ffffff",
+      height: 140,
+      opacity: 100,
+      strokeStyle: "solid" as const,
+      strokeWidth: 2,
+      width: 200,
+      x: 300,
+      y: 400
+    };
+
+    expect(revertElementToObjectBase(changed)).toMatchObject({
+      angle: element.angle,
+      backgroundColor: element.backgroundColor,
+      height: element.height,
+      opacity: element.opacity,
+      skewX: element.skewX,
+      skewY: element.skewY,
+      strokeColor: element.strokeColor,
+      strokeStyle: element.strokeStyle,
+      strokeWidth: element.strokeWidth,
+      width: element.width,
+      x: element.x,
+      y: element.y
+    });
+  });
+
+  it("restores distinct object bases for multiple selected elements", () => {
+    const elements: KizkattElement[] = [
+      withUpdatedObjectBase({
+        angle: 0,
+        backgroundColor: "#653b00",
+        height: 40,
+        id: "first",
+        opacity: 80,
+        strokeColor: "#f08c00",
+        strokeStyle: "solid",
+        strokeWidth: 10,
+        type: "rectangle",
+        width: 80,
+        x: 10,
+        y: 20
+      }),
+      withUpdatedObjectBase({
+        angle: Math.PI / 12,
+        backgroundColor: "#0b3556",
+        height: 70,
+        id: "second",
+        opacity: 45,
+        strokeColor: "#228be6",
+        strokeStyle: "dashed",
+        strokeWidth: 6,
+        type: "rectangle",
+        width: 120,
+        x: 140,
+        y: 90
+      })
+    ];
+    const changed = elements.map((element) => ({
+      ...element,
+      backgroundColor: "#ffffff",
+      strokeColor: "#000000",
+      strokeStyle: "dotted" as const,
+      strokeWidth: 1
+    }));
+    const restored = changed.map(revertElementToObjectBase);
+
+    expect(restored).toEqual([
+      expect.objectContaining({
+        backgroundColor: "#653b00",
+        strokeColor: "#f08c00",
+        strokeStyle: "solid",
+        strokeWidth: 10
+      }),
+      expect.objectContaining({
+        backgroundColor: "#0b3556",
+        strokeColor: "#228be6",
+        strokeStyle: "dashed",
+        strokeWidth: 6
+      })
+    ]);
+  });
+
+  it("updates and reverts object bases from the context menu", async () => {
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    const rectangle = canvas.querySelector("[data-element-type='rectangle'] rect");
+
+    expect(rectangle).toHaveAttribute("x", "40");
+    expect(rectangle).toHaveAttribute("y", "50");
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 80, clientY: 80 });
+    firePointerEvent(canvas, "pointermove", { clientX: 110, clientY: 100 });
+    firePointerEvent(canvas, "pointerup");
+
+    expect(rectangle).toHaveAttribute("x", "70");
+    expect(rectangle).toHaveAttribute("y", "70");
+
+    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Update object base" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("menu", { name: "Canvas context menu" })).not
+        .toBeInTheDocument();
+    });
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 100, clientY: 100 });
+    firePointerEvent(canvas, "pointermove", { clientX: 140, clientY: 130 });
+    firePointerEvent(canvas, "pointerup");
+
+    expect(rectangle).toHaveAttribute("x", "110");
+    expect(rectangle).toHaveAttribute("y", "100");
+
+    fireEvent.contextMenu(canvas, { clientX: 120, clientY: 110 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Revert object base" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("menu", { name: "Canvas context menu" })).not
+        .toBeInTheDocument();
+    });
+
+    expect(rectangle).toHaveAttribute("x", "70");
+    expect(rectangle).toHaveAttribute("y", "70");
+    expect(
+      canvas.querySelector(".kizkatt-transform-center-marker--cross")
+    ).toHaveAttribute("transform", "translate(130 105)");
   });
 
   it("deletes the selected element with Delete", () => {

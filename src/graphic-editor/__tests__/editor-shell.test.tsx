@@ -364,10 +364,12 @@ describe("KizkattGraphicEditor shell", () => {
 
     const rectangleButton = screen.getByRole("button", { name: "Rectangle" });
     const toolbarPanel = rectangleButton.closest(".kizkatt-floating-panel");
+    const dragHandle = toolbarPanel?.querySelector("[data-panel-drag-handle]");
 
     expect(toolbarPanel).not.toBeNull();
+    expect(dragHandle).not.toBeNull();
 
-    fireEvent.mouseDown(toolbarPanel as Element, {
+    fireEvent.mouseDown(dragHandle as Element, {
       button: 0,
       clientX: 20,
       clientY: 20
@@ -392,10 +394,12 @@ describe("KizkattGraphicEditor shell", () => {
 
     const nodeEditButton = screen.getByRole("button", { name: "Node edit" });
     const toolbarPanel = nodeEditButton.closest(".kizkatt-floating-panel");
+    const dragHandle = toolbarPanel?.querySelector("[data-panel-drag-handle]");
 
     expect(toolbarPanel).not.toBeNull();
+    expect(dragHandle).not.toBeNull();
 
-    fireEvent.mouseDown(toolbarPanel as Element, {
+    fireEvent.mouseDown(dragHandle as Element, {
       button: 0,
       clientX: 20,
       clientY: 20

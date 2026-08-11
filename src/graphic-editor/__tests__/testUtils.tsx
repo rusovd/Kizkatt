@@ -29,6 +29,7 @@ export {
   resizeElementFromHandle,
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,
+  skewElementsFromSelectionHandle,
   type ResizeHandle
 } from "../KizkattGraphicEditor";
 export {
@@ -37,7 +38,9 @@ export {
   expandElementIdsToGroups,
   getNextSelectedIdsForHit,
   groupSelectedElements,
-  ungroupSelectedElements
+  revertElementToObjectBase,
+  ungroupSelectedElements,
+  withUpdatedObjectBase
 } from "kizkatt-graphic-engine";
 export { selectionBounds } from "../geometry";
 export type { KizkattElement } from "../model/types";

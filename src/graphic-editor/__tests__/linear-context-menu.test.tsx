@@ -168,6 +168,9 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
       .not.toBeInTheDocument();
     expect(screen.queryByRole("menuitemcheckbox", { name: /View mode/ }))
       .not.toBeInTheDocument();
+    expect(screen.getAllByRole("menuitem")[0]).toHaveAccessibleName(
+      /Refresh page/
+    );
     hoverContextSubmenuItem(getPrimaryCheckbox(/Snap to objects/));
     expect(getSubmenuCheckbox(/Snap to objects/))
       .toBeInTheDocument();
