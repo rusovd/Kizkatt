@@ -9,7 +9,7 @@ export {
   getElementIdsInSelectionArea,
   getElementTransformedCorners,
   getElementTransformedBounds,
-  getCalibratedCentimetersWorldSize,
+  getCalibratedMillimetersWorldSize,
   getDefaultGridSettings,
   getGridWorldSizing,
   getLinearElementPath,

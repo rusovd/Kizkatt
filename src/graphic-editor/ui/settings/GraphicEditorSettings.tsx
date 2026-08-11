@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useState } from "react";
 
+import { DEFAULT_GRAPHIC_EDITOR_SETTINGS } from "../../config/defaultSettings";
+
 type GraphicEditorSettings = {
   autohideToolbar: boolean;
   dragEnabled: boolean;
@@ -43,7 +45,9 @@ function storeBoolean(key: string, value: boolean) {
 function readStoredToolbarOrientation(): ToolbarOrientation {
   const storedValue = window.localStorage.getItem(TOOLBAR_ORIENTATION_STORAGE_KEY);
 
-  return storedValue === "vertical" ? "vertical" : "horizontal";
+  return storedValue === "vertical"
+    ? "vertical"
+    : DEFAULT_GRAPHIC_EDITOR_SETTINGS.toolbarOrientation;
 }
 
 export function GraphicEditorSettingsProvider({
@@ -52,10 +56,16 @@ export function GraphicEditorSettingsProvider({
   children: ReactNode;
 }) {
   const [autohideToolbar, setAutohideToolbarState] = useState(() =>
-    readStoredBoolean(AUTOHIDE_TOOLBAR_STORAGE_KEY, false)
+    readStoredBoolean(
+      AUTOHIDE_TOOLBAR_STORAGE_KEY,
+      DEFAULT_GRAPHIC_EDITOR_SETTINGS.autohideToolbar
+    )
   );
   const [dragEnabled, setDragEnabledState] = useState(() =>
-    readStoredBoolean(DRAG_ENABLED_STORAGE_KEY, true)
+    readStoredBoolean(
+      DRAG_ENABLED_STORAGE_KEY,
+      DEFAULT_GRAPHIC_EDITOR_SETTINGS.dragEnabled
+    )
   );
   const [toolbarOrientation, setToolbarOrientationState] = useState(
     readStoredToolbarOrientation

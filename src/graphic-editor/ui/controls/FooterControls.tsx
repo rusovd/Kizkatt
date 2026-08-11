@@ -3,12 +3,12 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import type { ReactNode } from "react";
 
 import {
-  GRID_CALIBRATION_REFERENCE_CM,
-  GRID_CM_SCALE_STEP,
+  GRID_CALIBRATION_REFERENCE_MM,
+  GRID_MM_SCALE_STEP,
   GRID_COLORS_BY_THEME,
-  MAX_GRID_CM_SCALE,
+  MAX_GRID_MM_SCALE,
   MAX_UI_SCALE,
-  MIN_GRID_CM_SCALE,
+  MIN_GRID_MM_SCALE,
   MIN_UI_SCALE,
   PERCENT_MAX_VALUE,
   UI_SCALE_STEP,
@@ -16,7 +16,7 @@ import {
   ZOOM_OUT_SYMBOL
 } from "../../config/constants";
 import {
-  getCalibratedCentimetersWorldSize,
+  getCalibratedMillimetersWorldSize,
   getDefaultGridSettings
 } from "../../geometry";
 import type { GridSettings, GridUnit, KizkattTheme } from "../../model/types";
@@ -161,6 +161,62 @@ function SettingsSubmenuButton({
   );
 }
 
+function GridNumberInput({
+  ariaLabel,
+  id,
+  max,
+  min,
+  onChange,
+  step,
+  title,
+  value
+}: {
+  ariaLabel: string;
+  id: string;
+  max: number;
+  min: number;
+  onChange: (value: number) => void;
+  step: number;
+  title: string;
+  value: number;
+}) {
+  const [draftValue, setDraftValue] = useState(String(value));
+
+  useEffect(() => {
+    setDraftValue(String(value));
+  }, [value]);
+
+  const commitValue = (nextValue: string) => {
+    setDraftValue(nextValue);
+
+    if (nextValue.trim() === "") {
+      return;
+    }
+
+    const numericValue = Number(nextValue);
+
+    if (Number.isFinite(numericValue)) {
+      onChange(numericValue);
+    }
+  };
+
+  return (
+    <input
+      id={id}
+      type="number"
+      min={min}
+      max={max}
+      step={step}
+      aria-label={ariaLabel}
+      title={title}
+      value={draftValue}
+      onBlur={() => setDraftValue(String(value))}
+      onPointerDown={stopPanelDrag}
+      onChange={(event) => commitValue(event.target.value)}
+    />
+  );
+}
+
 function EditorSettingsMenu({
   canUseGrid,
   gridColor,
@@ -211,22 +267,22 @@ function EditorSettingsMenu({
   } = useGraphicEditorSettings();
   const { strings } = useI18n();
   const gridColors = GRID_COLORS_BY_THEME[theme];
-  const majorGridUnit = gridSettings.unit === "cm" ? "cm" : "px";
-  const minorGridUnit = gridSettings.unit === "cm" ? "mm" : "px";
-  const gridSizeStep = gridSettings.unit === "cm" ? 0.1 : 1;
+  const majorGridUnit = gridSettings.unit === "mm" ? "mm" : "px";
+  const minorGridUnit = gridSettings.unit === "mm" ? "mm" : "px";
+  const gridSizeStep = gridSettings.unit === "mm" ? 0.1 : 1;
   const nextToolbarOrientation =
     toolbarOrientation === "horizontal" ? "vertical" : "horizontal";
   const calibrationScalePercent = Math.round(
-    gridSettings.cmScale * PERCENT_MAX_VALUE
+    gridSettings.metricScale * PERCENT_MAX_VALUE
   );
   const calibrationRulerWidth =
-    getCalibratedCentimetersWorldSize(
-      GRID_CALIBRATION_REFERENCE_CM,
+    getCalibratedMillimetersWorldSize(
+      GRID_CALIBRATION_REFERENCE_MM,
       gridSettings
     ) / uiScale;
   const calibrationTicks = Array.from(
-    { length: GRID_CALIBRATION_REFERENCE_CM + 1 },
-    (_, index) => index
+    { length: GRID_CALIBRATION_REFERENCE_MM / 10 + 1 },
+    (_, index) => index * 10
   );
   const updateGridSettings = (patch: Partial<GridSettings>) => {
     onGridSettingsChange({
@@ -237,7 +293,7 @@ function EditorSettingsMenu({
   const setGridUnit = (unit: GridUnit) => {
     onGridSettingsChange({
       ...getDefaultGridSettings(unit),
-      cmScale: gridSettings.cmScale
+      metricScale: gridSettings.metricScale
     });
   };
   const openSettingsSubmenu = (submenu: "grid" | "view") => {
@@ -359,13 +415,13 @@ function EditorSettingsMenu({
                 <button
                   type="button"
                   data-no-panel-drag
-                  aria-label={strings.mainMenu.gridUnitCm}
-                  title={strings.mainMenu.tooltips.gridUnitCm}
-                  className={gridSettings.unit === "cm" ? "is-active" : undefined}
+                  aria-label={strings.mainMenu.gridUnitMm}
+                  title={strings.mainMenu.tooltips.gridUnitMm}
+                  className={gridSettings.unit === "mm" ? "is-active" : undefined}
                   onPointerDown={stopPanelDrag}
-                  onClick={() => setGridUnit("cm")}
+                  onClick={() => setGridUnit("mm")}
                 >
-                  cm
+                  mm
                 </button>
               </div>
             </div>
@@ -407,19 +463,15 @@ function EditorSettingsMenu({
             >
               <span>{strings.mainMenu.gridMajorSize}</span>
               <span className="kizkatt-grid-size-input-wrap">
-                <input
+                <GridNumberInput
                   id="kizkatt-footer-grid-major-size"
-                  type="number"
-                  min={gridSettings.unit === "cm" ? 0.1 : 1}
-                  max={gridSettings.unit === "cm" ? 100 : 10000}
+                  min={gridSettings.unit === "mm" ? 0.1 : 1}
+                  max={gridSettings.unit === "mm" ? 1000 : 10000}
                   step={gridSizeStep}
-                  aria-label={`${strings.mainMenu.gridMajorSize} (${majorGridUnit})`}
+                  ariaLabel={`${strings.mainMenu.gridMajorSize} (${majorGridUnit})`}
                   title={strings.mainMenu.tooltips.gridMajorSize}
                   value={gridSettings.majorSize}
-                  onPointerDown={stopPanelDrag}
-                  onChange={(event) =>
-                    updateGridSettings({ majorSize: Number(event.target.value) })
-                  }
+                  onChange={(value) => updateGridSettings({ majorSize: value })}
                 />
                 <span>{majorGridUnit}</span>
               </span>
@@ -430,56 +482,54 @@ function EditorSettingsMenu({
             >
               <span>{strings.mainMenu.gridMinorSize}</span>
               <span className="kizkatt-grid-size-input-wrap">
-                <input
+                <GridNumberInput
                   id="kizkatt-footer-grid-minor-size"
-                  type="number"
-                  min={gridSettings.unit === "cm" ? 0.1 : 1}
+                  min={gridSettings.unit === "mm" ? 0.1 : 1}
                   max={
-                    gridSettings.unit === "cm"
-                      ? gridSettings.majorSize * 10
+                    gridSettings.unit === "mm"
+                      ? gridSettings.majorSize
                       : gridSettings.majorSize
                   }
                   step={gridSizeStep}
-                  aria-label={`${strings.mainMenu.gridMinorSize} (${minorGridUnit})`}
+                  ariaLabel={`${strings.mainMenu.gridMinorSize} (${minorGridUnit})`}
                   title={strings.mainMenu.tooltips.gridMinorSize}
                   value={gridSettings.minorSize}
-                  onPointerDown={stopPanelDrag}
-                  onChange={(event) =>
-                    updateGridSettings({ minorSize: Number(event.target.value) })
-                  }
+                  onChange={(value) => updateGridSettings({ minorSize: value })}
                 />
                 <span>{minorGridUnit}</span>
               </span>
             </label>
-            {gridSettings.unit === "cm" && (
+            {gridSettings.unit === "mm" && (
               <>
                 <label
                   className="kizkatt-grid-calibration-row"
-                  htmlFor="kizkatt-footer-grid-cm-scale"
+                  htmlFor="kizkatt-footer-grid-mm-scale"
                 >
-                  <span>{strings.mainMenu.gridCmCalibration}</span>
+                  <span>{strings.mainMenu.gridMmCalibration}</span>
                   <span>{calibrationScalePercent}%</span>
                 </label>
                 <input
-                  id="kizkatt-footer-grid-cm-scale"
+                  id="kizkatt-footer-grid-mm-scale"
                   className="kizkatt-grid-calibration-input"
                   type="range"
-                  min={MIN_GRID_CM_SCALE}
-                  max={MAX_GRID_CM_SCALE}
-                  step={GRID_CM_SCALE_STEP}
-                  aria-label={strings.mainMenu.gridCmCalibration}
-                  title={strings.mainMenu.tooltips.gridCmCalibration}
-                  value={gridSettings.cmScale}
+                  min={MIN_GRID_MM_SCALE}
+                  max={MAX_GRID_MM_SCALE}
+                  step={GRID_MM_SCALE_STEP}
+                  aria-label={strings.mainMenu.gridMmCalibration}
+                  title={strings.mainMenu.tooltips.gridMmCalibration}
+                  value={gridSettings.metricScale}
                   onPointerDown={stopPanelDrag}
                   onChange={(event) =>
-                    updateGridSettings({ cmScale: Number(event.target.value) })
+                    updateGridSettings({
+                      metricScale: Number(event.target.value)
+                    })
                   }
                 />
                 <div className="kizkatt-grid-calibration-preview">
                   <div
                     className="kizkatt-grid-calibration-ruler"
                     role="img"
-                    aria-label={`${GRID_CALIBRATION_REFERENCE_CM} cm calibration ruler`}
+                    aria-label={`${GRID_CALIBRATION_REFERENCE_MM} mm calibration ruler`}
                     title={strings.mainMenu.tooltips.gridCalibrationRuler}
                     style={{ width: `${calibrationRulerWidth}px` }}
                   >
@@ -489,7 +539,7 @@ function EditorSettingsMenu({
                         className="kizkatt-grid-calibration-tick"
                         style={{
                           left: `${
-                            (tick / GRID_CALIBRATION_REFERENCE_CM) *
+                            (tick / GRID_CALIBRATION_REFERENCE_MM) *
                             PERCENT_MAX_VALUE
                           }%`
                         }}

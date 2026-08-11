@@ -28,6 +28,7 @@ import {
   storeGridColor,
   storeTheme,
   storeUiScale,
+  type ObjectPanelProps,
   type StylePanelProps,
   type TextEditorProps
 } from "kizkatt-graphic-engine";
@@ -49,6 +50,7 @@ import {
 import { CanvasContextMenu } from "../ui/menus/CanvasContextMenu";
 import { FooterControls } from "../ui/controls/FooterControls";
 import { MainMenu } from "../ui/menus/MainMenu";
+import { ObjectPanel } from "../ui/panels/ObjectPanel";
 import { StylePanel } from "../ui/panels/StylePanel";
 import {
   ELEMENT_NAMING,
@@ -126,11 +128,16 @@ function AppStylePanel(props: StylePanelProps) {
   );
 }
 
+function AppObjectPanel(props: ObjectPanelProps) {
+  return <ObjectPanel {...props} />;
+}
+
 const editorComponents = {
   CanvasContextMenu,
   CanvasGrid,
   FooterControls,
   MainMenu,
+  ObjectPanel: AppObjectPanel,
   SelectedBounds,
   SelectionArea,
   StylePanel: AppStylePanel,

@@ -331,6 +331,82 @@ export const LinkIcon = createIcon(
   </g>
 );
 
+export const AspectLockIcon = createIcon(
+  <g strokeWidth="1.5">
+    <rect x="6" y="10" width="12" height="10" rx="2" />
+    <path d="M8.5 10V7.5a3.5 3.5 0 0 1 7 0V10" />
+  </g>
+);
+
+export const AspectUnlockIcon = createIcon(
+  <g strokeWidth="1.5">
+    <rect x="6" y="10" width="12" height="10" rx="2" />
+    <path d="M8.5 10V7.5a3.5 3.5 0 0 1 6.1 -2.3" />
+  </g>
+);
+
+export const MirrorHorizontalIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M12 4v16" strokeDasharray="3 3" />
+    <path d="M4 7h5v10H4z" />
+    <path d="M20 7h-5v10h5z" />
+  </g>
+);
+
+export const MirrorVerticalIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M4 12h16" strokeDasharray="3 3" />
+    <path d="M7 4v5h10V4z" />
+    <path d="M7 20v-5h10v5z" />
+  </g>
+);
+
+export const DimensionWidthIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M5 12h14" />
+    <path d="m8 9-3 3 3 3" />
+    <path d="m16 9 3 3-3 3" />
+  </g>
+);
+
+export const DimensionHeightIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M12 5v14" />
+    <path d="m9 8 3-3 3 3" />
+    <path d="m9 16 3 3 3-3" />
+  </g>
+);
+
+export const RotationAngleIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M6 16a8 8 0 0 1 8-8h3" />
+    <path d="m14 5 3 3-3 3" />
+    <path d="M6 16h6" />
+  </g>
+);
+
+export const StrokeWidthIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M5 7h14" />
+    <path d="M5 12h14" strokeWidth="2" />
+    <path d="M5 17h14" strokeWidth="3" />
+  </g>
+);
+
+export const PenNibIcon = createIcon(
+ <g fill="currentColor">
+    <path d="M11.7 3h.6c.2 2.5 1.7 5.5 4.7 8.5l-1.8 2.8a18 18 0 0 0-1.4 3.7h-3.6a18 18 0 0 0-1.4-3.7L7 11.5c3-3 4.5-6 4.7-8.5Zm.3 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z" />
+    <path d="M10.2 18.5h3.6v1h-3.6zM10.2 20h3.6v1h-3.6zM10.2 21.5h3.6v1h-3.6z" />
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth="1.2"
+      d="M12 1.5C5.8 4.5 3.2 12.4 5.4 22"
+    />
+  </g>
+);
+
 export const SendToBackIcon = createIcon(
   <g strokeWidth="1.5">
     <path d="M6 5h12" />

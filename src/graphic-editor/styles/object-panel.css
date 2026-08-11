@@ -1,0 +1,204 @@
+.kizkatt-object-panel {
+  position: relative;
+  display: flex;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  min-height: 34px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.kizkatt-floating-panel--object-panel {
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%) scale(var(--kizkatt-ui-scale));
+  transform-origin: top center;
+}
+
+.kizkatt-floating-panel--object-panel.is-positioned {
+  right: auto;
+  bottom: auto;
+  transform: scale(var(--kizkatt-ui-scale));
+  transform-origin: top left;
+}
+
+.kizkatt-object-panel {
+  background: var(--kizkatt-control-bg);
+  border: 1px solid var(--kizkatt-border);
+  box-shadow: 0 10px 28px var(--kizkatt-shadow);
+}
+
+.kizkatt-object-panel-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 4px 6px;
+}
+
+.kizkatt-object-panel-stack {
+  display: grid;
+  gap: 2px;
+}
+
+.kizkatt-object-field,
+.kizkatt-object-select-field {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  align-items: center;
+  gap: 3px;
+  color: var(--kizkatt-panel-label);
+  white-space: nowrap;
+}
+
+.kizkatt-object-field-label {
+  display: grid;
+  min-width: 15px;
+  place-items: center;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.kizkatt-object-field-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px;
+}
+
+.kizkatt-object-field input {
+  box-sizing: border-box;
+  width: 50px;
+  min-width: 0;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 4px;
+  background: var(--kizkatt-control-bg);
+  color: var(--kizkatt-text-secondary);
+  font: inherit;
+  font-size: 1em;
+  outline: 0;
+}
+
+.kizkatt-object-select-field select {
+  box-sizing: border-box;
+  width: 74px;
+  height: 20px;
+  padding: 0 20px 0 5px;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 4px;
+  background: var(--kizkatt-control-bg);
+  color: var(--kizkatt-text-secondary);
+  font: inherit;
+  font-size: 1em;
+  outline: 0;
+}
+
+.kizkatt-object-field input:focus-visible,
+.kizkatt-object-select-field select:focus-visible {
+  border-color: var(--kizkatt-selection);
+}
+
+.kizkatt-object-field small {
+  color: var(--kizkatt-muted-text);
+  font: inherit;
+  font-size: 1em;
+}
+
+.kizkatt-object-field--position input {
+  width: 56px;
+}
+
+.kizkatt-object-field--position {
+  grid-template-columns: 18px minmax(0, 1fr);
+}
+
+.kizkatt-object-field--angle input {
+  width: 58px;
+}
+
+.kizkatt-object-field--stroke-width input {
+  width: 58px;
+}
+
+.kizkatt-object-field--stroke-width .kizkatt-object-field-control {
+  grid-template-columns: minmax(0, 58px) 22px;
+}
+
+.kizkatt-object-field--stroke-width select {
+  box-sizing: border-box;
+  width: 22px;
+  height: 20px;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 4px;
+  background: var(--kizkatt-control-bg);
+  color: transparent;
+  cursor: pointer;
+  outline: 0;
+}
+
+.kizkatt-object-field--stroke-width select:focus-visible {
+  border-color: var(--kizkatt-selection);
+}
+
+.kizkatt-object-field--stroke-width select option {
+  color: var(--kizkatt-text-secondary);
+}
+
+.kizkatt-object-panel-group.kizkatt-object-panel-stack {
+  display: grid;
+}
+
+.kizkatt-object-panel button {
+  box-sizing: border-box;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--kizkatt-text-secondary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.kizkatt-object-panel button:hover,
+.kizkatt-object-panel button.is-active {
+  background: var(--kizkatt-control-bg-hover);
+}
+
+.kizkatt-object-panel button.is-active {
+  color: var(--kizkatt-selection);
+}
+
+.kizkatt-object-panel .kizkatt-tool-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.kizkatt-object-panel-group {
+  display: flex;
+  gap: 2px;
+  padding-inline: 5px;
+  border-left: 1px solid var(--kizkatt-divider);
+}
+
+.kizkatt-object-panel--vertical {
+  width: max-content;
+}
+
+.kizkatt-object-panel--vertical .kizkatt-object-panel-content {
+  display: grid;
+  grid-template-columns: max-content;
+  align-items: stretch;
+  overflow-x: visible;
+}
+
+.kizkatt-object-panel--vertical .kizkatt-object-panel-group {
+  border-left: 0;
+  border-top: 1px solid var(--kizkatt-divider);
+  padding-block-start: 5px;
+  padding-inline: 0;
+}
