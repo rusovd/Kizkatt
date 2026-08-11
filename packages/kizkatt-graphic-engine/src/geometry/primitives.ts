@@ -98,8 +98,8 @@ export function transformElementPoint(
   const skewY = Math.tan(element.skewY ?? DEFAULT_SKEW_ANGLE);
   const localX = point.x - center.x;
   const localY = point.y - center.y;
-  const skewedX = localX + localY * skewX;
-  const skewedY = localY + skewedX * skewY;
+  const skewedY = localY + localX * skewY;
+  const skewedX = localX + skewedY * skewX;
   const cos = Math.cos(element.angle);
   const sin = Math.sin(element.angle);
 
@@ -119,8 +119,8 @@ export function getElementLocalPoint(element: KizkattElement, point: Point) {
   const rotatedY = -dx * sin + dy * cos;
   const skewX = Math.tan(element.skewX ?? DEFAULT_SKEW_ANGLE);
   const skewY = Math.tan(element.skewY ?? DEFAULT_SKEW_ANGLE);
-  const localY = rotatedY - rotatedX * skewY;
-  const localX = rotatedX - localY * skewX;
+  const localX = rotatedX - rotatedY * skewX;
+  const localY = rotatedY - localX * skewY;
 
   return {
     x: center.x + localX,
@@ -135,11 +135,11 @@ export function getElementLocalVector(element: KizkattElement, vector: Point) {
   const rotatedY = -vector.x * sin + vector.y * cos;
   const skewX = Math.tan(element.skewX ?? DEFAULT_SKEW_ANGLE);
   const skewY = Math.tan(element.skewY ?? DEFAULT_SKEW_ANGLE);
-  const localY = rotatedY - rotatedX * skewY;
+  const localX = rotatedX - rotatedY * skewX;
 
   return {
-    x: rotatedX - localY * skewX,
-    y: localY
+    x: localX,
+    y: rotatedY - localX * skewY
   };
 }
 

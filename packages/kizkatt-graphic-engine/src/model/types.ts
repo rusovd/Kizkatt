@@ -35,11 +35,11 @@ export type SkewHandle = "top" | "right" | "bottom" | "left";
 
 export type SelectionAreaMode = "intersect" | "contain";
 
-export type GridUnit = "px" | "cm";
+export type GridUnit = "px" | "mm";
 
 export type GridSettings = {
   unit: GridUnit;
-  cmScale: number;
+  metricScale: number;
   majorSize: number;
   minorSize: number;
   showMajor: boolean;

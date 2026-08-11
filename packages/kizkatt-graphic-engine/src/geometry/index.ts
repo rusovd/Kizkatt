@@ -8,7 +8,7 @@ export {
 export { isHexColor } from "./colors";
 export { findElementAtPoint } from "./hitTesting";
 export {
-  getCalibratedCentimetersWorldSize,
+  getCalibratedMillimetersWorldSize,
   getDefaultGridSettings,
   getGridWorldSizing,
   type GridWorldSizing

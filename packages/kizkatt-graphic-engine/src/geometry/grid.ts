@@ -1,12 +1,11 @@
 import {
-  DEFAULT_CM_GRID_SETTINGS,
+  DEFAULT_MM_GRID_SETTINGS,
   DEFAULT_GRID_SETTINGS,
   SCREEN_DPI
 } from "../config/constants";
 import type { GridSettings, GridUnit } from "../model/types";
 
-const CENTIMETERS_PER_INCH = 2.54;
-const MILLIMETERS_PER_CENTIMETER = 10;
+const MILLIMETERS_PER_INCH = 25.4;
 const MAX_GRID_SUBDIVISIONS = 200;
 
 export type GridWorldSizing = {
@@ -16,41 +15,34 @@ export type GridWorldSizing = {
 
 export function getDefaultGridSettings(unit: GridUnit): GridSettings {
   return {
-    ...(unit === "cm" ? DEFAULT_CM_GRID_SETTINGS : DEFAULT_GRID_SETTINGS)
+    ...(unit === "mm" ? DEFAULT_MM_GRID_SETTINGS : DEFAULT_GRID_SETTINGS)
   };
 }
 
-function getGridCmScale(settings: GridSettings) {
-  return Number.isFinite(settings.cmScale) ? settings.cmScale : 1;
+function getGridMetricScale(settings: GridSettings) {
+  return Number.isFinite(settings.metricScale) ? settings.metricScale : 1;
 }
 
-function centimetersToWorldUnits(value: number, cmScale = 1) {
-  return (value / CENTIMETERS_PER_INCH) * SCREEN_DPI * cmScale;
+function millimetersToWorldUnits(value: number, metricScale = 1) {
+  return (value / MILLIMETERS_PER_INCH) * SCREEN_DPI * metricScale;
 }
 
-function millimetersToWorldUnits(value: number, cmScale = 1) {
-  return centimetersToWorldUnits(
-    value / MILLIMETERS_PER_CENTIMETER,
-    cmScale
-  );
-}
-
-export function getCalibratedCentimetersWorldSize(
-  centimeters: number,
+export function getCalibratedMillimetersWorldSize(
+  millimeters: number,
   settings: GridSettings
 ) {
-  return centimetersToWorldUnits(centimeters, getGridCmScale(settings));
+  return millimetersToWorldUnits(millimeters, getGridMetricScale(settings));
 }
 
 export function getGridWorldSizing(settings: GridSettings): GridWorldSizing {
-  const cmScale = getGridCmScale(settings);
+  const metricScale = getGridMetricScale(settings);
   const majorSize =
-    settings.unit === "cm"
-      ? centimetersToWorldUnits(settings.majorSize, cmScale)
+    settings.unit === "mm"
+      ? millimetersToWorldUnits(settings.majorSize, metricScale)
       : settings.majorSize;
   const minorSize =
-    settings.unit === "cm"
-      ? millimetersToWorldUnits(settings.minorSize, cmScale)
+    settings.unit === "mm"
+      ? millimetersToWorldUnits(settings.minorSize, metricScale)
       : settings.minorSize;
   const safeMajorSize = Math.max(Number.EPSILON, majorSize);
   const minimumMinorSize = safeMajorSize / MAX_GRID_SUBDIVISIONS;

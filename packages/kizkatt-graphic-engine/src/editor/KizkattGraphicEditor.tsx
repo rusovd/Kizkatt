@@ -63,6 +63,7 @@ import {
 import {
   createElement,
   createId,
+  getObjectBase,
   normalizeElement,
   revertElementToObjectBase,
   withUpdatedObjectBase
@@ -83,10 +84,13 @@ import {
 } from "../model/groups";
 import {
   getElementBends,
+  getElementCenter,
   getElementTransformedCorners,
   getGridWorldSizing,
   getResizeCursor,
   reorderElementsByLayerAction,
+  resizeElementsFromSelectionHandle,
+  rotateElementsAroundPoint,
   selectionBounds,
   transformSvgPathData
 } from "../geometry";
@@ -2233,6 +2237,44 @@ export type MainMenuProps = {
   theme: KizkattTheme;
 };
 
+export type ObjectPanelGeometry = {
+  angle: number;
+  baseBounds: Bounds;
+  bounds: Bounds;
+  heightPercent: number;
+  offsetX: number;
+  offsetY: number;
+  widthPercent: number;
+};
+
+export type ObjectGeometryPatch = Partial<
+  Pick<
+    ObjectPanelGeometry,
+    "angle" | "heightPercent" | "offsetX" | "offsetY" | "widthPercent"
+  >
+>;
+
+export type ObjectMirrorAxis = "horizontal" | "vertical";
+
+export type ObjectPanelProps = {
+  geometry: ObjectPanelGeometry;
+  gridSettings: GridSettings;
+  onGeometryChange: (
+    patch: ObjectGeometryPatch,
+    options?: { transient?: boolean }
+  ) => void;
+  onGeometryChangeEnd: () => void;
+  onMirror: (axis: ObjectMirrorAxis) => void;
+  onStyleChange: (
+    patch: Partial<StyleState>,
+    options?: { transient?: boolean }
+  ) => void;
+  onStyleChangeEnd: () => void;
+  selectedElements: KizkattElement[];
+  style: StyleState;
+  theme: KizkattTheme;
+};
+
 export type StylePanelProps = {
   activeTool: Tool;
   canToggleClosedPath: boolean;
@@ -2292,6 +2334,7 @@ export type KizkattGraphicEditorComponents = {
     zoom: number;
   }>;
   MainMenu: ComponentType<MainMenuProps>;
+  ObjectPanel: ComponentType<ObjectPanelProps>;
   SelectedBounds: ComponentType<{
     elements: KizkattElement[];
     interaction: Interaction | null;
@@ -2413,7 +2456,128 @@ function getPreviewDisplayElements(
     selectedIdSet.has(element.id)
       ? originalElementById.get(element.id) ?? element
       : element
+    );
+}
+
+const RADIANS_PER_DEGREE = Math.PI / 180;
+const DEGREES_PER_RADIAN = 180 / Math.PI;
+const SELECTION_SCALE_HANDLE = "se";
+const DEFAULT_OBJECT_GEOMETRY_PERCENT = PERCENT_MAX_VALUE;
+
+function getBoundsCenter(bounds: Bounds): Point {
+  return {
+    x: bounds.x + bounds.width / VIEWPORT_CENTER_DIVISOR,
+    y: bounds.y + bounds.height / VIEWPORT_CENTER_DIVISOR
+  };
+}
+
+function getElementFromBase(element: KizkattElement): KizkattElement {
+  const base = element.base ?? getObjectBase(element);
+
+  return {
+    ...element,
+    ...base,
+    base: element.base,
+    x: base.center.x - base.width / VIEWPORT_CENTER_DIVISOR,
+    y: base.center.y - base.height / VIEWPORT_CENTER_DIVISOR
+  };
+}
+
+function getElementAngleDeltaFromBase(element: KizkattElement) {
+  const base = element.base ?? getObjectBase(element);
+
+  return (element.angle - base.angle) * DEGREES_PER_RADIAN;
+}
+
+function getObjectPanelGeometry(
+  selectedElements: KizkattElement[]
+): ObjectPanelGeometry | null {
+  const bounds = selectionBounds(selectedElements, { includeRotation: true });
+  const baseElements = selectedElements.map(getElementFromBase);
+  const baseBounds = selectionBounds(baseElements, { includeRotation: true });
+
+  if (!bounds || !baseBounds) {
+    return null;
+  }
+
+  const center = getBoundsCenter(bounds);
+  const baseCenter = getBoundsCenter(baseBounds);
+
+  return {
+    angle: selectedElements[0]
+      ? getElementAngleDeltaFromBase(selectedElements[0])
+      : 0,
+    baseBounds,
+    bounds,
+    heightPercent:
+      (bounds.height / Math.max(MIN_ELEMENT_SIZE, baseBounds.height)) *
+      PERCENT_MAX_VALUE,
+    offsetX: center.x - baseCenter.x,
+    offsetY: center.y - baseCenter.y,
+    widthPercent:
+      (bounds.width / Math.max(MIN_ELEMENT_SIZE, baseBounds.width)) *
+      PERCENT_MAX_VALUE
+  };
+}
+
+function translateElement(element: KizkattElement, delta: Point): KizkattElement {
+  return {
+    ...element,
+    x: element.x + delta.x,
+    y: element.y + delta.y
+  };
+}
+
+function transformElementLocalPoints(
+  element: KizkattElement,
+  transformPoint: (point: Point) => Point
+) {
+  return {
+    ...element,
+    bends: element.bends?.map(transformPoint),
+    curve: element.curve ? transformPoint(element.curve) : undefined,
+    pathData: element.pathData
+      ? transformSvgPathData(element.pathData, {
+          transformPoint
+        })?.pathData
+      : undefined,
+    points: element.points?.map(transformPoint)
+  };
+}
+
+function mirrorElementAroundPoint(
+  element: KizkattElement,
+  center: Point,
+  axis: ObjectMirrorAxis
+): KizkattElement {
+  const elementCenter = getElementCenter(element);
+  const nextCenter =
+    axis === "horizontal"
+      ? { x: center.x * 2 - elementCenter.x, y: elementCenter.y }
+      : { x: elementCenter.x, y: center.y * 2 - elementCenter.y };
+  const mirroredElement = transformElementLocalPoints(element, (point) =>
+    axis === "horizontal"
+      ? { x: element.width - point.x, y: point.y }
+      : { x: point.x, y: element.height - point.y }
   );
+
+  return {
+    ...mirroredElement,
+    angle:
+      axis === "horizontal"
+        ? Math.PI - mirroredElement.angle
+        : -mirroredElement.angle,
+    skewX:
+      axis === "horizontal"
+        ? -(mirroredElement.skewX ?? 0)
+        : mirroredElement.skewX,
+    skewY:
+      axis === "vertical"
+        ? -(mirroredElement.skewY ?? 0)
+        : mirroredElement.skewY,
+    x: nextCenter.x - mirroredElement.width / VIEWPORT_CENTER_DIVISOR,
+    y: nextCenter.y - mirroredElement.height / VIEWPORT_CENTER_DIVISOR
+  };
 }
 
 function TransformPreview({
@@ -2478,6 +2642,7 @@ export function KizkattGraphicEditor({
     CanvasGrid,
     FooterControls,
     MainMenu,
+    ObjectPanel,
     SelectedBounds,
     SelectionArea,
     StylePanel,
@@ -2549,6 +2714,7 @@ export function KizkattGraphicEditor({
   const canvasStateRef = useRef(canvasState);
   canvasStateRef.current = canvasState;
   const mergingStyleChangeRef = useRef(false);
+  const mergingGeometryChangeRef = useRef(false);
   const gridSizing = useMemo(
     () => getGridWorldSizing(gridSettings),
     [gridSettings]
@@ -2595,6 +2761,10 @@ export function KizkattGraphicEditor({
         strokeWidth: selectedElements[0].strokeWidth
       }
     : style;
+  const objectPanelGeometry = useMemo(
+    () => getObjectPanelGeometry(selectedElements),
+    [selectedElements]
+  );
   const showStylePanel =
     !viewMode &&
     !zenMode &&
@@ -3174,6 +3344,127 @@ export function KizkattGraphicEditor({
 
   const endSelectedStyleChange = () => {
     mergingStyleChangeRef.current = false;
+  };
+
+  const updateSelectedGeometry = (
+    patch: ObjectGeometryPatch,
+    options: { transient?: boolean } = {}
+  ) => {
+    if (
+      viewMode ||
+      !objectPanelGeometry ||
+      canvasState.selectedIds.length === EMPTY_COLLECTION_LENGTH
+    ) {
+      mergingGeometryChangeRef.current = false;
+      return;
+    }
+
+    const selectedIdSet = new Set(canvasState.selectedIds);
+    const selectedBaseElements = canvasState.elements
+      .filter((element) => selectedIdSet.has(element.id))
+      .map(getElementFromBase);
+    const baseBounds = selectionBounds(selectedBaseElements, {
+      includeRotation: true
+    });
+
+    if (!baseBounds) {
+      mergingGeometryChangeRef.current = false;
+      return;
+    }
+
+    const nextGeometry = {
+      ...objectPanelGeometry,
+      ...patch
+    };
+    const baseCenter = getBoundsCenter(baseBounds);
+    const nextCenter = {
+      x: baseCenter.x + nextGeometry.offsetX,
+      y: baseCenter.y + nextGeometry.offsetY
+    };
+    const nextWidth =
+      (baseBounds.width * nextGeometry.widthPercent) /
+      DEFAULT_OBJECT_GEOMETRY_PERCENT;
+    const nextHeight =
+      (baseBounds.height * nextGeometry.heightPercent) /
+      DEFAULT_OBJECT_GEOMETRY_PERCENT;
+    const scaledBaseElements = resizeElementsFromSelectionHandle(
+      selectedBaseElements,
+      canvasState.selectedIds,
+      baseBounds,
+      SELECTION_SCALE_HANDLE,
+      {
+        x: baseBounds.x + Math.max(MIN_ELEMENT_SIZE, nextWidth),
+        y: baseBounds.y + Math.max(MIN_ELEMENT_SIZE, nextHeight)
+      }
+    );
+    const scaledBounds =
+      selectionBounds(scaledBaseElements, { includeRotation: true }) ??
+      baseBounds;
+    const scaledCenter = getBoundsCenter(scaledBounds);
+    const translatedElements = scaledBaseElements.map((element) =>
+      translateElement(element, {
+        x: nextCenter.x - scaledCenter.x,
+        y: nextCenter.y - scaledCenter.y
+      })
+    );
+    const transformedElements = rotateElementsAroundPoint(
+      translatedElements,
+      canvasState.selectedIds,
+      nextCenter,
+      nextGeometry.angle * RADIANS_PER_DEGREE
+    );
+    const transformedElementById = new Map(
+      transformedElements.map((element) => [element.id, element])
+    );
+    const replaceHistoryEntry =
+      Boolean(options.transient) && mergingGeometryChangeRef.current;
+
+    commitState(
+      {
+        ...canvasState,
+        elements: canvasState.elements.map(
+          (element) => transformedElementById.get(element.id) ?? element
+        )
+      },
+      {
+        replace: replaceHistoryEntry
+      }
+    );
+
+    mergingGeometryChangeRef.current = Boolean(options.transient);
+  };
+
+  const endSelectedGeometryChange = () => {
+    mergingGeometryChangeRef.current = false;
+  };
+
+  const mirrorSelected = (axis: ObjectMirrorAxis) => {
+    if (
+      viewMode ||
+      selectedElements.length === EMPTY_COLLECTION_LENGTH ||
+      canvasState.selectedIds.length === EMPTY_COLLECTION_LENGTH
+    ) {
+      return;
+    }
+
+    const bounds = selectionBounds(selectedElements, { includeRotation: true });
+
+    if (!bounds) {
+      return;
+    }
+
+    const center = getBoundsCenter(bounds);
+    const selectedIdSet = new Set(canvasState.selectedIds);
+
+    setSelectionTransformCenter(null);
+    commitState({
+      ...canvasState,
+      elements: canvasState.elements.map((element) =>
+        selectedIdSet.has(element.id)
+          ? mirrorElementAroundPoint(element, center, axis)
+          : element
+      )
+    });
   };
 
   const closeablePathElement =
@@ -3768,6 +4059,24 @@ export function KizkattGraphicEditor({
         onThemeChange={setStoredTheme}
         theme={theme}
       />
+      {!viewMode &&
+        !zenMode &&
+        !menuOpen &&
+        selectedElements.length > EMPTY_COLLECTION_LENGTH &&
+        objectPanelGeometry && (
+          <ObjectPanel
+            geometry={objectPanelGeometry}
+            gridSettings={gridSettings}
+            selectedElements={selectedElements}
+            style={panelStyle}
+            theme={theme}
+            onGeometryChange={updateSelectedGeometry}
+            onGeometryChangeEnd={endSelectedGeometryChange}
+            onMirror={mirrorSelected}
+            onStyleChange={updateSelectedStyle}
+            onStyleChangeEnd={endSelectedStyleChange}
+          />
+        )}
       {showStylePanel && (
         <StylePanel
           activeTool={tool}

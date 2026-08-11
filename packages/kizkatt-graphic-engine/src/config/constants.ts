@@ -24,26 +24,26 @@ export const MIN_SELECT_DRAG_DISTANCE = 4;
 export const OBJECT_SNAP_DISTANCE = 12;
 export const DEFAULT_PX_GRID_MAJOR_SIZE = 30;
 export const DEFAULT_PX_GRID_MINOR_SIZE = 3;
-export const DEFAULT_CM_GRID_MAJOR_SIZE = 1;
-export const DEFAULT_CM_GRID_MINOR_SIZE = 5;
-export const DEFAULT_GRID_CM_SCALE = 1;
-export const MIN_GRID_CM_SCALE = 0.5;
-export const MAX_GRID_CM_SCALE = 2;
-export const GRID_CM_SCALE_STEP = 0.01;
-export const GRID_CALIBRATION_REFERENCE_CM = 3;
+export const DEFAULT_MM_GRID_MAJOR_SIZE = 10;
+export const DEFAULT_MM_GRID_MINOR_SIZE = 5;
+export const DEFAULT_GRID_MM_SCALE = 1;
+export const MIN_GRID_MM_SCALE = 0.5;
+export const MAX_GRID_MM_SCALE = 2;
+export const GRID_MM_SCALE_STEP = 0.01;
+export const GRID_CALIBRATION_REFERENCE_MM = 30;
 export const DEFAULT_GRID_SETTINGS: GridSettings = {
   unit: "px",
-  cmScale: DEFAULT_GRID_CM_SCALE,
+  metricScale: DEFAULT_GRID_MM_SCALE,
   majorSize: DEFAULT_PX_GRID_MAJOR_SIZE,
   minorSize: DEFAULT_PX_GRID_MINOR_SIZE,
   showMajor: true,
   showMinor: true
 };
-export const DEFAULT_CM_GRID_SETTINGS: GridSettings = {
-  unit: "cm",
-  cmScale: DEFAULT_GRID_CM_SCALE,
-  majorSize: DEFAULT_CM_GRID_MAJOR_SIZE,
-  minorSize: DEFAULT_CM_GRID_MINOR_SIZE,
+export const DEFAULT_MM_GRID_SETTINGS: GridSettings = {
+  unit: "mm",
+  metricScale: DEFAULT_GRID_MM_SCALE,
+  majorSize: DEFAULT_MM_GRID_MAJOR_SIZE,
+  minorSize: DEFAULT_MM_GRID_MINOR_SIZE,
   showMajor: true,
   showMinor: true
 };

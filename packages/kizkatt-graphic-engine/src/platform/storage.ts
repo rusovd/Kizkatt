@@ -5,7 +5,7 @@ import {
   CUSTOM_CANVAS_BACKGROUND_STORAGE_KEY,
   DEFAULT_CANVAS_BACKGROUND,
   DEFAULT_CANVAS_BACKGROUND_BY_THEME,
-  DEFAULT_CM_GRID_SETTINGS,
+  DEFAULT_MM_GRID_SETTINGS,
   DEFAULT_CUSTOM_CANVAS_BACKGROUND_BY_THEME,
   DEFAULT_GRID_SETTINGS,
   DEFAULT_GRID_COLOR,
@@ -13,9 +13,9 @@ import {
   GRID_COLOR_STORAGE_KEY,
   GRID_SETTINGS_STORAGE_KEY,
   MAX_GRID_SIZE,
-  MAX_GRID_CM_SCALE,
+  MAX_GRID_MM_SCALE,
   MIN_GRID_SIZE,
-  MIN_GRID_CM_SCALE,
+  MIN_GRID_MM_SCALE,
   QUICK_SAVE_STORAGE_KEY,
   THEME_STORAGE_KEY,
   DEFAULT_UI_SCALE,
@@ -83,7 +83,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isGridUnit(value: unknown): value is GridUnit {
-  return value === "px" || value === "cm";
+  return value === "px" || value === "mm";
+}
+
+function normalizeGridUnit(value: unknown): GridUnit {
+  if (value === "cm") {
+    return "mm";
+  }
+
+  return isGridUnit(value) ? value : "px";
 }
 
 function normalizeBoolean(value: unknown, fallback: boolean) {
@@ -292,20 +300,23 @@ export function storeGridColor(
 
 export function normalizeGridSettings(value: unknown): GridSettings {
   const record = isRecord(value) ? value : {};
-  const unit = isGridUnit(record.unit) ? record.unit : "px";
+  const isLegacyCentimeterUnit = record.unit === "cm";
+  const unit = normalizeGridUnit(record.unit);
   const defaults =
-    unit === "cm" ? DEFAULT_CM_GRID_SETTINGS : DEFAULT_GRID_SETTINGS;
-  const minimumSize = unit === "cm" ? MIN_GRID_SIZE : 1;
-  const maximumMajorSize = unit === "cm" ? 100 : MAX_GRID_SIZE;
-  const maximumMinorSize = unit === "cm" ? 1000 : MAX_GRID_SIZE;
-  const cmScale = normalizePositiveNumber(
-    record.cmScale,
-    defaults.cmScale,
-    MIN_GRID_CM_SCALE,
-    MAX_GRID_CM_SCALE
+    unit === "mm" ? DEFAULT_MM_GRID_SETTINGS : DEFAULT_GRID_SETTINGS;
+  const minimumSize = unit === "mm" ? MIN_GRID_SIZE : 1;
+  const maximumMajorSize = unit === "mm" ? 1000 : MAX_GRID_SIZE;
+  const maximumMinorSize = unit === "mm" ? 1000 : MAX_GRID_SIZE;
+  const metricScale = normalizePositiveNumber(
+    record.metricScale ?? record.cmScale,
+    defaults.metricScale,
+    MIN_GRID_MM_SCALE,
+    MAX_GRID_MM_SCALE
   );
   const majorSize = normalizePositiveNumber(
-    record.majorSize,
+    isLegacyCentimeterUnit && record.majorSize !== undefined
+      ? Number(record.majorSize) * 10
+      : record.majorSize,
     defaults.majorSize,
     minimumSize,
     maximumMajorSize
@@ -316,11 +327,11 @@ export function normalizeGridSettings(value: unknown): GridSettings {
     minimumSize,
     maximumMinorSize
   );
-  const maxMinorSize = unit === "cm" ? majorSize * 10 : majorSize;
+  const maxMinorSize = unit === "mm" ? majorSize : majorSize;
 
   return {
     unit,
-    cmScale,
+    metricScale,
     majorSize,
     minorSize: Math.min(minorSize, maxMinorSize),
     showMajor: normalizeBoolean(record.showMajor, defaults.showMajor),
