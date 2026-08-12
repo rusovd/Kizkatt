@@ -18,7 +18,8 @@ export {
   getElementBends,
   getLinearElementPath,
   getLinearElementPoints,
-  getLinearElementSegmentMidpoint
+  getLinearElementSegmentMidpoint,
+  moveLinearElementEndpoint
 } from "./linearElements";
 export { getClientPoint, getWorldPoint } from "./pointerEvents";
 export {

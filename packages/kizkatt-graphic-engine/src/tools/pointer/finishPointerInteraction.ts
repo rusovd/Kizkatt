@@ -5,6 +5,7 @@ import {
   getElementIdsInSelectionArea
 } from "../../geometry";
 import {
+  DEFAULT_SELECT_TOOL,
   MIN_CREATE_DRAG_DISTANCE,
   MIN_CREATE_HOLD_DURATION_MS,
   MIN_SELECT_DRAG_DISTANCE
@@ -36,6 +37,18 @@ export function finishPointerInteraction(
     updateInteraction
   } = context;
   const activeCanvasState = canvasStateRef.current;
+
+  if (activeInteraction.type === "pan") {
+    if (
+      activeInteraction.startedOnEmptyCanvas &&
+      !activeInteraction.hasMoved
+    ) {
+      setTool(DEFAULT_SELECT_TOOL);
+    }
+
+    updateInteraction(null);
+    return;
+  }
 
   if (activeInteraction.type === "selectArea") {
     const shouldSelect =
@@ -113,6 +126,19 @@ export function finishPointerInteraction(
           elements: activeInteraction.originalElements
         }
       });
+    }
+  }
+
+  if (activeInteraction.type === "linearEndpoint") {
+    commitState(activeCanvasState, {
+      baseState: {
+        ...activeCanvasState,
+        elements: activeInteraction.originalElements
+      }
+    });
+
+    if (activeInteraction.mode === "resize") {
+      setSelectionTransformCenter(null);
     }
   }
 

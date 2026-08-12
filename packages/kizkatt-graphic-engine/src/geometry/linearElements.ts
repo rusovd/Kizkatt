@@ -15,8 +15,20 @@ import {
   SVG_LINE_COMMAND,
   SVG_MOVE_COMMAND
 } from "../config/constants";
-import type { KizkattElement, Point } from "../model/types";
-import { getElementEnd, getSegmentMidpoint } from "./primitives";
+import type {
+  KizkattElement,
+  LinearEndpoint,
+  Point
+} from "../model/types";
+import {
+  getElementEnd,
+  getElementLocalPoint,
+  getElementLocalVector,
+  getSegmentMidpoint,
+  transformElementPoint
+} from "./primitives";
+
+const MIN_LINEAR_SCALE_DENOMINATOR = 0.000001;
 
 export function getElementBends(element: KizkattElement) {
   return element.bends ?? (element.curve ? [element.curve] : []);
@@ -34,6 +46,82 @@ export function getLinearElementPoints(
     })),
     getElementEnd(element)
   ];
+}
+
+function scaleLinearCoordinate(
+  value: number,
+  originalSize: number,
+  nextSize: number
+) {
+  return Math.abs(originalSize) <= MIN_LINEAR_SCALE_DENOMINATOR
+    ? value
+    : (value / originalSize) * nextSize;
+}
+
+function preserveLinearPointInWorld(
+  originalElement: KizkattElement,
+  nextElement: KizkattElement,
+  point: Point
+) {
+  const worldPoint = transformElementPoint(originalElement, {
+    x: originalElement.x + point.x,
+    y: originalElement.y + point.y
+  });
+  const nextLocalPoint = getElementLocalPoint(nextElement, worldPoint);
+
+  return {
+    x: nextLocalPoint.x - nextElement.x,
+    y: nextLocalPoint.y - nextElement.y
+  };
+}
+
+export function moveLinearElementEndpoint(
+  element: KizkattElement,
+  endpoint: LinearEndpoint,
+  point: Point,
+  mode: "node" | "resize"
+) {
+  const originalStart = transformElementPoint(element, {
+    x: element.x,
+    y: element.y
+  });
+  const originalEnd = transformElementPoint(element, getElementEnd(element));
+  const nextStart = endpoint === "start" ? point : originalStart;
+  const nextEnd = endpoint === "end" ? point : originalEnd;
+  const nextCenter = {
+    x: (nextStart.x + nextEnd.x) / HALF_DIVISOR,
+    y: (nextStart.y + nextEnd.y) / HALF_DIVISOR
+  };
+  const nextSize = getElementLocalVector(element, {
+    x: nextEnd.x - nextStart.x,
+    y: nextEnd.y - nextStart.y
+  });
+  const nextElement = {
+    ...element,
+    height: nextSize.y,
+    width: nextSize.x,
+    x: nextCenter.x - nextSize.x / HALF_DIVISOR,
+    y: nextCenter.y - nextSize.y / HALF_DIVISOR
+  };
+  const originalBends = getElementBends(element);
+
+  if (originalBends.length === EMPTY_COLLECTION_LENGTH) {
+    return nextElement;
+  }
+
+  return {
+    ...nextElement,
+    bends:
+      mode === "node"
+        ? originalBends.map((bend) =>
+            preserveLinearPointInWorld(element, nextElement, bend)
+          )
+        : originalBends.map((bend) => ({
+            x: scaleLinearCoordinate(bend.x, element.width, nextSize.x),
+            y: scaleLinearCoordinate(bend.y, element.height, nextSize.y)
+          })),
+    curve: undefined
+  };
 }
 
 export function getLinearElementPath(

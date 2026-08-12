@@ -21,7 +21,12 @@ import {
   selectionBounds
 } from "../../geometry";
 import { createElement, withUpdatedObjectBase } from "../../model/element";
-import type { ElementType, KizkattElement, Tool } from "../../model/types";
+import type {
+  ElementType,
+  KizkattElement,
+  LinearEndpoint,
+  Tool
+} from "../../model/types";
 import {
   getEventTargetElement,
   getHandleTarget,
@@ -40,6 +45,10 @@ function isCreatableElementTool(tool: Tool): tool is ElementType {
 
 function isSelectionTool(tool: Tool) {
   return tool === "select" || tool === "nodeEdit";
+}
+
+function isLinearEndpoint(value: string | null): value is LinearEndpoint {
+  return value === "start" || value === "end";
 }
 
 function haveSameSelection(first: string[], second: string[]) {
@@ -101,6 +110,11 @@ export function startPointerInteraction(
     if (tool === "hand") {
       updateInteraction({
         type: "pan",
+        hasMoved: false,
+        startedOnEmptyCanvas: !findElementAtPoint(
+          canvasState.elements,
+          worldPoint
+        ),
         start: getClientPoint(event),
         originalPan: pan
       });
@@ -140,6 +154,35 @@ export function startPointerInteraction(
         type: "selectArea",
         current: worldPoint,
         origin: worldPoint
+      });
+    }
+
+    return;
+  }
+
+  const linearEndpointTarget = getHandleTarget(target, "linear-endpoint");
+  if (linearEndpointTarget) {
+    const element = selectedElements[0];
+    const endpoint = linearEndpointTarget.getAttribute("data-line-endpoint");
+
+    if (
+      element &&
+      (element.type === "line" || element.type === "arrow") &&
+      isLinearEndpoint(endpoint)
+    ) {
+      replaceActiveState({
+        ...canvasState,
+        selectedBend: undefined,
+        selectedIds: [element.id]
+      });
+      updateInteraction({
+        type: "linearEndpoint",
+        elementId: element.id,
+        endpoint,
+        mode: tool === "nodeEdit" ? "node" : "resize",
+        originalElement: element,
+        originalElements: canvasState.elements,
+        selectedIds: [element.id]
       });
     }
 
@@ -304,6 +347,11 @@ export function startPointerInteraction(
   if (tool === "hand") {
     updateInteraction({
       type: "pan",
+      hasMoved: false,
+      startedOnEmptyCanvas: !findElementAtPoint(
+        canvasState.elements,
+        worldPoint
+      ),
       start: getClientPoint(event),
       originalPan: pan
     });
@@ -336,10 +384,9 @@ export function startPointerInteraction(
         return;
       }
 
-      const canToggleTransformMode = haveSameSelection(
-        selectedIds,
-        canvasState.selectedIds
-      );
+      const canToggleTransformMode =
+        tool !== "nodeEdit" &&
+        haveSameSelection(selectedIds, canvasState.selectedIds);
       const bounds = selectionBounds(
         canvasState.elements.filter((element) => selectedIds.includes(element.id)),
         { includeRotation: true }

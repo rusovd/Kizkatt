@@ -5,6 +5,7 @@ import {
   getDistance,
   getElementIdsInSelectionArea,
   getElementLocalVector,
+  moveLinearElementEndpoint,
   resizeElementFromHandle,
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,
@@ -39,12 +40,23 @@ export function updatePointerInteraction(
       ? getSnappedPointerWorldPoint(event, [activeInteraction.elementId])
       : activeInteraction.type === "resize"
       ? getSnappedPointerWorldPoint(event, activeInteraction.selectedIds)
+      : activeInteraction.type === "linearEndpoint"
+      ? getSnappedPointerWorldPoint(event, [activeInteraction.elementId])
       : activeInteraction.type === "bend"
       ? getSnappedPointerWorldPoint(event, [activeInteraction.elementId])
       : rawWorldPoint;
 
   if (activeInteraction.type === "pan") {
     const clientPoint = getClientPoint(event);
+    const hasMoved =
+      activeInteraction.hasMoved ||
+      getDistance(activeInteraction.start, clientPoint) >=
+        MIN_SELECT_DRAG_DISTANCE;
+
+    if (!hasMoved) {
+      return;
+    }
+
     setPan({
       x:
         activeInteraction.originalPan.x +
@@ -55,6 +67,9 @@ export function updatePointerInteraction(
         clientPoint.y -
         activeInteraction.start.y
     });
+    if (!activeInteraction.hasMoved) {
+      updateInteraction({ ...activeInteraction, hasMoved: true });
+    }
     return;
   }
 
@@ -158,6 +173,25 @@ export function updatePointerInteraction(
     updateInteraction({
       ...activeInteraction,
       current: rawWorldPoint
+    });
+    return;
+  }
+
+  if (activeInteraction.type === "linearEndpoint") {
+    replaceActiveState({
+      ...activeCanvasState,
+      elements: activeInteraction.originalElements.map((element) =>
+        element.id === activeInteraction.elementId
+          ? moveLinearElementEndpoint(
+              activeInteraction.originalElement,
+              activeInteraction.endpoint,
+              worldPoint,
+              activeInteraction.mode
+            )
+          : element
+      ),
+      selectedBend: undefined,
+      selectedIds: activeInteraction.selectedIds
     });
     return;
   }

@@ -533,6 +533,20 @@ function resolveSvgPaint(value: string | null, currentColor: string) {
 }
 
 function getSvgStrokeStyle(element: Element): KizkattElement["strokeStyle"] {
+  const storedStyle = element.getAttribute("data-stroke-style");
+
+  if (
+    storedStyle === "solid" ||
+    storedStyle === "dashed" ||
+    storedStyle === "dotted" ||
+    storedStyle === "dashDot" ||
+    storedStyle === "stitched" ||
+    storedStyle === "wavy" ||
+    storedStyle === "zigzag"
+  ) {
+    return storedStyle;
+  }
+
   const dasharray = getInheritedSvgAttribute(element, "stroke-dasharray");
 
   if (!dasharray || dasharray === "none") {
@@ -543,6 +557,21 @@ function getSvgStrokeStyle(element: Element): KizkattElement["strokeStyle"] {
     .split(/[\s,]+/)
     .map((value) => Number.parseFloat(value))
     .filter(Number.isFinite);
+
+  if (dashValues.length >= 4 && dashValues[0] > dashValues[2]) {
+    return "dashDot";
+  }
+
+  const strokeWidth = getSvgNumber(element, "stroke-width") ?? 0;
+
+  if (
+    dashValues.length === 2 &&
+    dashValues[0] > 0 &&
+    strokeWidth > 0 &&
+    dashValues[0] < strokeWidth
+  ) {
+    return "stitched";
+  }
 
   if (dashValues.length >= 2 && dashValues[0] <= dashValues[1]) {
     return "dotted";
@@ -2176,6 +2205,7 @@ function isExpectedCopiedPngSize(
 }
 
 export type KizkattRenderElementOptions = {
+  linearEndpointMode?: "node" | "resize";
   overlayVariant?: "primary" | "internal";
   selectedBendIndex?: number;
   selectionTransformCenter?: Point | null;
@@ -2418,6 +2448,7 @@ function getActiveInteractionCursor(interaction: Interaction | null) {
 
   if (
     interaction.type === "bend" ||
+    interaction.type === "linearEndpoint" ||
     interaction.type === "move" ||
     interaction.type === "rotate" ||
     interaction.type === "skew"
@@ -2435,7 +2466,9 @@ function isPreviewTransformInteraction(
     interaction?.type === "move" ||
     interaction?.type === "resize" ||
     interaction?.type === "rotate" ||
-    interaction?.type === "skew"
+    interaction?.type === "skew" ||
+    (interaction?.type === "linearEndpoint" &&
+      interaction.mode === "resize")
   );
 }
 
@@ -3976,6 +4009,7 @@ export function KizkattGraphicEditor({
 
     return {
       options: {
+        linearEndpointMode: tool === "nodeEdit" ? "node" : "resize",
         selectedBendIndex:
           canvasState.selectedBend?.elementId === element.id
             ? canvasState.selectedBend.bendIndex

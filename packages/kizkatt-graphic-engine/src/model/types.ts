@@ -27,6 +27,8 @@ export type Point = {
   y: number;
 };
 
+export type LinearEndpoint = "start" | "end";
+
 export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
 export type SelectionTransformMode = "resize" | "skew";
@@ -65,7 +67,14 @@ export type KizkattElement = {
   fillStyle?: "hachure" | "crossHatch" | "solid";
   fillWeight?: number;
   strokeWidth: number;
-  strokeStyle: "solid" | "dashed" | "dotted";
+  strokeStyle:
+    | "solid"
+    | "dashed"
+    | "dotted"
+    | "dashDot"
+    | "stitched"
+    | "wavy"
+    | "zigzag";
   edgeStyle?: "sharp" | "round";
   sloppiness?: "architect" | "artist" | "cartoonist" | "double";
   sloppinessGap?: number;
@@ -157,7 +166,18 @@ export type Interaction =
       start: Point;
     }
   | {
+      type: "linearEndpoint";
+      elementId: string;
+      endpoint: LinearEndpoint;
+      mode: "node" | "resize";
+      originalElement: KizkattElement;
+      originalElements: KizkattElement[];
+      selectedIds: string[];
+    }
+  | {
       type: "pan";
+      hasMoved: boolean;
+      startedOnEmptyCanvas: boolean;
       start: Point;
       originalPan: Point;
     }
