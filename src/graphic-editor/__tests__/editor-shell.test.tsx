@@ -170,7 +170,7 @@ describe("KizkattGraphicEditor shell", () => {
     ).toBe(
       JSON.stringify({
         unit: "px",
-        cmScale: 1,
+        metricScale: 1,
         majorSize: 60,
         minorSize: 6,
         showMajor: true,
@@ -180,25 +180,39 @@ describe("KizkattGraphicEditor shell", () => {
     expect(minorGrid).toHaveAttribute("width", "60");
     expect(minorPath?.getAttribute("d")).toContain("M 4.75 6 H 7.25");
 
-    fireEvent.click(screen.getByRole("button", { name: "Centimeters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Millimeters" }));
 
-    expect(screen.getByLabelText("Major spacing (cm)")).toHaveValue(1);
+    expect(screen.getByLabelText("Major spacing (mm)")).toHaveValue(10);
     expect(screen.getByLabelText("Minor spacing (mm)")).toHaveValue(5);
+    fireEvent.change(screen.getByLabelText("Minor spacing (mm)"), {
+      target: { value: "0.1" }
+    });
+    expect(screen.getByLabelText("Minor spacing (mm)")).toHaveValue(0.1);
+    fireEvent.change(screen.getByLabelText("Minor spacing (mm)"), {
+      target: { value: "" }
+    });
+    expect(screen.getByLabelText("Minor spacing (mm)")).toHaveValue(null);
+    fireEvent.change(screen.getByLabelText("Minor spacing (mm)"), {
+      target: { value: "1" }
+    });
+    expect(screen.getByLabelText("Minor spacing (mm)")).toHaveValue(1);
     expect(
       window.localStorage.getItem("kizkatt:graphic-engine:grid-settings")
     ).toBe(
       JSON.stringify({
-        unit: "cm",
-        cmScale: 1,
-        majorSize: 1,
-        minorSize: 5,
+        unit: "mm",
+        metricScale: 1,
+        majorSize: 10,
+        minorSize: 1,
         showMajor: true,
         showMinor: true
       })
     );
-    expect(Number(minorGrid?.getAttribute("width"))).toBeCloseTo(96 / 2.54);
+    expect(Number(minorGrid?.getAttribute("width"))).toBeCloseTo(
+      (10 * 96) / 25.4
+    );
 
-    fireEvent.change(screen.getByLabelText("Calibrate cm"), {
+    fireEvent.change(screen.getByLabelText("Calibrate mm"), {
       target: { value: "1.5" }
     });
 
@@ -206,24 +220,24 @@ describe("KizkattGraphicEditor shell", () => {
       window.localStorage.getItem("kizkatt:graphic-engine:grid-settings")
     ).toBe(
       JSON.stringify({
-        unit: "cm",
-        cmScale: 1.5,
-        majorSize: 1,
-        minorSize: 5,
+        unit: "mm",
+        metricScale: 1.5,
+        majorSize: 10,
+        minorSize: 1,
         showMajor: true,
         showMinor: true
       })
     );
     expect(Number(minorGrid?.getAttribute("width"))).toBeCloseTo(
-      (96 / 2.54) * 1.5
+      ((10 * 96) / 25.4) * 1.5
     );
     expect(
       Number(
         screen
-          .getByRole("img", { name: "3 cm calibration ruler" })
+          .getByRole("img", { name: "30 mm calibration ruler" })
           .style.width.replace("px", "")
       )
-    ).toBeCloseTo((3 * 96 * 1.5) / 2.54);
+    ).toBeCloseTo((30 * 96 * 1.5) / 25.4);
 
     fireEvent.click(screen.getByRole("checkbox", { name: /Major grid/ }));
 

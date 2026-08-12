@@ -40,6 +40,46 @@ function getHandleWorldPoint(element: Element | null) {
   };
 }
 
+function getManualSvgTransformedBounds(element: KizkattElement) {
+  const center = {
+    x: element.x + element.width / 2,
+    y: element.y + element.height / 2
+  };
+  const skewX = Math.tan(element.skewX ?? 0);
+  const skewY = Math.tan(element.skewY ?? 0);
+  const cos = Math.cos(element.angle);
+  const sin = Math.sin(element.angle);
+  const corners = [
+    { x: element.x, y: element.y },
+    { x: element.x + element.width, y: element.y },
+    { x: element.x + element.width, y: element.y + element.height },
+    { x: element.x, y: element.y + element.height }
+  ].map((corner) => {
+    const localX = corner.x - center.x;
+    const localY = corner.y - center.y;
+    const skewedY = localY + localX * skewY;
+    const skewedX = localX + skewedY * skewX;
+
+    return {
+      x: center.x + skewedX * cos - skewedY * sin,
+      y: center.y + skewedX * sin + skewedY * cos
+    };
+  });
+  const xs = corners.map((point) => point.x);
+  const ys = corners.map((point) => point.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
+
+  return {
+    height: maxY - minY,
+    width: maxX - minX,
+    x: minX,
+    y: minY
+  };
+}
+
 describe("KizkattGraphicEditor selection, transforms, and groups", () => {
   it("selects all elements intersecting a dragged selection area", () => {
     const elements = [
@@ -845,7 +885,7 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       name: "Rectangle 1",
       opacity: 100,
       skewX: 0.35,
-      skewY: 0,
+      skewY: -0.22,
       strokeColor: "#1971c2",
       strokeStyle: "solid",
       strokeWidth: 6,
@@ -866,8 +906,13 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     firePointerEvent(canvas, "pointerup");
 
     const bounds = selectionBounds([element], { includeRotation: true });
+    const expectedBounds = getManualSvgTransformedBounds(element);
 
     expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeCloseTo(expectedBounds.x);
+    expect(bounds!.y).toBeCloseTo(expectedBounds.y);
+    expect(bounds!.width).toBeCloseTo(expectedBounds.width);
+    expect(bounds!.height).toBeCloseTo(expectedBounds.height);
 
     const expectedCenter = {
       x: bounds!.x + bounds!.width / 2,
@@ -1165,6 +1210,59 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       "href",
       "data:image/png;base64,kizkatt"
     );
+  });
+
+  it("edits object geometry relative to its base from the common object panel", () => {
+    storeCanvasState({
+      elements: [
+        withUpdatedObjectBase({
+          angle: 0,
+          backgroundColor: "#653b00",
+          height: 50,
+          id: "rectangle",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "rectangle",
+          width: 100,
+          x: 100,
+          y: 80
+        })
+      ],
+      selectedIds: ["rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    expect(screen.queryByText("Width")).not.toBeInTheDocument();
+    expect(screen.queryByText("Height")).not.toBeInTheDocument();
+    expect(screen.queryByText("Angle")).not.toBeInTheDocument();
+    expect(screen.queryByText("Line width")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Width")).toHaveValue(100);
+    expect(screen.getByLabelText("Height")).toHaveValue(100);
+    expect(screen.getByLabelText("Stroke style")).toHaveValue("solid");
+
+    fireEvent.change(screen.getByLabelText("Width"), {
+      target: { value: "200" }
+    });
+    fireEvent.blur(screen.getByLabelText("Width"));
+    fireEvent.change(screen.getByLabelText("Stroke style"), {
+      target: { value: "dashed" }
+    });
+    fireEvent.change(screen.getByLabelText("Line width preset"), {
+      target: { value: "2" }
+    });
+
+    const rect = screen
+      .getByRole("application", { name: "Drawing canvas" })
+      .querySelector("[data-element-id='rectangle'] rect");
+
+    expect(rect).toHaveAttribute("width", "200");
+    expect(rect).toHaveAttribute("height", "100");
+    expect(rect).toHaveAttribute("x", "50");
+    expect(rect).toHaveAttribute("y", "55");
+    expect(rect).toHaveAttribute("stroke-width", "2");
+    expect(rect).toHaveAttribute("stroke-dasharray");
   });
 
 });
