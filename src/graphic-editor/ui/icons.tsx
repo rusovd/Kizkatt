@@ -224,6 +224,34 @@ export const StrokeStyleDottedIcon = createIcon(
   </g>
 );
 
+export const StrokeStyleDashDotIcon = createIcon(
+  <g strokeWidth="2">
+    <path d="M3 12h5" />
+    <path d="M11.5 12v.01" />
+    <path d="M15 12h6" />
+  </g>
+);
+
+export const StrokeStyleStitchedIcon = createIcon(
+  <g strokeWidth="2">
+    <path d="m3 14 2-4" />
+    <path d="m8.5 14 2-4" />
+    <path d="m14 14 2-4" />
+    <path d="m19.5 14 1.5-3" />
+  </g>
+);
+
+export const StrokeStyleWavyIcon = createIcon(
+  <path
+    d="M3 12c2.25-5 4.5-5 6.75 0s4.5 5 6.75 0 4.5-5 6.75 0"
+    strokeWidth="2"
+  />
+);
+
+export const StrokeStyleZigzagIcon = createIcon(
+  <path d="M3 15 7.5 9l4.5 6 4.5-6 4.5 6" strokeWidth="2" />
+);
+
 export const EdgeSharpIcon = createIcon(
   <g strokeWidth="1.5">
     <path d="M4 12V8c0-.748.001-2.08.002-3.996C5.943 4.001 7.276 4 8 4h4" />
@@ -342,6 +370,16 @@ export const AspectUnlockIcon = createIcon(
   <g strokeWidth="1.5">
     <rect x="6" y="10" width="12" height="10" rx="2" />
     <path d="M8.5 10V7.5a3.5 3.5 0 0 1 6.1 -2.3" />
+  </g>
+);
+
+export const GlobeIcon = createIcon(
+  <g strokeWidth="1.5">
+    <circle cx="12" cy="12" r="9" />
+    <ellipse cx="12" cy="12" rx="4.5" ry="9" />
+    <path d="M3 12h18" />
+    <path d="M4.5 7.5h15" />
+    <path d="M4.5 16.5h15" />
   </g>
 );
 
@@ -602,6 +640,11 @@ export const UngroupIcon = createIcon(
 
 export const ChevronRightIcon = createIcon(
   <path d="m9 6 6 6-6 6" strokeWidth="1.8" />,
+  { height: 20, width: 20 }
+);
+
+export const ChevronDownIcon = createIcon(
+  <path d="m6 9 6 6 6-6" strokeWidth="1.8" />,
   { height: 20, width: 20 }
 );
 

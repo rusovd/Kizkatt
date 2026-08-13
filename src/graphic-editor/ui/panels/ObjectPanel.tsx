@@ -15,17 +15,23 @@ import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 import {
   AspectLockIcon,
   AspectUnlockIcon,
+  ChevronDownIcon,
   DimensionHeightIcon,
   DimensionWidthIcon,
   EdgeRoundIcon,
   EdgeSharpIcon,
+  GlobeIcon,
   MirrorHorizontalIcon,
   MirrorVerticalIcon,
   PenNibIcon,
   RotationAngleIcon,
   StrokeStyleDashedIcon,
+  StrokeStyleDashDotIcon,
   StrokeStyleDottedIcon,
-  StrokeStyleSolidIcon
+  StrokeStyleSolidIcon,
+  StrokeStyleStitchedIcon,
+  StrokeStyleWavyIcon,
+  StrokeStyleZigzagIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
 import { PanelDragHandle } from "../positioning/PanelDragHandle";
@@ -40,14 +46,22 @@ const EDGE_ICONS = {
 
 const STROKE_STYLE_ICONS = {
   dashed: StrokeStyleDashedIcon,
+  dashDot: StrokeStyleDashDotIcon,
   dotted: StrokeStyleDottedIcon,
-  solid: StrokeStyleSolidIcon
+  solid: StrokeStyleSolidIcon,
+  stitched: StrokeStyleStitchedIcon,
+  wavy: StrokeStyleWavyIcon,
+  zigzag: StrokeStyleZigzagIcon
 } as const;
 
 const STROKE_STYLE_LABEL_KEYS = {
   dashed: "strokeStyleDashed",
+  dashDot: "strokeStyleDashDot",
   dotted: "strokeStyleDotted",
-  solid: "strokeStyleSolid"
+  solid: "strokeStyleSolid",
+  stitched: "strokeStyleStitched",
+  wavy: "strokeStyleWavy",
+  zigzag: "strokeStyleZigzag"
 } as const;
 
 function clamp(value: number, min: number, max: number) {
@@ -219,6 +233,7 @@ function StrokeWidthField({
   presetLabel,
   presetOptions,
   step,
+  suffix,
   title,
   value
 }: {
@@ -229,6 +244,7 @@ function StrokeWidthField({
   presetLabel: string;
   presetOptions: ReadonlyArray<{ label: string; value: string }>;
   step: number;
+  suffix: string;
   title: string;
   value: string;
 }) {
@@ -247,25 +263,34 @@ function StrokeWidthField({
           onBlur={onCommit}
           onChange={(event) => onChange(event.target.value)}
         />
-        <select
-          aria-label={presetLabel}
-          value=""
-          title={presetLabel}
-          onChange={(event) => {
-            onPresetSelect(event.target.value);
-            event.target.value = "";
-          }}
-        >
-          <option value="" />
-          {presetOptions.map((option) => (
-            <option
-              key={option.label}
-              value={option.value}
-            >
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <small>{suffix}</small>
+        <span className="kizkatt-stroke-width-preset-control">
+          <select
+            aria-label={presetLabel}
+            value=""
+            title={presetLabel}
+            onChange={(event) => {
+              onPresetSelect(event.target.value);
+              event.target.value = "";
+            }}
+          >
+            <option disabled hidden value="" />
+            {presetOptions.map((option) => (
+              <option
+                key={option.label}
+                value={option.value}
+              >
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <span
+            aria-hidden="true"
+            className="kizkatt-stroke-width-preset-chevron"
+          >
+            {ChevronDownIcon}
+          </span>
+        </span>
       </span>
     </label>
   );
@@ -287,6 +312,15 @@ export function ObjectPanel({
   const { fromDisplayUnit, precision, toDisplayUnit, unit } =
     useUnitConverters(gridSettings);
   const [aspectLocked, setAspectLocked] = useState(true);
+  const [useCanvasCoordinates, setUseCanvasCoordinates] = useState(true);
+  const baseCenter = {
+    x: geometry.baseBounds.x + geometry.baseBounds.width / 2,
+    y: geometry.baseBounds.y + geometry.baseBounds.height / 2
+  };
+  const canvasCenter = {
+    x: geometry.bounds.x + geometry.bounds.width / 2,
+    y: geometry.bounds.y + geometry.bounds.height / 2
+  };
   const widthRatio =
     geometry.widthPercent /
     Math.max(OBJECT_PANEL_UI_SETTINGS.minScalePercent, geometry.heightPercent);
@@ -304,23 +338,23 @@ export function ObjectPanel({
     {
       label: strings.objectPanel.strokeWidthPresetNone,
       value: formatNumber(
-        OBJECT_PANEL_UI_SETTINGS.minStrokeWidth,
-        OBJECT_PANEL_UI_SETTINGS.pixelPrecision
+        toDisplayUnit(OBJECT_PANEL_UI_SETTINGS.minStrokeWidth),
+        precision
       )
     },
     {
       label: strings.objectPanel.strokeWidthPresetContour,
       value: formatNumber(
-        OBJECT_PANEL_UI_SETTINGS.strokeWidthPresetContour,
-        OBJECT_PANEL_UI_SETTINGS.pixelPrecision
+        toDisplayUnit(OBJECT_PANEL_UI_SETTINGS.strokeWidthPresetContour),
+        precision
       )
     },
-    ...OBJECT_PANEL_UI_SETTINGS.strokeWidthPresets.map((value) => ({
+    ...OBJECT_PANEL_UI_SETTINGS.strokeWidthPresets[unit].map((value) => ({
       label: `${formatNumber(
         value,
         OBJECT_PANEL_UI_SETTINGS.millimeterPrecision
       )} ${unit}`,
-      value: formatNumber(value, OBJECT_PANEL_UI_SETTINGS.millimeterPrecision)
+      value: `${value}`
     }))
   ];
 
@@ -331,8 +365,15 @@ export function ObjectPanel({
       return;
     }
 
+    const worldValue = fromDisplayUnit(parsedValue);
+    const coordinateAxis = axis === "offsetX" ? "x" : "y";
+
     onGeometryChange(
-      { [axis]: fromDisplayUnit(parsedValue) },
+      {
+        [axis]: useCanvasCoordinates
+          ? worldValue - baseCenter[coordinateAxis]
+          : worldValue
+      },
       { transient: true }
     );
   };
@@ -386,7 +427,7 @@ export function ObjectPanel({
     onStyleChange(
       {
         strokeWidth: clamp(
-          parsedValue,
+          fromDisplayUnit(parsedValue),
           OBJECT_PANEL_UI_SETTINGS.minStrokeWidth,
           OBJECT_PANEL_UI_SETTINGS.maxStrokeWidth
         )
@@ -418,24 +459,53 @@ export function ObjectPanel({
           <ObjectNumberField
             className="kizkatt-object-field--position"
             label={strings.objectPanel.centerX}
-            title={strings.objectPanel.tooltips.centerX}
+            title={
+              useCanvasCoordinates
+                ? strings.objectPanel.tooltips.centerXGlobal
+                : strings.objectPanel.tooltips.centerX
+            }
             step={OBJECT_PANEL_UI_SETTINGS.positionStep}
             suffix={unit}
-            value={formatNumber(toDisplayUnit(geometry.offsetX), precision)}
+            value={formatNumber(
+              toDisplayUnit(
+                useCanvasCoordinates ? canvasCenter.x : geometry.offsetX
+              ),
+              precision
+            )}
             onChange={(value) => updateOffset("offsetX", value)}
             onCommit={onGeometryChangeEnd}
           />
           <ObjectNumberField
             className="kizkatt-object-field--position"
             label={strings.objectPanel.centerY}
-            title={strings.objectPanel.tooltips.centerY}
+            title={
+              useCanvasCoordinates
+                ? strings.objectPanel.tooltips.centerYGlobal
+                : strings.objectPanel.tooltips.centerY
+            }
             step={OBJECT_PANEL_UI_SETTINGS.positionStep}
             suffix={unit}
-            value={formatNumber(toDisplayUnit(geometry.offsetY), precision)}
+            value={formatNumber(
+              toDisplayUnit(
+                useCanvasCoordinates ? canvasCenter.y : geometry.offsetY
+              ),
+              precision
+            )}
             onChange={(value) => updateOffset("offsetY", value)}
             onCommit={onGeometryChangeEnd}
           />
         </div>
+        <IconButton
+          active={useCanvasCoordinates}
+          title={
+            useCanvasCoordinates
+              ? strings.objectPanel.coordinatesGlobal
+              : strings.objectPanel.coordinatesRelative
+          }
+          onClick={() => setUseCanvasCoordinates((value) => !value)}
+        >
+          {GlobeIcon}
+        </IconButton>
         <div className="kizkatt-object-panel-group kizkatt-object-panel-stack">
           <ObjectNumberField
             icon={DimensionWidthIcon}
@@ -532,10 +602,8 @@ export function ObjectPanel({
           label={strings.objectPanel.strokeWidth}
           title={strings.objectPanel.tooltips.strokeWidth}
           step={OBJECT_PANEL_UI_SETTINGS.positionStep}
-          value={formatNumber(
-            strokeWidth,
-            OBJECT_PANEL_UI_SETTINGS.pixelPrecision
-          )}
+          suffix={unit}
+          value={formatNumber(toDisplayUnit(strokeWidth), precision)}
           presetLabel={strings.objectPanel.strokeWidthPresetSelect}
           presetOptions={strokeWidthPresetOptions}
           onChange={updateStrokeWidth}

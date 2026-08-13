@@ -12,7 +12,6 @@ import {
   SunIcon
 } from "../icons";
 import { SUPPORTED_LOCALES, useI18n, type Locale } from "../../i18n";
-import { DraggablePanel } from "../positioning/DraggablePanel";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 
 export function MainMenu({
@@ -49,7 +48,7 @@ export function MainMenu({
   };
 
   return (
-    <DraggablePanel id="main-menu" topDock>
+    <div className="kizkatt-main-menu-anchor">
       <button
         type="button"
         className="kizkatt-menu-button"
@@ -200,6 +199,6 @@ export function MainMenu({
           </div>
         </nav>
       )}
-    </DraggablePanel>
+    </div>
   );
 }

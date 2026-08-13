@@ -242,6 +242,10 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.kizkatt-stroke-style-segmented {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .kizkatt-segmented button {
   min-width: 0;
   height: 24px;

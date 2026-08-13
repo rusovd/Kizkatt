@@ -58,7 +58,6 @@
 .kizkatt-floating-panel--history-controls.is-positioned,
 .kizkatt-floating-panel--zoom-controls.is-positioned,
 .kizkatt-floating-panel--footer-controls.is-positioned,
-.kizkatt-floating-panel--main-menu.is-positioned,
 .kizkatt-floating-panel--style-panel.is-positioned {
   right: auto;
   bottom: auto;
@@ -83,10 +82,12 @@
   transform-origin: bottom right;
 }
 
-.kizkatt-floating-panel--main-menu {
-  top: 10px;
-  right: 10px;
+.kizkatt-main-menu-anchor {
+  position: absolute;
+  top: 12px;
+  right: 12px;
   z-index: 6;
+  transform: scale(var(--kizkatt-ui-scale));
   transform-origin: top right;
 }
 

@@ -42,8 +42,12 @@ import {
   SloppinessCartoonistIcon,
   SloppinessDoubleIcon,
   StrokeStyleDashedIcon,
+  StrokeStyleDashDotIcon,
   StrokeStyleDottedIcon,
   StrokeStyleSolidIcon,
+  StrokeStyleStitchedIcon,
+  StrokeStyleWavyIcon,
+  StrokeStyleZigzagIcon,
   TrashIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
@@ -122,7 +126,15 @@ const DEFAULT_POPOVER_PALETTE =
   COLOR_PALETTES.find((palette) => palette.id === DEFAULT_POPOVER_PALETTE_ID) ??
   COLOR_PALETTES[DEFAULT_POPOVER_PALETTE_INDEX];
 const FILL_STYLE_OPTIONS = ["solid", "hachure", "crossHatch"] as const;
-const STROKE_STYLE_OPTIONS = ["solid", "dashed", "dotted"] as const;
+const STROKE_STYLE_OPTIONS = [
+  "solid",
+  "dashed",
+  "stitched",
+  "dotted",
+  "dashDot",
+  "wavy",
+  "zigzag"
+] as const;
 const SLOPPINESS_OPTIONS = [
   "architect",
   "artist",
@@ -133,8 +145,12 @@ const EDGE_STYLE_OPTIONS = ["sharp", "round"] as const;
 const SHARP_EDGE_OPTION = EDGE_STYLE_OPTIONS[0];
 const STROKE_STYLE_ICONS = {
   dashed: StrokeStyleDashedIcon,
+  dashDot: StrokeStyleDashDotIcon,
   dotted: StrokeStyleDottedIcon,
-  solid: StrokeStyleSolidIcon
+  solid: StrokeStyleSolidIcon,
+  stitched: StrokeStyleStitchedIcon,
+  wavy: StrokeStyleWavyIcon,
+  zigzag: StrokeStyleZigzagIcon
 } as const;
 const FILL_STYLE_ICONS = {
   crossHatch: FillCrossHatchIcon,
@@ -158,8 +174,12 @@ const FILL_STYLE_LABEL_KEYS = {
 } as const;
 const STROKE_STYLE_LABEL_KEYS = {
   dashed: "strokeStyleDashed",
+  dashDot: "strokeStyleDashDot",
   dotted: "strokeStyleDotted",
-  solid: "strokeStyleSolid"
+  solid: "strokeStyleSolid",
+  stitched: "strokeStyleStitched",
+  wavy: "strokeStyleWavy",
+  zigzag: "strokeStyleZigzag"
 } as const;
 const SLOPPINESS_LABEL_KEYS = {
   architect: "sloppinessArchitect",
@@ -718,7 +738,7 @@ export function StylePanel({
         />
       </div>
       <label>{strings.stylePanel.strokeStyle}</label>
-      <div className="kizkatt-segmented kizkatt-icon-segmented">
+      <div className="kizkatt-segmented kizkatt-stroke-style-segmented kizkatt-icon-segmented">
         {STROKE_STYLE_OPTIONS.map((value) => (
           <button
             key={value}

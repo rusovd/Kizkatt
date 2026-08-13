@@ -18,6 +18,7 @@ import { RotateHoverIcon, TransformCenterMarker } from "./ElementOverlay";
 export function LinearElementOverlay({
   bends,
   element,
+  endpointMode = "resize",
   linePoints,
   selectedBendIndex,
   showBounds = true,
@@ -27,6 +28,7 @@ export function LinearElementOverlay({
 }: {
   bends: ReturnType<typeof getElementBends>;
   element: KizkattElement;
+  endpointMode?: "node" | "resize";
   linePoints: ReturnType<typeof getLinearElementPoints>;
   selectedBendIndex?: number;
   showBounds?: boolean;
@@ -51,13 +53,18 @@ export function LinearElementOverlay({
         <>
           <circle
             className="kizkatt-endpoint-handle"
+            data-endpoint-mode={endpointMode}
+            data-handle="linear-endpoint"
+            data-line-endpoint="start"
             cx={element.x}
             cy={element.y}
             r={LINE_ENDPOINT_HANDLE_RADIUS}
           />
           <circle
             className="kizkatt-endpoint-handle"
-            data-handle="resize"
+            data-endpoint-mode={endpointMode}
+            data-handle="linear-endpoint"
+            data-line-endpoint="end"
             cx={element.x + element.width}
             cy={element.y + element.height}
             r={LINE_ENDPOINT_HANDLE_RADIUS}
@@ -104,8 +111,10 @@ export function LinearElementOverlay({
           )}
         </>
       )}
-      <TransformCenterMarker center={center} mode="resize" />
-      {showRotateHandle && (
+      {endpointMode !== "node" && (
+        <TransformCenterMarker center={center} mode="resize" />
+      )}
+      {endpointMode !== "node" && showRotateHandle && (
         <>
           <circle
             className="kizkatt-rotate-handle"

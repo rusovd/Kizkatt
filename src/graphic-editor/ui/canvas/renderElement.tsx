@@ -19,9 +19,15 @@ import {
 import {
   getElementShapeProps,
   getElementTransform,
-  getFreehandPath
+  getFreehandPath,
+  usesGeometricDotPattern
 } from "./elementProps";
 import { LinearElementOverlay } from "./LinearElementOverlay";
+import {
+  getDecorativeStrokeOutline,
+  getDecorativeStrokePath,
+  isDecorativeStrokeStyle
+} from "./decorativeStroke";
 import {
   ARROW_MARKER_URL,
   ARTIST_FILTER_BASE_SCALE,
@@ -151,9 +157,10 @@ function getSecondaryClosedShapeInset(element: KizkattElement) {
 }
 
 function getPrimaryShapeProps(element: KizkattElement) {
-  const filter = shouldUseHandDrawnStroke(element)
-    ? `url(#${getSloppyFilterId(element)})`
-    : undefined;
+  const filter =
+    shouldUseHandDrawnStroke(element) && !usesGeometricDotPattern(element)
+      ? `url(#${getSloppyFilterId(element)})`
+      : undefined;
 
   return {
     filter,
@@ -161,12 +168,60 @@ function getPrimaryShapeProps(element: KizkattElement) {
   };
 }
 
+function getPrimaryBaseShapeProps(element: KizkattElement) {
+  const shapeProps = getPrimaryShapeProps(element);
+
+  return {
+    ...shapeProps,
+    "data-stroke-style": element.strokeStyle,
+    strokeOpacity: isDecorativeStrokeStyle(element.strokeStyle) ? 0 : undefined
+  };
+}
+
+function DecorativeStroke({
+  element,
+  linePoints,
+  markerEnd
+}: {
+  element: KizkattElement;
+  linePoints?: Array<{ x: number; y: number }>;
+  markerEnd?: string;
+}) {
+  if (!isDecorativeStrokeStyle(element.strokeStyle)) {
+    return null;
+  }
+
+  const outline = getDecorativeStrokeOutline(element, linePoints);
+  const pathData = outline
+    ? getDecorativeStrokePath(
+        outline,
+        element.strokeStyle,
+        element.strokeWidth
+      )
+    : "";
+
+  if (!pathData) {
+    return null;
+  }
+
+  return (
+    <path
+      data-decorative-stroke={element.strokeStyle}
+      d={pathData}
+      fill={SVG_FILL_NONE}
+      markerEnd={markerEnd}
+      {...getPrimaryShapeProps(element)}
+    />
+  );
+}
+
 function getSecondaryStrokeProps(
   element: KizkattElement,
   variant: number
 ) {
   const filter =
-    getSloppiness(element) === SLOPPINESS_CARTOONIST
+    getSloppiness(element) === SLOPPINESS_CARTOONIST &&
+    !usesGeometricDotPattern(element)
       ? `url(#${getSloppyFilterId(element, variant)})`
       : undefined;
 
@@ -404,8 +459,9 @@ function SecondaryRectStroke({ element }: { element: KizkattElement }) {
   const sloppiness = getSloppiness(element);
 
   if (
-    sloppiness !== SLOPPINESS_CARTOONIST &&
-    sloppiness !== SLOPPINESS_DOUBLE
+    isDecorativeStrokeStyle(element.strokeStyle) ||
+    (sloppiness !== SLOPPINESS_CARTOONIST &&
+      sloppiness !== SLOPPINESS_DOUBLE)
   ) {
     return null;
   }
@@ -438,8 +494,9 @@ function SecondaryDiamondStroke({ element }: { element: KizkattElement }) {
   const sloppiness = getSloppiness(element);
 
   if (
-    sloppiness !== SLOPPINESS_CARTOONIST &&
-    sloppiness !== SLOPPINESS_DOUBLE
+    isDecorativeStrokeStyle(element.strokeStyle) ||
+    (sloppiness !== SLOPPINESS_CARTOONIST &&
+      sloppiness !== SLOPPINESS_DOUBLE)
   ) {
     return null;
   }
@@ -473,8 +530,9 @@ function SecondaryEllipseStroke({ element }: { element: KizkattElement }) {
   const sloppiness = getSloppiness(element);
 
   if (
-    sloppiness !== SLOPPINESS_CARTOONIST &&
-    sloppiness !== SLOPPINESS_DOUBLE
+    isDecorativeStrokeStyle(element.strokeStyle) ||
+    (sloppiness !== SLOPPINESS_CARTOONIST &&
+      sloppiness !== SLOPPINESS_DOUBLE)
   ) {
     return null;
   }
@@ -525,8 +583,9 @@ function SecondaryLineStroke({
   const sloppiness = getSloppiness(element);
 
   if (
-    sloppiness !== SLOPPINESS_CARTOONIST &&
-    sloppiness !== SLOPPINESS_DOUBLE
+    isDecorativeStrokeStyle(element.strokeStyle) ||
+    (sloppiness !== SLOPPINESS_CARTOONIST &&
+      sloppiness !== SLOPPINESS_DOUBLE)
   ) {
     return null;
   }
@@ -556,8 +615,9 @@ function SecondaryFreehandStroke({ element }: { element: KizkattElement }) {
   const sloppiness = getSloppiness(element);
 
   if (
-    sloppiness !== SLOPPINESS_CARTOONIST &&
-    sloppiness !== SLOPPINESS_DOUBLE
+    isDecorativeStrokeStyle(element.strokeStyle) ||
+    (sloppiness !== SLOPPINESS_CARTOONIST &&
+      sloppiness !== SLOPPINESS_DOUBLE)
   ) {
     return null;
   }
@@ -589,7 +649,9 @@ export function renderElementOverlay(
   options: RenderElementOptions = {}
 ) {
   const isInternalOverlay = options.overlayVariant === "internal";
-  const isSkewMode = options.selectionTransformMode === "skew";
+  const isNodeEditMode = options.linearEndpointMode === "node";
+  const isSkewMode =
+    options.selectionTransformMode === "skew" && !isNodeEditMode;
 
   if (!isInternalOverlay && isSkewMode) {
     return (
@@ -650,7 +712,7 @@ export function renderElementOverlay(
         data-element-overlay-variant="primary"
         transform={getElementTransform(element)}
       >
-        {hasBends || isSkewMode ? (
+        {!isNodeEditMode && (hasBends || isSkewMode) ? (
           <ElementOverlay
             element={element}
             selectionTransformCenter={options.selectionTransformCenter}
@@ -664,6 +726,7 @@ export function renderElementOverlay(
           <LinearElementOverlay
             element={element}
             bends={bends}
+            endpointMode={options.linearEndpointMode}
             linePoints={linePoints}
             selectedBendIndex={options.selectedBendIndex}
             showBounds={options.showSelectionBounds ?? true}
@@ -694,7 +757,8 @@ export function renderElement(
   selected: boolean,
   options: RenderElementOptions = {}
 ) {
-  const commonProps = getPrimaryShapeProps(element);
+  const commonProps = getPrimaryBaseShapeProps(element);
+  const hasDecorativeStroke = isDecorativeStrokeStyle(element.strokeStyle);
   const edgeRadius =
     (element.edgeStyle ?? SVG_LINECAP_ROUND) === SVG_LINECAP_ROUND
       ? ROUNDED_EDGE_RADIUS
@@ -718,6 +782,7 @@ export function renderElement(
           fill={getElementFill(element)}
           {...commonProps}
         />
+        <DecorativeStroke element={element} />
         <SecondaryRectStroke element={element} />
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>
@@ -780,6 +845,7 @@ export function renderElement(
           variant={CARTOONIST_FILTER_VARIANT}
         />
         <polygon points={points} fill={getElementFill(element)} {...commonProps} />
+        <DecorativeStroke element={element} />
         <SecondaryDiamondStroke element={element} />
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>
@@ -803,6 +869,7 @@ export function renderElement(
           fill={getElementFill(element)}
           {...commonProps}
         />
+        <DecorativeStroke element={element} />
         <SecondaryEllipseStroke element={element} />
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>
@@ -813,7 +880,9 @@ export function renderElement(
     const bends = getElementBends(element);
     const linePoints = getLinearElementPoints(element, bends);
     const hasBends = bends.length > ZERO_COORDINATE;
-    const isSkewMode = options.selectionTransformMode === "skew";
+    const isNodeEditMode = options.linearEndpointMode === "node";
+    const isSkewMode =
+      options.selectionTransformMode === "skew" && !isNodeEditMode;
     const canUseFill = canElementUseBackground(element);
     const pathData = getLinearElementPath(linePoints, element.edgeStyle);
     const markerEnd =
@@ -831,7 +900,7 @@ export function renderElement(
           <path
             d={`${pathData}${canUseFill ? SVG_PATH_CLOSE_COMMAND : ""}`}
             fill={canUseFill ? getElementFill(element) : SVG_FILL_NONE}
-            markerEnd={markerEnd}
+            markerEnd={hasDecorativeStroke ? undefined : markerEnd}
             {...commonProps}
           />
         ) : (
@@ -841,14 +910,19 @@ export function renderElement(
             x2={element.x + element.width}
             y2={element.y + element.height}
             fill={SVG_FILL_NONE}
-            markerEnd={markerEnd}
+            markerEnd={hasDecorativeStroke ? undefined : markerEnd}
             {...commonProps}
           />
         )}
+        <DecorativeStroke
+          element={element}
+          linePoints={linePoints}
+          markerEnd={markerEnd}
+        />
         <SecondaryLineStroke element={element} linePoints={linePoints} />
         {selected && (
           <>
-            {hasBends || isSkewMode ? (
+            {!isNodeEditMode && (hasBends || isSkewMode) ? (
               <ElementOverlay
                 element={element}
                 selectionTransformCenter={options.selectionTransformCenter}
@@ -861,6 +935,7 @@ export function renderElement(
               <LinearElementOverlay
                 element={element}
                 bends={bends}
+                endpointMode={options.linearEndpointMode}
                 linePoints={linePoints}
                 selectedBendIndex={options.selectedBendIndex}
                 showBounds={options.showSelectionBounds ?? true}
@@ -891,6 +966,7 @@ export function renderElement(
           fill={canUseFill ? getElementFill(element) : SVG_FILL_NONE}
           {...commonProps}
         />
+        <DecorativeStroke element={element} />
         <SecondaryFreehandStroke element={element} />
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>

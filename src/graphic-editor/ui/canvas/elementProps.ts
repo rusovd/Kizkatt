@@ -7,11 +7,11 @@ import {
   DASHED_STROKE_GAP_MULTIPLIER,
   DASHED_STROKE_MIN_DASH,
   DASHED_STROKE_MIN_GAP,
+  DASH_DOT_STROKE_GAP_MULTIPLIER,
+  DASH_DOT_STROKE_MIN_GAP,
   DEFAULT_SELECTED_SLOPPINESS,
   DEFAULT_SLOPPINESS,
-  DOTTED_STROKE_DOT_MULTIPLIER,
   DOTTED_STROKE_GAP_MULTIPLIER,
-  DOTTED_STROKE_MIN_DOT,
   DOTTED_STROKE_MIN_GAP,
   MIN_RENDERED_STROKE_WIDTH,
   SVG_DEGREES_PER_RADIAN,
@@ -19,7 +19,16 @@ import {
   SVG_LINECAP_ROUND,
   SVG_LINEJOIN_ROUND,
   STROKE_STYLE_DASHED,
+  STROKE_STYLE_DASH_DOT,
+  STROKE_STYLE_DOTTED,
   STROKE_STYLE_SOLID,
+  STROKE_STYLE_STITCHED,
+  STROKE_STYLE_WAVY,
+  STROKE_STYLE_ZIGZAG,
+  STITCHED_STROKE_DASH_MULTIPLIER,
+  STITCHED_STROKE_GAP_MULTIPLIER,
+  STITCHED_STROKE_MIN_DASH,
+  STITCHED_STROKE_MIN_GAP,
   VECTOR_EFFECT_NON_SCALING_STROKE
 } from "./renderingConstants";
 
@@ -29,8 +38,23 @@ function formatDashValue(value: number) {
     : value.toFixed(DASH_VALUE_DECIMALS);
 }
 
+function hasRoundedStrokeEdges(element: KizkattElement) {
+  return (element.edgeStyle ?? SVG_LINECAP_ROUND) === SVG_LINECAP_ROUND;
+}
+
+export function usesGeometricDotPattern(element: KizkattElement) {
+  return (
+    element.strokeStyle === STROKE_STYLE_DOTTED ||
+    element.strokeStyle === STROKE_STYLE_DASH_DOT
+  );
+}
+
 function getStrokeDasharray(element: KizkattElement) {
-  if (element.strokeStyle === STROKE_STYLE_SOLID) {
+  if (
+    element.strokeStyle === STROKE_STYLE_SOLID ||
+    element.strokeStyle === STROKE_STYLE_WAVY ||
+    element.strokeStyle === STROKE_STYLE_ZIGZAG
+  ) {
     return undefined;
   }
 
@@ -49,16 +73,51 @@ function getStrokeDasharray(element: KizkattElement) {
     return `${formatDashValue(dash)} ${formatDashValue(gap)}`;
   }
 
-  const dot = Math.max(
-    DOTTED_STROKE_MIN_DOT,
-    strokeWidth * DOTTED_STROKE_DOT_MULTIPLIER
-  );
-  const gap = Math.max(
+  if (element.strokeStyle === STROKE_STYLE_STITCHED) {
+    const stitch = Math.max(
+      STITCHED_STROKE_MIN_DASH,
+      strokeWidth * STITCHED_STROKE_DASH_MULTIPLIER
+    );
+    const gap = Math.max(
+      STITCHED_STROKE_MIN_GAP,
+      strokeWidth * STITCHED_STROKE_GAP_MULTIPLIER
+    );
+
+    return `${formatDashValue(stitch)} ${formatDashValue(gap)}`;
+  }
+
+  if (element.strokeStyle === STROKE_STYLE_DASH_DOT) {
+    const rounded = hasRoundedStrokeEdges(element);
+    const dash = Math.max(
+      DASHED_STROKE_MIN_DASH,
+      strokeWidth * DASHED_STROKE_DASH_MULTIPLIER
+    );
+    const visibleGap = Math.max(
+      DASH_DOT_STROKE_MIN_GAP,
+      strokeWidth * DASH_DOT_STROKE_GAP_MULTIPLIER
+    );
+    const patternDash = rounded ? Math.max(0, dash - strokeWidth) : dash;
+    const patternDot = rounded ? 0 : strokeWidth;
+    const patternGap = visibleGap + (rounded ? strokeWidth : 0);
+
+    return [patternDash, patternGap, patternDot, patternGap]
+      .map(formatDashValue)
+      .join(" ");
+  }
+
+  if (element.strokeStyle !== STROKE_STYLE_DOTTED) {
+    return undefined;
+  }
+
+  const visibleGap = Math.max(
     DOTTED_STROKE_MIN_GAP,
     strokeWidth * DOTTED_STROKE_GAP_MULTIPLIER
   );
+  const rounded = hasRoundedStrokeEdges(element);
+  const patternDot = rounded ? 0 : strokeWidth;
+  const patternGap = visibleGap + (rounded ? strokeWidth : 0);
 
-  return `${formatDashValue(dot)} ${formatDashValue(gap)}`;
+  return `${formatDashValue(patternDot)} ${formatDashValue(patternGap)}`;
 }
 
 export function getElementTransform(element: KizkattElement) {
@@ -78,9 +137,13 @@ export function getElementTransform(element: KizkattElement) {
 
 export function getElementShapeProps(element: KizkattElement) {
   const strokeLinecap: "butt" | "round" =
-    (element.sloppiness ?? DEFAULT_SELECTED_SLOPPINESS) === DEFAULT_SLOPPINESS
-      ? SVG_LINECAP_BUTT
-      : SVG_LINECAP_ROUND;
+    usesGeometricDotPattern(element)
+      ? hasRoundedStrokeEdges(element)
+        ? SVG_LINECAP_ROUND
+        : SVG_LINECAP_BUTT
+      : (element.sloppiness ?? DEFAULT_SELECTED_SLOPPINESS) === DEFAULT_SLOPPINESS
+        ? SVG_LINECAP_BUTT
+        : SVG_LINECAP_ROUND;
 
   return {
     stroke: element.strokeColor,
