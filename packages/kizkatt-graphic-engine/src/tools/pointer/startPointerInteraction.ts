@@ -2,15 +2,12 @@ import type { PointerEvent } from "react";
 
 import {
   CREATABLE_ELEMENT_TOOLS,
-  DEFAULT_IMAGE_ELEMENT_TYPE,
-  DEFAULT_IMAGE_SIZE,
   DEFAULT_SELECT_TOOL,
   HALF_DIVISOR,
   NEXT_ARRAY_INDEX_OFFSET,
   ROTATE_HANDLE_MIN_RADIUS,
   SINGLE_SELECTION_COUNT,
-  TEXT_TOOL,
-  TRANSPARENT_COLOR
+  TEXT_TOOL
 } from "../../config/constants";
 import {
   findElementAtPoint,
@@ -23,7 +20,6 @@ import {
 import { createElement, withUpdatedObjectBase } from "../../model/element";
 import type {
   ElementType,
-  KizkattElement,
   LinearEndpoint,
   Tool
 } from "../../model/types";
@@ -92,7 +88,6 @@ export function startPointerInteraction(
     selectionTransformCenter,
     selectedElements,
     setEditingTextElementId,
-    setPendingImageSrc,
     setSelectionTransformCenter,
     setSelectionTransformMode,
     setTool,
@@ -304,6 +299,8 @@ export function startPointerInteraction(
         elementId: element.id,
         originalBends,
         originalElement: element,
+        originalElements: canvasState.elements,
+        selectedIds: [element.id],
         start: worldPoint
       });
     }
@@ -458,22 +455,12 @@ export function startPointerInteraction(
     }
 
     const snappedWorldPoint = getSnappedPointerWorldPoint(event);
-    const nextElement: KizkattElement = withUpdatedObjectBase({
-      ...createElement(DEFAULT_IMAGE_ELEMENT_TYPE, snappedWorldPoint, style),
-      backgroundColor: TRANSPARENT_COLOR,
-      height: DEFAULT_IMAGE_SIZE.height,
-      name: createElementName(DEFAULT_IMAGE_ELEMENT_TYPE, canvasState.elements),
-      src: pendingImageSrc,
-      width: DEFAULT_IMAGE_SIZE.width
+    updateInteraction({
+      type: "imageCreate",
+      current: snappedWorldPoint,
+      hasMoved: false,
+      origin: snappedWorldPoint
     });
-
-    commitState({
-      elements: [...canvasState.elements, nextElement],
-      selectedBend: undefined,
-      selectedIds: [nextElement.id]
-    });
-    setPendingImageSrc(null);
-    setTool(DEFAULT_SELECT_TOOL);
     return;
   }
 

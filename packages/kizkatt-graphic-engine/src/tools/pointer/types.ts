@@ -26,6 +26,7 @@ export type UseToolPointerHandlersArgs = {
   ) => string;
   getToolForSelectedElement?: (element: KizkattElement) => Tool | null;
   pan: Point;
+  pendingImageSize: { height: number; width: number } | null;
   pendingImageSrc: string | null;
   replaceActiveState: (nextState: CanvasState) => void;
   selectionAreaMode: SelectionAreaMode;
@@ -34,6 +35,9 @@ export type UseToolPointerHandlersArgs = {
   selectedElements: KizkattElement[];
   setEditingTextElementId: Dispatch<SetStateAction<string | null>>;
   setPan: Dispatch<SetStateAction<Point>>;
+  setPendingImageSize: Dispatch<
+    SetStateAction<{ height: number; width: number } | null>
+  >;
   setPendingImageSrc: Dispatch<SetStateAction<string | null>>;
   setSelectionTransformCenter: Dispatch<SetStateAction<Point | null>>;
   setSelectionTransformMode: Dispatch<SetStateAction<SelectionTransformMode>>;

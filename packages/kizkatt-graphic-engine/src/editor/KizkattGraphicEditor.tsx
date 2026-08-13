@@ -28,6 +28,7 @@ import {
   DEFAULT_SHOW_ROTATE_HANDLE,
   DEFAULT_ZOOM,
   DEFAULT_SELECTED_SLOPPINESS,
+  DEFAULT_STROKE_WIDTH,
   EMPTY_COLLECTION_LENGTH,
   DUPLICATED_ELEMENT_OFFSET,
   EMPTY_INPUT_VALUE,
@@ -87,11 +88,14 @@ import {
   getElementCenter,
   getElementTransformedCorners,
   getGridWorldSizing,
+  getLinearElementPath,
+  getLinearElementPoints,
   getResizeCursor,
   reorderElementsByLayerAction,
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,
   selectionBounds,
+  transformElementPoint,
   transformSvgPathData
 } from "../geometry";
 import {
@@ -207,6 +211,27 @@ const SVG_RADIANS_PER_DEGREE = Math.PI / 180;
 const SVG_TRANSFORM_FUNCTION_PATTERN = /([a-zA-Z]+)\(([^)]*)\)/g;
 const SVG_TRANSFORM_EPSILON = 0.000001;
 const SVG_ELLIPSE_PATH_KAPPA = 0.5522847498307936;
+const IMAGE_BORDER_STYLE_KEYS: ReadonlyArray<keyof StyleState> = [
+  "edgeStyle",
+  "sloppiness",
+  "sloppinessGap",
+  "strokeColor",
+  "strokeStyle",
+  "strokeWidth"
+];
+
+function hasOwnStyleProperty(
+  patch: Partial<StyleState>,
+  property: keyof StyleState
+) {
+  return Object.prototype.hasOwnProperty.call(patch, property);
+}
+
+function changesImageBorderStyle(patch: Partial<StyleState>) {
+  return IMAGE_BORDER_STYLE_KEYS.some((property) =>
+    hasOwnStyleProperty(patch, property)
+  );
+}
 
 function getFittedImageSize(width: number, height: number) {
   if (width <= 0 || height <= 0) {
@@ -1971,13 +1996,25 @@ function createImportedImageElement(
   const href =
     shape.getAttribute("href") ?? shape.getAttribute("xlink:href") ?? undefined;
   const nestedSvg = shape.tagName.toLowerCase() === "svg" ? (shape as SVGSVGElement) : null;
+  const border = group.querySelector("[data-image-border]");
+  const imageBorderEnabled =
+    group.getAttribute("data-image-border-enabled") === "true";
 
   return normalizeElement({
     ...mappedGeometry,
-    ...getSvgElementStyle(group, shape, fallbackStyle),
+    ...getSvgElementStyle(
+      group,
+      imageBorderEnabled && border ? border : shape,
+      fallbackStyle
+    ),
     ...getImportedGroup(group, groupIdMap, createId),
     backgroundColor: TRANSPARENT_COLOR,
+    edgeStyle:
+      imageBorderEnabled && border && (getSvgNumber(border, "rx") ?? 0) <= 0
+        ? "sharp"
+        : "round",
     id: createId(),
+    imageBorderEnabled,
     name: getImportedElementName("image", existingElements, importedElements, naming),
     src: href,
     svgContent: nestedSvg ? nestedSvg.innerHTML : undefined,
@@ -2447,6 +2484,13 @@ function getActiveInteractionCursor(interaction: Interaction | null) {
   }
 
   if (
+    interaction.type === "linearEndpoint" &&
+    interaction.mode === "node"
+  ) {
+    return "move";
+  }
+
+  if (
     interaction.type === "bend" ||
     interaction.type === "linearEndpoint" ||
     interaction.type === "move" ||
@@ -2467,8 +2511,8 @@ function isPreviewTransformInteraction(
     interaction?.type === "resize" ||
     interaction?.type === "rotate" ||
     interaction?.type === "skew" ||
-    (interaction?.type === "linearEndpoint" &&
-      interaction.mode === "resize")
+    interaction?.type === "bend" ||
+    interaction?.type === "linearEndpoint"
   );
 }
 
@@ -2639,14 +2683,89 @@ function TransformPreview({
           return null;
         }
 
-        const pathData = [
+        const boundsPathData = [
           `M ${firstPoint.x} ${firstPoint.y}`,
           ...remainingPoints.map((point) => `L ${point.x} ${point.y}`),
           "Z"
         ].join(" ");
 
-        return <path key={element.id} d={pathData} />;
+        if (element.type === "line" || element.type === "arrow") {
+          const linePathData = getLinearElementPath(
+            getLinearElementPoints(element).map((point) =>
+              transformElementPoint(element, point)
+            ),
+            element.edgeStyle
+          );
+
+          return (
+            <g key={element.id}>
+              <path
+                className="kizkatt-transform-preview-line"
+                d={linePathData}
+              />
+              <path
+                className="kizkatt-transform-preview-bounds"
+                d={boundsPathData}
+              />
+            </g>
+          );
+        }
+
+        return <path key={element.id} d={boundsPathData} />;
       })}
+    </g>
+  );
+}
+
+function getImagePlacementBounds(
+  interaction: Interaction | null,
+  previewPoint: Point | null,
+  intrinsicSize: Size
+): Bounds | null {
+  if (interaction?.type === "imageCreate") {
+    if (!interaction.hasMoved) {
+      return {
+        ...interaction.origin,
+        ...intrinsicSize
+      };
+    }
+
+    return {
+      height: Math.max(
+        MIN_ELEMENT_SIZE,
+        Math.abs(interaction.current.y - interaction.origin.y)
+      ),
+      width: Math.max(
+        MIN_ELEMENT_SIZE,
+        Math.abs(interaction.current.x - interaction.origin.x)
+      ),
+      x: Math.min(interaction.origin.x, interaction.current.x),
+      y: Math.min(interaction.origin.y, interaction.current.y)
+    };
+  }
+
+  return previewPoint
+    ? {
+        ...previewPoint,
+        ...intrinsicSize
+      }
+    : null;
+}
+
+function ImagePlacementPreview({ bounds }: { bounds: Bounds }) {
+  return (
+    <g
+      className="kizkatt-selection-overlay kizkatt-image-placement-preview"
+      data-image-placement-preview="true"
+      pointerEvents="none"
+    >
+      <rect
+        x={bounds.x}
+        y={bounds.y}
+        width={bounds.width}
+        height={bounds.height}
+        fill="none"
+      />
     </g>
   );
 }
@@ -2729,6 +2848,7 @@ export function KizkattGraphicEditor({
     string | null
   >(null);
   const [pendingImageSrc, setPendingImageSrc] = useState<string | null>(null);
+  const [pendingImageSize, setPendingImageSize] = useState<Size | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [selectionAreaMode, setSelectionAreaMode] =
     useState<SelectionAreaMode>("intersect");
@@ -2791,7 +2911,11 @@ export function KizkattGraphicEditor({
         sloppinessGap: selectedElements[0].sloppinessGap ?? style.sloppinessGap,
         strokeColor: selectedElements[0].strokeColor,
         strokeStyle: selectedElements[0].strokeStyle,
-        strokeWidth: selectedElements[0].strokeWidth
+        strokeWidth:
+          selectedElements[0].type === "image" &&
+          !selectedElements[0].imageBorderEnabled
+            ? 0
+            : selectedElements[0].strokeWidth
       }
     : style;
   const objectPanelGeometry = useMemo(
@@ -2981,6 +3105,7 @@ export function KizkattGraphicEditor({
           selectedBend: undefined,
           selectedIds: [nextElement.id]
         });
+        setPendingImageSize(null);
         setPendingImageSrc(null);
         setTool("select");
       };
@@ -3067,6 +3192,7 @@ export function KizkattGraphicEditor({
           selectedBend: undefined,
           selectedIds: importedElements.map((element) => element.id)
         });
+        setPendingImageSize(null);
         setPendingImageSrc(null);
         setTool("select");
 
@@ -3078,6 +3204,7 @@ export function KizkattGraphicEditor({
         selectedBend: undefined,
         selectedIds: [nextElement.id]
       });
+      setPendingImageSize(null);
       setPendingImageSrc(null);
       setTool("select");
 
@@ -3363,11 +3490,36 @@ export function KizkattGraphicEditor({
 
     commitState({
       ...canvasState,
-      elements: canvasState.elements.map((element) =>
-        canvasState.selectedIds.includes(element.id)
-          ? { ...element, ...patch }
-          : element
-      )
+      elements: canvasState.elements.map((element) => {
+        if (!canvasState.selectedIds.includes(element.id)) {
+          return element;
+        }
+
+        if (element.type !== "image" || !changesImageBorderStyle(patch)) {
+          return { ...element, ...patch };
+        }
+
+        const explicitlyChangesWidth = hasOwnStyleProperty(
+          patch,
+          "strokeWidth"
+        );
+        const imageBorderEnabled = explicitlyChangesWidth
+          ? (patch.strokeWidth ?? 0) > 0
+          : true;
+        const restoredStrokeWidth =
+          !explicitlyChangesWidth && element.strokeWidth <= 0
+            ? style.strokeWidth > 0
+              ? style.strokeWidth
+              : DEFAULT_STROKE_WIDTH
+            : element.strokeWidth;
+
+        return {
+          ...element,
+          strokeWidth: restoredStrokeWidth,
+          ...patch,
+          imageBorderEnabled
+        };
+      })
     }, {
       replace: replaceHistoryEntry
     });
@@ -3679,6 +3831,7 @@ export function KizkattGraphicEditor({
 
       if (nextValue) {
         setEditingTextElementId(null);
+        setPendingImageSize(null);
         setPendingImageSrc(null);
         setTool("select");
       }
@@ -3711,8 +3864,36 @@ export function KizkattGraphicEditor({
 
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setPendingImageSrc(reader.result);
-        setTool("image");
+        const src = reader.result;
+        const image = new Image();
+        let activated = false;
+        const activateImageTool = (size: Size) => {
+          if (activated) {
+            return;
+          }
+
+          activated = true;
+          setPendingImageSize(size);
+          setPendingImageSrc(src);
+          setTool("image");
+        };
+
+        image.onload = () => {
+          activateImageTool(
+            image.naturalWidth >= MIN_PIXEL_SIZE &&
+              image.naturalHeight >= MIN_PIXEL_SIZE
+              ? getImageSize(image.naturalWidth, image.naturalHeight)
+              : DEFAULT_IMAGE_SIZE
+          );
+        };
+        image.onerror = () => activateImageTool(DEFAULT_IMAGE_SIZE);
+        image.src = src;
+
+        if (image.complete && image.naturalWidth >= MIN_PIXEL_SIZE) {
+          activateImageTool(
+            getImageSize(image.naturalWidth, image.naturalHeight)
+          );
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -3936,7 +4117,14 @@ export function KizkattGraphicEditor({
     setMenuOpen(false);
   };
 
-  const { interaction, onPointerDown, onPointerMove, onPointerUp } =
+  const {
+    imagePreviewPoint,
+    interaction,
+    onPointerDown,
+    onPointerLeave,
+    onPointerMove,
+    onPointerUp
+  } =
     useToolPointerHandlers({
       canvasState,
       canvasStateRef,
@@ -3946,6 +4134,7 @@ export function KizkattGraphicEditor({
         buildElementName(type, elements, naming),
       getToolForSelectedElement,
       pan,
+      pendingImageSize,
       pendingImageSrc,
       replaceActiveState,
       selectionAreaMode,
@@ -3954,6 +4143,7 @@ export function KizkattGraphicEditor({
       selectedElements,
       setEditingTextElementId,
       setPan,
+      setPendingImageSize,
       setPendingImageSrc,
       setSelectionTransformCenter,
       setSelectionTransformMode,
@@ -3982,6 +4172,14 @@ export function KizkattGraphicEditor({
     canvasState.elements,
     previewTransformInteraction
   );
+  const imagePlacementBounds =
+    tool === "image" && pendingImageSrc
+      ? getImagePlacementBounds(
+          interaction,
+          imagePreviewPoint,
+          pendingImageSize ?? DEFAULT_IMAGE_SIZE
+        )
+      : null;
   const renderInlineSelection = !renderElementOverlay;
   const getElementSelectionRenderState = (element: KizkattElement) => {
     const isSelected = selectedIdSet.has(element.id);
@@ -4149,6 +4347,7 @@ export function KizkattGraphicEditor({
           } as CSSProperties
         }
         onPointerDown={onPointerDown}
+        onPointerLeave={onPointerLeave}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onContextMenu={onCanvasContextMenu}
@@ -4204,6 +4403,9 @@ export function KizkattGraphicEditor({
 
               return null;
             })}
+          {imagePlacementBounds && (
+            <ImagePlacementPreview bounds={imagePlacementBounds} />
+          )}
           <SelectionArea interaction={interaction} />
           {previewTransformInteraction && (
             <TransformPreview

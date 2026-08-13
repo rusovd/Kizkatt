@@ -12,6 +12,7 @@ import {
   skewElementsFromSelectionHandle
 } from "../../geometry";
 import {
+  MIN_CREATE_DRAG_DISTANCE,
   MIN_SELECT_DRAG_DISTANCE,
   SINGLE_SELECTION_COUNT
 } from "../../config/constants";
@@ -38,6 +39,8 @@ export function updatePointerInteraction(
   const worldPoint =
     activeInteraction.type === "create"
       ? getSnappedPointerWorldPoint(event, [activeInteraction.elementId])
+      : activeInteraction.type === "imageCreate"
+      ? getSnappedPointerWorldPoint(event)
       : activeInteraction.type === "resize"
       ? getSnappedPointerWorldPoint(event, activeInteraction.selectedIds)
       : activeInteraction.type === "linearEndpoint"
@@ -130,6 +133,20 @@ export function updatePointerInteraction(
           height: worldPoint.y - activeInteraction.origin.y
         };
       })
+    });
+    return;
+  }
+
+  if (activeInteraction.type === "imageCreate") {
+    const hasMoved =
+      activeInteraction.hasMoved ||
+      getDistance(activeInteraction.origin, worldPoint) >=
+        MIN_CREATE_DRAG_DISTANCE;
+
+    updateInteraction({
+      ...activeInteraction,
+      current: hasMoved ? worldPoint : activeInteraction.origin,
+      hasMoved
     });
     return;
   }

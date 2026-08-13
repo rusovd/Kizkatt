@@ -5,12 +5,19 @@ import {
   getElementIdsInSelectionArea
 } from "../../geometry";
 import {
+  DEFAULT_IMAGE_ELEMENT_TYPE,
+  DEFAULT_IMAGE_SIZE,
   DEFAULT_SELECT_TOOL,
   MIN_CREATE_DRAG_DISTANCE,
   MIN_CREATE_HOLD_DURATION_MS,
-  MIN_SELECT_DRAG_DISTANCE
+  MIN_SELECT_DRAG_DISTANCE,
+  TRANSPARENT_COLOR
 } from "../../config/constants";
-import { normalizeElement, withUpdatedObjectBase } from "../../model/element";
+import {
+  createElement,
+  normalizeElement,
+  withUpdatedObjectBase
+} from "../../model/element";
 import type { CanvasState, Interaction, KizkattElement } from "../../model/types";
 import type { PointerHandlerContext } from "./types";
 
@@ -29,11 +36,17 @@ export function finishPointerInteraction(
   const {
     canvasStateRef,
     commitState,
+    createElementName,
+    pendingImageSize,
+    pendingImageSrc,
     replaceActiveState,
     selectionAreaMode,
+    setPendingImageSize,
+    setPendingImageSrc,
     setSelectionTransformCenter,
     setSelectionTransformMode,
     setTool,
+    style,
     updateInteraction
   } = context;
   const activeCanvasState = canvasStateRef.current;
@@ -67,6 +80,50 @@ export function finishPointerInteraction(
           )
         : []
     });
+    updateInteraction(null);
+    return;
+  }
+
+  if (activeInteraction.type === "imageCreate") {
+    if (!pendingImageSrc) {
+      updateInteraction(null);
+      return;
+    }
+
+    const intrinsicSize = pendingImageSize ?? DEFAULT_IMAGE_SIZE;
+    const draftElement = {
+      ...createElement(
+        DEFAULT_IMAGE_ELEMENT_TYPE,
+        activeInteraction.origin,
+        style
+      ),
+      backgroundColor: TRANSPARENT_COLOR,
+      height: activeInteraction.hasMoved
+        ? activeInteraction.current.y - activeInteraction.origin.y
+        : intrinsicSize.height,
+      name: createElementName(
+        DEFAULT_IMAGE_ELEMENT_TYPE,
+        activeCanvasState.elements
+      ),
+      src: pendingImageSrc,
+      width: activeInteraction.hasMoved
+        ? activeInteraction.current.x - activeInteraction.origin.x
+        : intrinsicSize.width
+    };
+    const nextElement = withUpdatedObjectBase(
+      activeInteraction.hasMoved
+        ? normalizeElement(draftElement)
+        : draftElement
+    );
+
+    commitState({
+      elements: [...activeCanvasState.elements, nextElement],
+      selectedBend: undefined,
+      selectedIds: [nextElement.id]
+    });
+    setPendingImageSize(null);
+    setPendingImageSrc(null);
+    setTool(DEFAULT_SELECT_TOOL);
     updateInteraction(null);
     return;
   }

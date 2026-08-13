@@ -81,6 +81,7 @@ export type KizkattElement = {
   opacity: number;
   text?: string;
   src?: string;
+  imageBorderEnabled?: boolean;
   svgContent?: string;
   svgUseElementStyle?: boolean;
   svgViewBox?: string;
@@ -115,6 +116,12 @@ export type Interaction =
       elementId: string;
       origin: Point;
       startedAt: number;
+    }
+  | {
+      type: "imageCreate";
+      current: Point;
+      hasMoved: boolean;
+      origin: Point;
     }
   | {
       type: "move";
@@ -163,6 +170,8 @@ export type Interaction =
       elementId: string;
       originalBends: Point[];
       originalElement: KizkattElement;
+      originalElements: KizkattElement[];
+      selectedIds: string[];
       start: Point;
     }
   | {
