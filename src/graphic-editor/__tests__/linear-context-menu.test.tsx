@@ -1,7 +1,8 @@
 import { describe, it } from "vitest";
 import {
   formatKeyboardShortcut,
-  isPrimaryShortcutModifierPressed
+  isPrimaryShortcutModifierPressed,
+  storeCanvasState
 } from "kizkatt-graphic-engine";
 import {
   chooseGroupedTool,
@@ -121,7 +122,8 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(canvas.querySelector(".kizkatt-bend-point-handle.is-selected"))
       .toBeInTheDocument();
     expect(canvas.querySelectorAll(".kizkatt-bend-handle")).toHaveLength(2);
-    expect(canvas.querySelector(".kizkatt-selection-overlay")).toBeInTheDocument();
+    expect(canvas.querySelector(".kizkatt-selection-overlay")).not
+      .toBeInTheDocument();
     expect(canvas.querySelector(".kizkatt-bend-handle")).toBeInTheDocument();
 
     chooseGroupedTool("Arrow", "Line");
@@ -138,6 +140,126 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     });
     expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(0);
     expect(canvas.querySelector("[data-element-id] line")).toBeInTheDocument();
+  });
+
+  it("moves lines and edits only the dragged endpoint in node edit mode", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          bends: [{ x: 60, y: 30 }],
+          edgeStyle: "sharp",
+          height: 70,
+          id: "line",
+          opacity: 100,
+          sloppiness: "architect",
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "line",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["line"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
+
+    expect(canvas.querySelector("[data-resize-handle]")).not
+      .toBeInTheDocument();
+    expect(canvas.querySelector("[data-handle='rotate']")).not
+      .toBeInTheDocument();
+    expect(canvas.querySelector("[data-handle='transform-center']")).not
+      .toBeInTheDocument();
+
+    const linePath = canvas.querySelector("[data-element-type='line'] > path");
+    firePointerEvent(linePath as Element, "pointerdown", {
+      clientX: 70,
+      clientY: 65
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 90, clientY: 85 });
+    firePointerEvent(canvas, "pointerup", { clientX: 90, clientY: 85 });
+    expect(linePath).toHaveAttribute(
+      "d",
+      "M 60 70 L 120 100 L 180 140"
+    );
+    expect(screen.getByRole("button", { name: "Node edit" }))
+      .toHaveClass("is-active");
+
+    const startHandle = canvas.querySelector(
+      "[data-line-endpoint='start']"
+    );
+    expect(startHandle).toHaveAttribute("data-endpoint-mode", "node");
+    firePointerEvent(startHandle as Element, "pointerdown", {
+      clientX: 60,
+      clientY: 70
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 20, clientY: 30 });
+    firePointerEvent(canvas, "pointerup", { clientX: 20, clientY: 30 });
+
+    expect(linePath).toHaveAttribute(
+      "d",
+      "M 20 30 L 120 100 L 180 140"
+    );
+
+    const endHandle = canvas.querySelector("[data-line-endpoint='end']");
+    firePointerEvent(endHandle as Element, "pointerdown", {
+      clientX: 180,
+      clientY: 140
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 200, clientY: 140 });
+    firePointerEvent(canvas, "pointerup", { clientX: 200, clientY: 140 });
+
+    expect(linePath).toHaveAttribute(
+      "d",
+      "M 20 30 L 120 100 L 200 140"
+    );
+  });
+
+  it("moves non-linear objects without leaving node edit mode", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "#653b00",
+          height: 60,
+          id: "rectangle",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "rectangle",
+          width: 100,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const rectangle = canvas.querySelector(
+      "[data-element-type='rectangle'] > rect"
+    );
+    const nodeEditButton = screen.getByRole("button", { name: "Node edit" });
+    fireEvent.click(nodeEditButton);
+
+    firePointerEvent(rectangle as Element, "pointerdown", {
+      clientX: 80,
+      clientY: 80
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 100, clientY: 110 });
+    firePointerEvent(canvas, "pointerup", { clientX: 100, clientY: 110 });
+
+    expect(rectangle).toHaveAttribute("x", "60");
+    expect(rectangle).toHaveAttribute("y", "80");
+    expect(nodeEditButton).toHaveClass("is-active");
   });
 
   it("opens the canvas context menu with expected actions", () => {

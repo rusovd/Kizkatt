@@ -562,6 +562,13 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       "fill",
       "none"
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "zigzag" }));
+
+    expect(canvas.querySelector("[data-element-id] line"))
+      .not.toHaveAttribute("marker-end");
+    expect(canvas.querySelector("[data-decorative-stroke='zigzag']"))
+      .toHaveAttribute("marker-end", "url(#kizkatt-arrow)");
   });
 
   it("enables fill colors after an open line is closed", () => {
@@ -655,7 +662,63 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(elementRect).toHaveAttribute("stroke-dasharray", "72.50 80");
 
     fireEvent.click(screen.getByRole("button", { name: "dotted" }));
+    expect(elementRect).toHaveAttribute("stroke-dasharray", "0 75");
+    expect(elementRect).toHaveAttribute("stroke-linecap", "round");
+    expect(elementRect).not.toHaveAttribute("filter");
+
+    fireEvent.click(screen.getByRole("button", { name: "Edges sharp" }));
+    expect(elementRect).toHaveAttribute("stroke-dasharray", "50 25");
+    expect(elementRect).toHaveAttribute("stroke-linecap", "butt");
+
+    fireEvent.click(screen.getByRole("button", { name: "Edges round" }));
+    expect(elementRect).toHaveAttribute("stroke-dasharray", "0 75");
+
+    fireEvent.click(screen.getByRole("button", { name: "stitched" }));
     expect(elementRect).toHaveAttribute("stroke-dasharray", "6 90");
+    expect(elementRect).toHaveAttribute("data-stroke-style", "stitched");
+
+    fireEvent.click(screen.getByRole("button", { name: "dash-dot" }));
+    expect(elementRect).toHaveAttribute(
+      "stroke-dasharray",
+      "22.50 90 0 90"
+    );
+    expect(elementRect).toHaveAttribute("stroke-linecap", "round");
+    expect(elementRect).not.toHaveAttribute("filter");
+
+    fireEvent.click(screen.getByRole("button", { name: "Edges sharp" }));
+    expect(elementRect).toHaveAttribute(
+      "stroke-dasharray",
+      "72.50 40 50 40"
+    );
+    expect(elementRect).toHaveAttribute("stroke-linecap", "butt");
+    fireEvent.click(screen.getByRole("button", { name: "Edges round" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "wavy" }));
+    const wavyStroke = canvas.querySelector(
+      "[data-decorative-stroke='wavy']"
+    );
+
+    expect(elementRect).toHaveAttribute("data-stroke-style", "wavy");
+    expect(elementRect).toHaveAttribute("stroke-opacity", "0");
+    expect(elementRect).not.toHaveAttribute("stroke-dasharray");
+    expect(wavyStroke).toHaveAttribute("fill", "none");
+    expect(wavyStroke?.getAttribute("d")).toContain("L");
+    const wavyPathData = wavyStroke?.getAttribute("d");
+
+    fireEvent.click(screen.getByRole("button", { name: "zigzag" }));
+    const zigzagStroke = canvas.querySelector(
+      "[data-decorative-stroke='zigzag']"
+    );
+
+    expect(canvas.querySelector("[data-decorative-stroke='wavy']"))
+      .not.toBeInTheDocument();
+    expect(elementRect).toHaveAttribute("data-stroke-style", "zigzag");
+    expect(zigzagStroke).toHaveAttribute("fill", "none");
+    expect(zigzagStroke?.getAttribute("d")).not.toBe(wavyPathData);
+
+    fireEvent.click(screen.getByRole("button", { name: "solid" }));
+    expect(canvas.querySelector("[data-decorative-stroke]"))
+      .not.toBeInTheDocument();
 
     const fillControls = screen
       .getAllByRole("button", { name: /^Fill / })

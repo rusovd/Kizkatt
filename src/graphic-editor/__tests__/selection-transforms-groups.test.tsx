@@ -1212,7 +1212,60 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     );
   });
 
-  it("edits object geometry relative to its base from the common object panel", () => {
+  it("switches object positions between canvas and base-relative coordinates", () => {
+    storeCanvasState({
+      elements: [
+        withUpdatedObjectBase({
+          angle: 0,
+          backgroundColor: "#653b00",
+          height: 50,
+          id: "rectangle",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "rectangle",
+          width: 100,
+          x: 100,
+          y: 80
+        })
+      ],
+      selectedIds: ["rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const xInput = screen.getByLabelText("X");
+    const yInput = screen.getByLabelText("Y");
+    const coordinateMode = screen.getByRole("button", {
+      name: "Canvas coordinates"
+    });
+    const rect = screen
+      .getByRole("application", { name: "Drawing canvas" })
+      .querySelector("[data-element-id='rectangle'] rect");
+
+    expect(coordinateMode).toHaveAttribute("aria-pressed", "true");
+    expect(xInput).toHaveValue(150);
+    expect(yInput).toHaveValue(105);
+
+    fireEvent.change(xInput, { target: { value: "200" } });
+    fireEvent.blur(xInput);
+    expect(rect).toHaveAttribute("x", "150");
+
+    fireEvent.click(coordinateMode);
+    expect(coordinateMode).toHaveAttribute("aria-pressed", "false");
+    expect(coordinateMode).toHaveAttribute(
+      "title",
+      "Coordinates relative to object base"
+    );
+    expect(xInput).toHaveValue(50);
+    expect(yInput).toHaveValue(0);
+
+    fireEvent.change(yInput, { target: { value: "25" } });
+    fireEvent.blur(yInput);
+    expect(rect).toHaveAttribute("y", "105");
+  });
+
+  it("edits object geometry from the common object panel", () => {
     storeCanvasState({
       elements: [
         withUpdatedObjectBase({
@@ -1240,18 +1293,65 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(screen.queryByText("Line width")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Width")).toHaveValue(100);
     expect(screen.getByLabelText("Height")).toHaveValue(100);
-    expect(screen.getByLabelText("Stroke style")).toHaveValue("solid");
+    const strokeStyle = screen.getByLabelText("Stroke style") as HTMLSelectElement;
+    expect(strokeStyle).toHaveValue("solid");
+    expect(Array.from(strokeStyle.options).map((option) => option.value)).toEqual([
+      "solid",
+      "dashed",
+      "stitched",
+      "dotted",
+      "dashDot",
+      "wavy",
+      "zigzag"
+    ]);
+    const lineWidth = screen.getByLabelText("Line width");
+    const lineWidthPreset = screen.getByLabelText("Line width preset");
+    expect(lineWidth).toHaveValue(10);
+    expect(
+      lineWidthPreset.parentElement?.querySelector(
+        ".kizkatt-stroke-width-preset-chevron"
+      )
+    ).toHaveAttribute("aria-hidden", "true");
+    expect((lineWidthPreset as HTMLSelectElement).options[0]).toHaveAttribute(
+      "hidden"
+    );
+    expect(
+      Array.from((lineWidthPreset as HTMLSelectElement).options)
+        .filter((option) => !option.hidden)
+        .map((option) => option.textContent)
+    ).toEqual([
+      "None",
+      "Contour",
+      "1 px",
+      "2 px",
+      "3 px",
+      "4 px",
+      "6 px",
+      "8 px",
+      "10 px",
+      "12 px",
+      "18 px",
+      "24 px",
+      "48 px",
+      "96 px"
+    ]);
+
+    fireEvent.change(lineWidth, {
+      target: { value: "12" }
+    });
+    expect(lineWidth).toHaveValue(12);
 
     fireEvent.change(screen.getByLabelText("Width"), {
       target: { value: "200" }
     });
     fireEvent.blur(screen.getByLabelText("Width"));
-    fireEvent.change(screen.getByLabelText("Stroke style"), {
+    fireEvent.change(strokeStyle, {
       target: { value: "dashed" }
     });
     fireEvent.change(screen.getByLabelText("Line width preset"), {
       target: { value: "2" }
     });
+    expect(lineWidth).toHaveValue(2);
 
     const rect = screen
       .getByRole("application", { name: "Drawing canvas" })
@@ -1263,6 +1363,77 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(rect).toHaveAttribute("y", "55");
     expect(rect).toHaveAttribute("stroke-width", "2");
     expect(rect).toHaveAttribute("stroke-dasharray");
+
+    fireEvent.change(strokeStyle, { target: { value: "wavy" } });
+    expect(rect).toHaveAttribute("data-stroke-style", "wavy");
+    expect(
+      screen
+        .getByRole("application", { name: "Drawing canvas" })
+        .querySelector("[data-decorative-stroke='wavy']")
+    ).toBeInTheDocument();
+  });
+
+  it("converts millimeter line width presets to canvas pixels", () => {
+    window.localStorage.setItem(
+      "kizkatt:graphic-engine:grid-settings",
+      JSON.stringify({
+        majorSize: 10,
+        metricScale: 1,
+        minorSize: 5,
+        showMajor: true,
+        showMinor: true,
+        unit: "mm"
+      })
+    );
+    storeCanvasState({
+      elements: [
+        withUpdatedObjectBase({
+          angle: 0,
+          backgroundColor: "#653b00",
+          height: 50,
+          id: "rectangle",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "rectangle",
+          width: 100,
+          x: 100,
+          y: 80
+        })
+      ],
+      selectedIds: ["rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const lineWidthPreset = screen.getByLabelText(
+      "Line width preset"
+    ) as HTMLSelectElement;
+    const lineWidth = screen.getByLabelText("Line width");
+    const oneMillimeterOption = Array.from(lineWidthPreset.options).find(
+      (option) => option.textContent === "1 mm"
+    );
+    const fiftyMillimeterOption = Array.from(lineWidthPreset.options).find(
+      (option) => option.textContent === "50 mm"
+    );
+    const oneMillimeterInPixels = 96 / 25.4;
+    const fiftyMillimetersInPixels = oneMillimeterInPixels * 50;
+
+    expect(Number(oneMillimeterOption?.value)).toBe(1);
+    expect(lineWidth).toHaveValue(2.65);
+    expect(Number(fiftyMillimeterOption?.value)).toBe(50);
+    fireEvent.change(lineWidthPreset, {
+      target: { value: fiftyMillimeterOption?.value }
+    });
+    expect(lineWidth).toHaveValue(50);
+
+    const rect = screen
+      .getByRole("application", { name: "Drawing canvas" })
+      .querySelector("[data-element-id='rectangle'] rect");
+
+    expect(Number(rect?.getAttribute("stroke-width"))).toBeCloseTo(
+      fiftyMillimetersInPixels
+    );
   });
 
 });

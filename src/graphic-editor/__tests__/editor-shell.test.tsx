@@ -403,6 +403,19 @@ describe("KizkattGraphicEditor shell", () => {
     expect(rectangleButton).not.toHaveClass("is-active");
   });
 
+  it("keeps the main menu pinned in its top-right anchor", () => {
+    window.localStorage.setItem(
+      "kizkatt:graphic-editor:panel:main-menu",
+      JSON.stringify({ x: 120, y: 160 })
+    );
+    render(<KizkattGraphicEditor />);
+
+    const menuButton = screen.getByRole("button", { name: "Main menu" });
+
+    expect(menuButton.closest(".kizkatt-main-menu-anchor")).not.toBeNull();
+    expect(menuButton.closest(".kizkatt-floating-panel")).toBeNull();
+  });
+
   it("lets docked panels move freely before snapping on release", () => {
     render(<KizkattGraphicEditor />);
 
@@ -497,6 +510,41 @@ describe("KizkattGraphicEditor shell", () => {
       "kizkatt-toolbar--vertical"
     );
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("returns from the hand tool on an empty click but keeps it after panning", () => {
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const handButton = screen.getByRole("button", { name: "Hand" });
+    const selectButton = screen.getByRole("button", { name: "Select" });
+
+    fireEvent.click(handButton);
+    firePointerEvent(canvas, "pointerdown", { clientX: 100, clientY: 140 });
+    firePointerEvent(canvas, "pointerup", { clientX: 100, clientY: 140 });
+
+    expect(selectButton).toHaveClass("is-active");
+
+    fireEvent.click(handButton);
+    firePointerEvent(canvas, "pointerdown", { clientX: 100, clientY: 140 });
+    firePointerEvent(canvas, "pointermove", { clientX: 140, clientY: 180 });
+    firePointerEvent(canvas, "pointerup", { clientX: 140, clientY: 180 });
+
+    expect(handButton).toHaveClass("is-active");
+    expect(canvas.querySelector(":scope > g")).toHaveAttribute(
+      "transform",
+      "translate(40 40) scale(1)"
+    );
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 200, clientY: 220 });
+    firePointerEvent(canvas, "pointermove", { clientX: 202, clientY: 222 });
+    firePointerEvent(canvas, "pointerup", { clientX: 202, clientY: 222 });
+
+    expect(selectButton).toHaveClass("is-active");
+    expect(canvas.querySelector(":scope > g")).toHaveAttribute(
+      "transform",
+      "translate(40 40) scale(1)"
+    );
   });
 
   it("keeps only one toolbar submenu open at a time", () => {
@@ -896,9 +944,15 @@ describe("KizkattGraphicEditor shell", () => {
     expect(Icons.EraserIcon).toBeTruthy();
     expect(Icons.StrokeStyleSolidIcon).toBeTruthy();
     expect(Icons.StrokeStyleDashedIcon).toBeTruthy();
+    expect(Icons.StrokeStyleDashDotIcon).toBeTruthy();
     expect(Icons.StrokeStyleDottedIcon).toBeTruthy();
+    expect(Icons.StrokeStyleStitchedIcon).toBeTruthy();
+    expect(Icons.StrokeStyleWavyIcon).toBeTruthy();
+    expect(Icons.StrokeStyleZigzagIcon).toBeTruthy();
+    expect(Icons.ChevronDownIcon).toBeTruthy();
     expect(Icons.EdgeSharpIcon).toBeTruthy();
     expect(Icons.EdgeRoundIcon).toBeTruthy();
+    expect(Icons.GlobeIcon).toBeTruthy();
     expect(Icons.HamburgerMenuIcon).toBeTruthy();
     expect(Icons.OpenIcon).toBeTruthy();
     expect(Icons.ExportIcon).toBeTruthy();

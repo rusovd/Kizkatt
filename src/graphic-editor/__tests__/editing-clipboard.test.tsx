@@ -230,7 +230,8 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
           <svg class="kizkatt-canvas" role="application" aria-label="Drawing canvas" width="200" height="120" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
             <g>
               <g data-element-id="exported-rectangle" data-element-type="rectangle">
-                <rect x="10" y="20" width="80" height="40" rx="12" fill="#653b00" stroke="#f08c00" stroke-width="21" />
+                <rect x="10" y="20" width="80" height="40" rx="12" fill="#653b00" stroke="#f08c00" stroke-width="21" stroke-opacity="0" data-stroke-style="wavy" />
+                <path d="M 22 20 L 30 24 L 38 20" fill="none" stroke="#f08c00" stroke-width="21" data-decorative-stroke="wavy" />
               </g>
               <g data-element-id="exported-image" data-element-type="image">
                 <image href="data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E" x="120" y="20" width="50" height="40" />
@@ -263,6 +264,9 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
       .toBeInTheDocument();
     expect(exportedRect).toHaveAttribute("stroke", "#f08c00");
     expect(exportedRect).toHaveAttribute("stroke-width", "21");
+    expect(exportedRect).toHaveAttribute("data-stroke-style", "wavy");
+    expect(canvas.querySelector("[data-decorative-stroke='wavy']"))
+      .toBeInTheDocument();
     expect(image).toHaveAttribute(
       "href",
       "data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E"
@@ -289,7 +293,7 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
           svgContent: `
             <g>
               <g data-element-id="exported-rectangle" data-element-type="rectangle">
-                <rect x="10" y="20" width="80" height="40" rx="12" fill="#653b00" stroke="#f08c00" stroke-width="10" />
+                <rect x="10" y="20" width="80" height="40" rx="12" fill="#653b00" stroke="#f08c00" stroke-width="10" stroke-dasharray="14.5 8 2 8" />
               </g>
               <g data-element-id="exported-image" data-element-type="image">
                 <image href="data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E" x="120" y="20" width="50" height="40" />
@@ -324,6 +328,7 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
 
     expect(rectangle).toHaveAttribute("stroke", "#f08c00");
     expect(rectangle).toHaveAttribute("stroke-width", "10");
+    expect(rectangle).toHaveAttribute("stroke-dasharray", "4.50 18 0 18");
     expect(image).toHaveAttribute(
       "href",
       "data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E"
@@ -535,6 +540,59 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     expect(canvas.querySelector(".kizkatt-line-overlay")).toBeInTheDocument();
     expect(canvas.querySelector(".kizkatt-line-overlay rect")).not
       .toBeInTheDocument();
+  });
+
+  it("resizes a selected line from either endpoint", () => {
+    render(<KizkattGraphicEditor />);
+
+    chooseGroupedTool("Arrow", "Line");
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    const startHandle = canvas.querySelector(
+      "[data-line-endpoint='start']"
+    );
+    expect(startHandle).toHaveAttribute("data-endpoint-mode", "resize");
+    firePointerEvent(startHandle as Element, "pointerdown", {
+      clientX: 40,
+      clientY: 50
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 20, clientY: 30 });
+    firePointerEvent(canvas, "pointerup", { clientX: 20, clientY: 30 });
+
+    const line = canvas.querySelector("[data-element-id] line");
+    expect(line).toHaveAttribute("x1", "20");
+    expect(line).toHaveAttribute("y1", "30");
+    expect(line).toHaveAttribute("x2", "160");
+    expect(line).toHaveAttribute("y2", "120");
+
+    const endHandle = canvas.querySelector("[data-line-endpoint='end']");
+    firePointerEvent(endHandle as Element, "pointerdown", {
+      clientX: 160,
+      clientY: 120
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 200, clientY: 150 });
+    firePointerEvent(canvas, "pointerup", { clientX: 200, clientY: 150 });
+
+    expect(line).toHaveAttribute("x1", "20");
+    expect(line).toHaveAttribute("y1", "30");
+    expect(line).toHaveAttribute("x2", "200");
+    expect(line).toHaveAttribute("y2", "150");
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(line).toHaveAttribute("x1", "20");
+    expect(line).toHaveAttribute("y1", "30");
+    expect(line).toHaveAttribute("x2", "160");
+    expect(line).toHaveAttribute("y2", "120");
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(line).toHaveAttribute("x1", "40");
+    expect(line).toHaveAttribute("y1", "50");
+    expect(line).toHaveAttribute("x2", "160");
+    expect(line).toHaveAttribute("y2", "120");
   });
 
   it("rotates selected lines through the rotate handle", () => {
