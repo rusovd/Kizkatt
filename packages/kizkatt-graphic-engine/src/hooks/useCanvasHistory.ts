@@ -8,62 +8,93 @@ type CommitStateOptions = {
   replace?: boolean;
 };
 
+type CanvasHistory = {
+  future: CanvasState[];
+  past: CanvasState[];
+  present: CanvasState;
+};
+
+const MAX_PAST_STATES = Math.max(0, HISTORY_LIMIT - 1);
+
 export function useCanvasHistory(initialState: CanvasState) {
-  const [history, setHistory] = useState<CanvasState[]>([initialState]);
-  const [historyIndex, setHistoryIndex] = useState(0);
-  const canvasState = history[historyIndex];
+  const [history, setHistory] = useState<CanvasHistory>(() => ({
+    future: [],
+    past: [],
+    present: initialState
+  }));
 
   const commitState = useCallback(
     (nextState: CanvasState, options: CommitStateOptions = {}) => {
-      if (options.replace) {
-        setHistory((previousHistory) =>
-          previousHistory.map((state, index) =>
-            index === historyIndex ? nextState : state
-          )
-        );
-        return;
-      }
+      setHistory((currentHistory) => {
+        if (options.replace) {
+          return {
+            ...currentHistory,
+            present: nextState
+          };
+        }
 
-      setHistory((previousHistory) => {
-        const historyWithBaseState = options.baseState
-          ? previousHistory.map((state, index) =>
-              index === historyIndex ? options.baseState ?? state : state
-            )
-          : previousHistory;
-        const activeHistory = historyWithBaseState.slice(0, historyIndex + 1);
-        return [...activeHistory, nextState].slice(-HISTORY_LIMIT);
+        const baseState = options.baseState ?? currentHistory.present;
+        const past = [...currentHistory.past, baseState];
+
+        return {
+          future: [],
+          past:
+            MAX_PAST_STATES === 0
+              ? []
+              : past.length > MAX_PAST_STATES
+              ? past.slice(-MAX_PAST_STATES)
+              : past,
+          present: nextState
+        };
       });
-      setHistoryIndex((index) => Math.min(index + 1, HISTORY_LIMIT - 1));
     },
-    [historyIndex]
+    []
   );
 
-  const replaceActiveState = useCallback(
-    (nextState: CanvasState) => {
-      setHistory((previousHistory) =>
-        previousHistory.map((state, index) =>
-          index === historyIndex ? nextState : state
-        )
-      );
-    },
-    [historyIndex]
-  );
+  const replaceActiveState = useCallback((nextState: CanvasState) => {
+    setHistory((currentHistory) => ({
+      ...currentHistory,
+      present: nextState
+    }));
+  }, []);
 
   const undo = useCallback(() => {
-    setHistoryIndex((index) => Math.max(0, index - 1));
+    setHistory((currentHistory) => {
+      const previousState = currentHistory.past.at(-1);
+
+      if (!previousState) {
+        return currentHistory;
+      }
+
+      return {
+        future: [currentHistory.present, ...currentHistory.future],
+        past: currentHistory.past.slice(0, -1),
+        present: previousState
+      };
+    });
   }, []);
 
   const redo = useCallback(() => {
-    setHistoryIndex((index) => Math.min(history.length - 1, index + 1));
-  }, [history.length]);
+    setHistory((currentHistory) => {
+      const nextState = currentHistory.future[0];
+
+      if (!nextState) {
+        return currentHistory;
+      }
+
+      return {
+        future: currentHistory.future.slice(1),
+        past: [...currentHistory.past, currentHistory.present],
+        present: nextState
+      };
+    });
+  }, []);
 
   return {
-    canvasState,
-    canRedo: historyIndex < history.length - 1,
-    canUndo: historyIndex > 0,
+    canvasState: history.present,
+    canRedo: history.future.length > 0,
+    canUndo: history.past.length > 0,
     commitState,
-    history,
-    historyIndex,
     redo,
     replaceActiveState,
     undo

@@ -17,6 +17,7 @@ import {
   SINGLE_SELECTION_COUNT
 } from "../../config/constants";
 import type { Interaction } from "../../model/types";
+import { getIdSet } from "../../model/collections";
 import type { PointerHandlerContext } from "./types";
 
 export function updatePointerInteraction(
@@ -113,17 +114,26 @@ export function updatePointerInteraction(
         }
 
         if (element.type === "draw") {
+          const points = activeInteraction.freehandPoints ?? [{ x: 0, y: 0 }];
+          const nextPoint = {
+            x: worldPoint.x - activeInteraction.origin.x,
+            y: worldPoint.y - activeInteraction.origin.y
+          };
+          const previousPoint = points.at(-1);
+
+          if (
+            !previousPoint ||
+            previousPoint.x !== nextPoint.x ||
+            previousPoint.y !== nextPoint.y
+          ) {
+            points.push(nextPoint);
+          }
+
           return {
             ...element,
             width: worldPoint.x - activeInteraction.origin.x,
             height: worldPoint.y - activeInteraction.origin.y,
-            points: [
-              ...(element.points ?? []),
-              {
-                x: worldPoint.x - activeInteraction.origin.x,
-                y: worldPoint.y - activeInteraction.origin.y
-              }
-            ]
+            points
           };
         }
 
@@ -154,7 +164,7 @@ export function updatePointerInteraction(
   if (activeInteraction.type === "move") {
     const dx = worldPoint.x - activeInteraction.start.x;
     const dy = worldPoint.y - activeInteraction.start.y;
-    const selectedIds = new Set(activeInteraction.selectedIds);
+    const selectedIds = getIdSet(activeInteraction.selectedIds);
 
     if (activeInteraction.originalTransformCenter) {
       setSelectionTransformCenter({
@@ -214,7 +224,7 @@ export function updatePointerInteraction(
   }
 
   if (activeInteraction.type === "resize") {
-    const selectedIdSet = new Set(activeInteraction.selectedIds);
+    const selectedIdSet = getIdSet(activeInteraction.selectedIds);
     const dx = worldPoint.x - activeInteraction.start.x;
     const dy = worldPoint.y - activeInteraction.start.y;
     let nextElements;

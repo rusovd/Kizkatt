@@ -2,12 +2,14 @@ import type { PointerEvent } from "react";
 
 import {
   getDistance,
-  getElementIdsInSelectionArea
+  getElementIdsInSelectionArea,
+  simplifyPolyline
 } from "../../geometry";
 import {
   DEFAULT_IMAGE_ELEMENT_TYPE,
   DEFAULT_IMAGE_SIZE,
   DEFAULT_SELECT_TOOL,
+  FREEHAND_SIMPLIFICATION_TOLERANCE_PX,
   MIN_CREATE_DRAG_DISTANCE,
   MIN_CREATE_HOLD_DURATION_MS,
   MIN_SELECT_DRAG_DISTANCE,
@@ -18,6 +20,7 @@ import {
   normalizeElement,
   withUpdatedObjectBase
 } from "../../model/element";
+import { getIdSet } from "../../model/collections";
 import type { CanvasState, Interaction, KizkattElement } from "../../model/types";
 import type { PointerHandlerContext } from "./types";
 
@@ -47,7 +50,8 @@ export function finishPointerInteraction(
     setSelectionTransformMode,
     setTool,
     style,
-    updateInteraction
+    updateInteraction,
+    zoom
   } = context;
   const activeCanvasState = canvasStateRef.current;
 
@@ -156,7 +160,19 @@ export function finishPointerInteraction(
       ...activeCanvasState,
       elements: activeCanvasState.elements.map((element) =>
         element.id === activeInteraction.elementId
-          ? withUpdatedObjectBase(normalizeElement(element))
+          ? withUpdatedObjectBase(
+              normalizeElement(
+                element.type === "draw" && element.points
+                  ? {
+                      ...element,
+                      points: simplifyPolyline(
+                        element.points,
+                        FREEHAND_SIMPLIFICATION_TOLERANCE_PX / zoom
+                      )
+                    }
+                  : element
+              )
+            )
           : element
       )
     });
@@ -200,7 +216,7 @@ export function finishPointerInteraction(
   }
 
   if (activeInteraction.type === "resize" || activeInteraction.type === "skew") {
-    const selectedIdSet = new Set(activeInteraction.selectedIds);
+    const selectedIdSet = getIdSet(activeInteraction.selectedIds);
     const finalState: CanvasState = {
       ...activeCanvasState,
       elements: activeCanvasState.elements.map((element) =>

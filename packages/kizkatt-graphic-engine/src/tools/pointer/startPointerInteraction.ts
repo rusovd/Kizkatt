@@ -18,6 +18,7 @@ import {
   selectionBounds
 } from "../../geometry";
 import { createElement, withUpdatedObjectBase } from "../../model/element";
+import { getIdSet } from "../../model/collections";
 import type {
   ElementType,
   LinearEndpoint,
@@ -384,8 +385,9 @@ export function startPointerInteraction(
       const canToggleTransformMode =
         tool !== "nodeEdit" &&
         haveSameSelection(selectedIds, canvasState.selectedIds);
+      const selectedIdSet = getIdSet(selectedIds);
       const bounds = selectionBounds(
-        canvasState.elements.filter((element) => selectedIds.includes(element.id)),
+        canvasState.elements.filter((element) => selectedIdSet.has(element.id)),
         { includeRotation: true }
       );
       const transformCenter =
@@ -482,6 +484,7 @@ export function startPointerInteraction(
   updateInteraction({
     type: "create",
     current: creationPoint,
+    freehandPoints: tool === "draw" ? [{ x: 0, y: 0 }] : undefined,
     hasMoved: false,
     elementId: committedElement.id,
     origin: creationPoint,
