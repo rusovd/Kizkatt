@@ -558,17 +558,73 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(
       screen.getByRole("button", { name: "Background custom #653b00" })
     ).toBeDisabled();
-    expect(canvas.querySelector("[data-element-id] line")).toHaveAttribute(
+    const arrowLine = canvas.querySelector("[data-element-id] line");
+
+    expect(arrowLine).toHaveAttribute(
       "fill",
       "none"
     );
+    const solidArrowhead = canvas.querySelector("[data-arrowhead]");
+    const expectedDefaultScale = (8 * (1 + Math.log(10))) / 10;
+    const arrowLength = Math.hypot(120, 70);
+    const expectedBase = {
+      x: 160 - (120 / arrowLength) * expectedDefaultScale * 10,
+      y: 120 - (70 / arrowLength) * expectedDefaultScale * 10
+    };
+
+    expect(arrowLine).not.toHaveAttribute("marker-end");
+    expect(Number(arrowLine?.getAttribute("x2"))).toBeCloseTo(expectedBase.x);
+    expect(Number(arrowLine?.getAttribute("y2"))).toBeCloseTo(expectedBase.y);
+    expect(solidArrowhead).toHaveAttribute("fill", "#f08c00");
+    expect(solidArrowhead).not.toHaveAttribute("data-decorative-arrowhead");
+    expect(
+      Number(solidArrowhead?.getAttribute("data-arrowhead-base-x"))
+    ).toBeCloseTo(expectedBase.x);
+    expect(
+      Number(solidArrowhead?.getAttribute("data-arrowhead-base-y"))
+    ).toBeCloseTo(expectedBase.y);
+    expect(
+      Number(solidArrowhead?.getAttribute("data-arrowhead-scale-x"))
+    ).toBeCloseTo(expectedDefaultScale);
 
     fireEvent.click(screen.getByRole("button", { name: "zigzag" }));
 
     expect(canvas.querySelector("[data-element-id] line"))
       .not.toHaveAttribute("marker-end");
     expect(canvas.querySelector("[data-decorative-stroke='zigzag']"))
-      .toHaveAttribute("marker-end", "url(#kizkatt-arrow)");
+      .not.toHaveAttribute("marker-end");
+    const decorativeArrowhead = canvas.querySelector(
+      "[data-decorative-arrowhead]"
+    );
+    const expectedAngle = (Math.atan2(70, 120) * 180) / Math.PI;
+
+    expect(decorativeArrowhead).toHaveAttribute(
+      "d",
+      "M 0 0 L 10 5 L 0 10 z"
+    );
+    expect(
+      Number(decorativeArrowhead?.getAttribute("data-arrowhead-angle"))
+    ).toBeCloseTo(expectedAngle);
+    expect(decorativeArrowhead).toHaveAttribute("fill", "#f08c00");
+    expect(
+      Number(decorativeArrowhead?.getAttribute("data-arrowhead-scale-x"))
+    ).toBeCloseTo(expectedDefaultScale);
+    expect(
+      Number(decorativeArrowhead?.getAttribute("data-arrowhead-scale-y"))
+    ).toBeCloseTo(expectedDefaultScale);
+
+    fireEvent.change(screen.getByLabelText("Stroke width value"), {
+      target: { value: "50" }
+    });
+
+    const enlargedArrowhead = canvas.querySelector("[data-arrowhead]");
+    const enlargedScale = Number(
+      enlargedArrowhead?.getAttribute("data-arrowhead-scale-x")
+    );
+
+    expect(enlargedScale).toBeGreaterThan(expectedDefaultScale);
+    expect(enlargedScale / expectedDefaultScale).toBeLessThan(2);
+    expect(enlargedScale).toBeCloseTo((8 * (1 + Math.log(50))) / 10);
   });
 
   it("enables fill colors after an open line is closed", () => {
@@ -813,6 +869,60 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Edges sharp" }));
     expect(elementRect).toHaveAttribute("rx", "0");
+  });
+
+  it("keeps image borders at zero until a line setting is changed", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          edgeStyle: "round",
+          height: 80,
+          id: "image",
+          opacity: 100,
+          src: "data:image/png;base64,kizkatt",
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "image",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["image"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const elementGroup = canvas.querySelector("[data-element-id='image']");
+    const imageBorder = elementGroup?.querySelector("[data-image-border]");
+    const strokeWidthInput = screen.getByLabelText("Stroke width value");
+
+    expect(imageBorder).toHaveAttribute("stroke-width", "0");
+    expect(strokeWidthInput).toHaveValue(0);
+    expect(elementGroup).not.toHaveAttribute("data-image-border-enabled");
+
+    fireEvent.click(screen.getByRole("button", { name: "dashed" }));
+
+    expect(imageBorder).toHaveAttribute("stroke-width", "10");
+    expect(imageBorder).toHaveAttribute("data-stroke-style", "dashed");
+    expect(imageBorder).toHaveAttribute("stroke-dasharray");
+    expect(strokeWidthInput).toHaveValue(10);
+    expect(elementGroup).toHaveAttribute("data-image-border-enabled", "true");
+
+    fireEvent.change(strokeWidthInput, { target: { value: "4" } });
+    expect(imageBorder).toHaveAttribute("stroke-width", "4");
+
+    fireEvent.change(strokeWidthInput, { target: { value: "0" } });
+    expect(imageBorder).toHaveAttribute("stroke-width", "0");
+    expect(elementGroup).not.toHaveAttribute("data-image-border-enabled");
+
+    fireEvent.click(screen.getByRole("button", { name: "Edges sharp" }));
+    expect(imageBorder).toHaveAttribute("stroke-width", "10");
+    expect(imageBorder).toHaveAttribute("rx", "0");
+    expect(elementGroup).toHaveAttribute("data-image-border-enabled", "true");
   });
 
   it("groups live range style changes into a single undo step", () => {

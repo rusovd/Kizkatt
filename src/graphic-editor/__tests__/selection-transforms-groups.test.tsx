@@ -40,6 +40,38 @@ function getHandleWorldPoint(element: Element | null) {
   };
 }
 
+function stubImageFileLoading({
+  height = 1536,
+  width = 2048
+}: {
+  height?: number;
+  width?: number;
+} = {}) {
+  class FileReaderMock {
+    result = "data:image/png;base64,kizkatt";
+    onload: (() => void) | null = null;
+
+    readAsDataURL() {
+      this.onload?.();
+    }
+  }
+
+  class ImageMock {
+    complete = true;
+    naturalHeight = height;
+    naturalWidth = width;
+    onerror: (() => void) | null = null;
+    onload: (() => void) | null = null;
+
+    set src(_value: string) {
+      this.onload?.();
+    }
+  }
+
+  vi.stubGlobal("FileReader", FileReaderMock);
+  vi.stubGlobal("Image", ImageMock);
+}
+
 function getManualSvgTransformedBounds(element: KizkattElement) {
   const center = {
     x: element.x + element.width / 2,
@@ -1184,16 +1216,7 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
   });
 
   it("inserts selected image files on the canvas", () => {
-    class FileReaderMock {
-      result = "data:image/png;base64,kizkatt";
-      onload: (() => void) | null = null;
-
-      readAsDataURL() {
-        this.onload?.();
-      }
-    }
-
-    vi.stubGlobal("FileReader", FileReaderMock);
+    stubImageFileLoading();
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Image" }));
@@ -1204,12 +1227,77 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     });
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 40, clientY: 50 });
 
-    expect(canvas.querySelector("image")).toHaveAttribute(
+    const preview = canvas.querySelector(
+      "[data-image-placement-preview] rect"
+    );
+
+    expect(preview).toHaveAttribute("x", "40");
+    expect(preview).toHaveAttribute("y", "50");
+    expect(preview).toHaveAttribute("height", "1536");
+    expect(preview).toHaveAttribute("width", "2048");
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointerup", { clientX: 40, clientY: 50 });
+
+    const image = canvas.querySelector("image");
+
+    expect(image).toHaveAttribute(
       "href",
       "data:image/png;base64,kizkatt"
     );
+    expect(image).toHaveAttribute("height", "1536");
+    expect(image).toHaveAttribute("width", "2048");
+    expect(
+      canvas.querySelector("[data-element-type='image'] [data-image-border]")
+    ).toHaveAttribute("stroke-width", "0");
+    expect(canvas.querySelector("[data-image-placement-preview]")).not
+      .toBeInTheDocument();
+  });
+
+  it("previews and applies an image size dragged before placement", () => {
+    stubImageFileLoading();
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Image" }));
+    fireEvent.change(screen.getByLabelText("Choose image"), {
+      target: {
+        files: [new File(["kizkatt"], "kizkatt.png", { type: "image/png" })]
+      }
+    });
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 100, clientY: 120 });
+    firePointerEvent(canvas, "pointermove", { clientX: 103, clientY: 123 });
+
+    let preview = canvas.querySelector("[data-image-placement-preview] rect");
+
+    expect(preview).toHaveAttribute("x", "100");
+    expect(preview).toHaveAttribute("y", "120");
+    expect(preview).toHaveAttribute("height", "1536");
+    expect(preview).toHaveAttribute("width", "2048");
+    expect(canvas.querySelector("image")).not.toBeInTheDocument();
+
+    firePointerEvent(canvas, "pointermove", { clientX: 300, clientY: 270 });
+    preview = canvas.querySelector("[data-image-placement-preview] rect");
+
+    expect(preview).toHaveAttribute("x", "100");
+    expect(preview).toHaveAttribute("y", "120");
+    expect(preview).toHaveAttribute("height", "150");
+    expect(preview).toHaveAttribute("width", "200");
+    expect(canvas.querySelector("image")).not.toBeInTheDocument();
+
+    firePointerEvent(canvas, "pointerup", { clientX: 300, clientY: 270 });
+
+    const image = canvas.querySelector("image");
+
+    expect(image).toHaveAttribute("x", "100");
+    expect(image).toHaveAttribute("y", "120");
+    expect(image).toHaveAttribute("height", "150");
+    expect(image).toHaveAttribute("width", "200");
+    expect(canvas.querySelector("[data-image-placement-preview]")).not
+      .toBeInTheDocument();
   });
 
   it("switches object positions between canvas and base-relative coordinates", () => {

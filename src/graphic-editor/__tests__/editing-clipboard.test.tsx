@@ -233,8 +233,9 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
                 <rect x="10" y="20" width="80" height="40" rx="12" fill="#653b00" stroke="#f08c00" stroke-width="21" stroke-opacity="0" data-stroke-style="wavy" />
                 <path d="M 22 20 L 30 24 L 38 20" fill="none" stroke="#f08c00" stroke-width="21" data-decorative-stroke="wavy" />
               </g>
-              <g data-element-id="exported-image" data-element-type="image">
+              <g data-element-id="exported-image" data-element-type="image" data-image-border-enabled="true">
                 <image href="data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E" x="120" y="20" width="50" height="40" />
+                <rect data-image-border="true" x="120" y="20" width="50" height="40" rx="0" fill="none" stroke="#1971c2" stroke-width="6" data-stroke-style="dashed" />
               </g>
             </g>
           </svg>
@@ -259,6 +260,9 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
       "[data-element-type='rectangle'] > rect"
     );
     const image = canvas.querySelector("[data-element-type='image'] > image");
+    const imageBorder = canvas.querySelector(
+      "[data-element-type='image'] > [data-image-border]"
+    );
 
     expect(canvas.querySelector(".kizkatt-inline-svg-object")).not
       .toBeInTheDocument();
@@ -271,6 +275,10 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
       "href",
       "data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E"
     );
+    expect(imageBorder).toHaveAttribute("stroke", "#1971c2");
+    expect(imageBorder).toHaveAttribute("stroke-width", "6");
+    expect(imageBorder).toHaveAttribute("data-stroke-style", "dashed");
+    expect(imageBorder).toHaveAttribute("rx", "0");
   });
 
   it("breaks apart Kizkatt SVG objects while keeping image children as images", async () => {
@@ -561,6 +569,14 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
       clientY: 50
     });
     firePointerEvent(canvas, "pointermove", { clientX: 20, clientY: 30 });
+
+    expect(canvas.querySelector(".kizkatt-transform-preview-line"))
+      .toHaveAttribute("d", "M 20 30 L 160 120");
+    expect(
+      canvas.querySelector(".kizkatt-transform-preview-bounds")
+        ?.getAttribute("d")
+    ).toContain("Z");
+
     firePointerEvent(canvas, "pointerup", { clientX: 20, clientY: 30 });
 
     const line = canvas.querySelector("[data-element-id] line");
@@ -623,6 +639,17 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
       clientX: rotateHandlePoint.x + 48,
       clientY: rotateHandlePoint.y
     });
+
+    const rotatePreviewLine = canvas.querySelector(
+      ".kizkatt-transform-preview-line"
+    );
+    const rotatePreviewBounds = canvas.querySelector(
+      ".kizkatt-transform-preview-bounds"
+    );
+    expect(rotatePreviewLine).toBeInTheDocument();
+    expect(rotatePreviewLine?.getAttribute("d")).not.toContain("Z");
+    expect(rotatePreviewBounds?.getAttribute("d")).toContain("Z");
+
     firePointerEvent(canvas, "pointerup");
 
     expect(elementGroup?.getAttribute("transform")).not.toContain("rotate(0");
