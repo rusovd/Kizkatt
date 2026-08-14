@@ -16,6 +16,7 @@ export function ElementGroup({
     groupId: element.groupId,
     groupName: element.groupName,
     id: element.id,
+    imageBorderEnabled: element.imageBorderEnabled,
     name,
     skewX: element.skewX ?? 0,
     skewY: element.skewY ?? 0,
@@ -28,6 +29,9 @@ export function ElementGroup({
       data-element-id={element.id}
       data-element-name={name}
       data-element-type={element.type}
+      data-image-border-enabled={
+        element.imageBorderEnabled ? "true" : undefined
+      }
       data-group-id={element.groupId}
       data-group-name={element.groupName}
     >

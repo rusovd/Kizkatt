@@ -193,7 +193,7 @@ export function getDecorativeStrokeOutline(
   element: KizkattElement,
   linePoints?: Point[]
 ): StrokeOutline | null {
-  if (element.type === "rectangle") {
+  if (element.type === "rectangle" || element.type === "image") {
     return getRectangleOutline(element);
   }
 

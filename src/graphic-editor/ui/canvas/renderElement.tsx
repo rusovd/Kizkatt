@@ -9,7 +9,13 @@ import {
 } from "../../geometry";
 import { canElementUseBackground, isElementPathClosed } from "../../model/element";
 import type { KizkattElement } from "../../model/types";
-import { PERCENT_MAX_VALUE } from "../../config/constants";
+import {
+  ARROW_MARKER_HEIGHT,
+  ARROW_MARKER_PATH,
+  ARROW_MARKER_REF_Y,
+  ARROW_MARKER_WIDTH,
+  PERCENT_MAX_VALUE
+} from "../../config/constants";
 import { ElementGroup } from "./ElementGroup";
 import {
   ElementOverlay,
@@ -29,7 +35,6 @@ import {
   isDecorativeStrokeStyle
 } from "./decorativeStroke";
 import {
-  ARROW_MARKER_URL,
   ARTIST_FILTER_BASE_SCALE,
   ARTIST_FILTER_MAX_SCALE,
   ARTIST_FILTER_MIN_SCALE,
@@ -180,12 +185,10 @@ function getPrimaryBaseShapeProps(element: KizkattElement) {
 
 function DecorativeStroke({
   element,
-  linePoints,
-  markerEnd
+  linePoints
 }: {
   element: KizkattElement;
   linePoints?: Array<{ x: number; y: number }>;
-  markerEnd?: string;
 }) {
   if (!isDecorativeStrokeStyle(element.strokeStyle)) {
     return null;
@@ -209,8 +212,159 @@ function DecorativeStroke({
       data-decorative-stroke={element.strokeStyle}
       d={pathData}
       fill={SVG_FILL_NONE}
-      markerEnd={markerEnd}
       {...getPrimaryShapeProps(element)}
+    />
+  );
+}
+
+type ArrowheadGeometry = {
+  angle: number;
+  base: { x: number; y: number };
+  end: { x: number; y: number };
+  length: number;
+  scaleX: number;
+  scaleY: number;
+};
+
+function getLinePointsLength(
+  linePoints: Array<{ x: number; y: number }>
+) {
+  return linePoints.slice(1).reduce((length, point, index) => {
+    const previous = linePoints[index];
+
+    return length + Math.hypot(
+      point.x - previous.x,
+      point.y - previous.y
+    );
+  }, 0);
+}
+
+function getArrowheadGeometry(
+  element: KizkattElement,
+  linePoints: Array<{ x: number; y: number }>
+): ArrowheadGeometry | null {
+  if (element.type !== "arrow" || element.strokeWidth <= 0) {
+    return null;
+  }
+
+  const end = linePoints[linePoints.length - 1];
+
+  if (!end) {
+    return null;
+  }
+
+  let tangentStart: { x: number; y: number } | undefined;
+
+  for (let index = linePoints.length - 2; index >= 0; index -= 1) {
+    const point = linePoints[index];
+
+    if (Math.hypot(end.x - point.x, end.y - point.y) > Number.EPSILON) {
+      tangentStart = point;
+      break;
+    }
+  }
+
+  if (!tangentStart) {
+    return null;
+  }
+
+  const deltaX = end.x - tangentStart.x;
+  const deltaY = end.y - tangentStart.y;
+  const tangentLength = Math.hypot(deltaX, deltaY);
+  const strokeWidth = Math.max(
+    MIN_RENDERED_STROKE_WIDTH,
+    element.strokeWidth
+  );
+  const markerCoordinateSize = ARROW_MARKER_REF_Y * 2;
+  const logarithmicSizeFactor = 1 + Math.log(strokeWidth);
+  const desiredLength = ARROW_MARKER_WIDTH * logarithmicSizeFactor;
+  const lineLength = getLinePointsLength(linePoints);
+  const length = Math.min(
+    desiredLength,
+    lineLength * 0.75,
+    tangentLength
+  );
+  const scaleX = length / markerCoordinateSize;
+  const scaleY =
+    (ARROW_MARKER_HEIGHT / ARROW_MARKER_WIDTH) * scaleX;
+  const unitX = deltaX / tangentLength;
+  const unitY = deltaY / tangentLength;
+
+  return {
+    angle: Math.atan2(deltaY, deltaX) * (180 / Math.PI),
+    base: {
+      x: end.x - unitX * length,
+      y: end.y - unitY * length
+    },
+    end,
+    length,
+    scaleX,
+    scaleY
+  };
+}
+
+function shortenLinePoints(
+  linePoints: Array<{ x: number; y: number }>,
+  length: number
+) {
+  let remaining = length;
+
+  for (let index = linePoints.length - 1; index > 0; index -= 1) {
+    const start = linePoints[index - 1];
+    const end = linePoints[index];
+    const segmentLength = Math.hypot(end.x - start.x, end.y - start.y);
+
+    if (segmentLength <= Number.EPSILON) {
+      continue;
+    }
+
+    if (remaining < segmentLength) {
+      const retainedRatio = (segmentLength - remaining) / segmentLength;
+
+      return [
+        ...linePoints.slice(0, index),
+        {
+          x: start.x + (end.x - start.x) * retainedRatio,
+          y: start.y + (end.y - start.y) * retainedRatio
+        }
+      ];
+    }
+
+    remaining -= segmentLength;
+  }
+
+  return linePoints.slice(0, 1);
+}
+
+function Arrowhead({
+  element,
+  geometry
+}: {
+  element: KizkattElement;
+  geometry: ArrowheadGeometry | null;
+}) {
+  if (!geometry) {
+    return null;
+  }
+
+  const markerCoordinateSize = ARROW_MARKER_REF_Y * 2;
+
+  return (
+    <path
+      data-arrowhead="true"
+      data-arrowhead-angle={geometry.angle}
+      data-arrowhead-base-x={geometry.base.x}
+      data-arrowhead-base-y={geometry.base.y}
+      data-arrowhead-scale-x={geometry.scaleX}
+      data-arrowhead-scale-y={geometry.scaleY}
+      data-decorative-arrowhead={
+        isDecorativeStrokeStyle(element.strokeStyle) ? "true" : undefined
+      }
+      d={ARROW_MARKER_PATH}
+      fill={element.strokeColor}
+      opacity={element.opacity / PERCENT_MAX_VALUE}
+      pointerEvents={SVG_POINTER_EVENTS_NONE}
+      transform={`translate(${geometry.end.x} ${geometry.end.y}) rotate(${geometry.angle}) scale(${geometry.scaleX} ${geometry.scaleY}) translate(${-markerCoordinateSize} ${-ARROW_MARKER_REF_Y})`}
     />
   );
 }
@@ -556,20 +710,26 @@ function SecondaryEllipseStroke({ element }: { element: KizkattElement }) {
   );
 }
 
-function getLineOffsetPoints(element: KizkattElement) {
+function getLineOffsetPoints(
+  element: KizkattElement,
+  linePoints: Array<{ x: number; y: number }>
+) {
   const offset = getDoubleStrokeOffset(element);
+  const start = linePoints[0];
+  const end = linePoints[linePoints.length - 1];
   const length =
-    Math.hypot(element.width, element.height) || MIN_RENDERED_STROKE_WIDTH;
+    Math.hypot(end.x - start.x, end.y - start.y) ||
+    MIN_RENDERED_STROKE_WIDTH;
   const normal = {
-    x: (-element.height / length) * offset,
-    y: (element.width / length) * offset
+    x: (-(end.y - start.y) / length) * offset,
+    y: ((end.x - start.x) / length) * offset
   };
 
   return {
-    x1: element.x + normal.x,
-    x2: element.x + element.width + normal.x,
-    y1: element.y + normal.y,
-    y2: element.y + element.height + normal.y
+    x1: start.x + normal.x,
+    x2: end.x + normal.x,
+    y1: start.y + normal.y,
+    y2: end.y + normal.y
   };
 }
 
@@ -608,7 +768,12 @@ function SecondaryLineStroke({
     return <path d={d} {...secondaryProps} />;
   }
 
-  return <line {...getLineOffsetPoints(element)} {...secondaryProps} />;
+  return (
+    <line
+      {...getLineOffsetPoints(element, linePoints)}
+      {...secondaryProps}
+    />
+  );
 }
 
 function SecondaryFreehandStroke({ element }: { element: KizkattElement }) {
@@ -758,7 +923,6 @@ export function renderElement(
   options: RenderElementOptions = {}
 ) {
   const commonProps = getPrimaryBaseShapeProps(element);
-  const hasDecorativeStroke = isDecorativeStrokeStyle(element.strokeStyle);
   const edgeRadius =
     (element.edgeStyle ?? SVG_LINECAP_ROUND) === SVG_LINECAP_ROUND
       ? ROUNDED_EDGE_RADIUS
@@ -790,12 +954,18 @@ export function renderElement(
   }
 
   if (element.type === "image") {
+    const borderElement = {
+      ...element,
+      strokeWidth: element.imageBorderEnabled ? element.strokeWidth : 0
+    };
+    const borderProps = getPrimaryBaseShapeProps(borderElement);
+
     return (
       <ElementGroup key={element.id} element={element}>
         <ElementFillPattern element={element} />
-        <ElementSloppyFilter element={element} />
+        <ElementSloppyFilter element={borderElement} />
         <ElementSloppyFilter
-          element={element}
+          element={borderElement}
           variant={CARTOONIST_FILTER_VARIANT}
         />
         {element.svgContent ? (
@@ -818,10 +988,22 @@ export function renderElement(
             height={element.height}
             rx={edgeRadius}
             fill={getElementFill(element)}
-            {...commonProps}
+            stroke={SVG_FILL_NONE}
+            opacity={element.opacity / PERCENT_MAX_VALUE}
           />
         )}
-        {!element.src && <SecondaryRectStroke element={element} />}
+        <rect
+          data-image-border="true"
+          x={element.x}
+          y={element.y}
+          width={element.width}
+          height={element.height}
+          rx={edgeRadius}
+          fill={SVG_FILL_NONE}
+          {...borderProps}
+        />
+        <DecorativeStroke element={borderElement} />
+        <SecondaryRectStroke element={borderElement} />
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>
     );
@@ -879,15 +1061,21 @@ export function renderElement(
   if (element.type === "line" || element.type === "arrow") {
     const bends = getElementBends(element);
     const linePoints = getLinearElementPoints(element, bends);
+    const arrowheadGeometry = getArrowheadGeometry(element, linePoints);
+    const renderedLinePoints = arrowheadGeometry
+      ? shortenLinePoints(linePoints, arrowheadGeometry.length)
+      : linePoints;
+    const renderedStart = renderedLinePoints[0];
+    const renderedEnd = renderedLinePoints[renderedLinePoints.length - 1];
     const hasBends = bends.length > ZERO_COORDINATE;
     const isNodeEditMode = options.linearEndpointMode === "node";
     const isSkewMode =
       options.selectionTransformMode === "skew" && !isNodeEditMode;
     const canUseFill = canElementUseBackground(element);
-    const pathData = getLinearElementPath(linePoints, element.edgeStyle);
-    const markerEnd =
-      element.type === "arrow" ? ARROW_MARKER_URL : undefined;
-
+    const pathData = getLinearElementPath(
+      renderedLinePoints,
+      element.edgeStyle
+    );
     return (
       <ElementGroup key={element.id} element={element}>
         {canUseFill && <ElementFillPattern element={element} />}
@@ -900,26 +1088,30 @@ export function renderElement(
           <path
             d={`${pathData}${canUseFill ? SVG_PATH_CLOSE_COMMAND : ""}`}
             fill={canUseFill ? getElementFill(element) : SVG_FILL_NONE}
-            markerEnd={hasDecorativeStroke ? undefined : markerEnd}
             {...commonProps}
           />
         ) : (
           <line
-            x1={element.x}
-            y1={element.y}
-            x2={element.x + element.width}
-            y2={element.y + element.height}
+            x1={renderedStart.x}
+            y1={renderedStart.y}
+            x2={renderedEnd.x}
+            y2={renderedEnd.y}
             fill={SVG_FILL_NONE}
-            markerEnd={hasDecorativeStroke ? undefined : markerEnd}
             {...commonProps}
           />
         )}
         <DecorativeStroke
           element={element}
-          linePoints={linePoints}
-          markerEnd={markerEnd}
+          linePoints={renderedLinePoints}
         />
-        <SecondaryLineStroke element={element} linePoints={linePoints} />
+        <Arrowhead
+          element={element}
+          geometry={arrowheadGeometry}
+        />
+        <SecondaryLineStroke
+          element={element}
+          linePoints={renderedLinePoints}
+        />
         {selected && (
           <>
             {!isNodeEditMode && (hasBends || isSkewMode) ? (
