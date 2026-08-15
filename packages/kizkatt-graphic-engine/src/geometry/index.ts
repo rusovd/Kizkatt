@@ -6,7 +6,12 @@ export {
   selectionBounds
 } from "./bounds";
 export { isHexColor } from "./colors";
-export { findElementAtPoint } from "./hitTesting";
+export {
+  findElementAtPoint,
+  observeHitTesting,
+  type HitTestObserver,
+  type HitTestProfileSample
+} from "./hitTesting";
 export {
   getCalibratedMillimetersWorldSize,
   getDefaultGridSettings,
@@ -14,6 +19,7 @@ export {
   type GridWorldSizing
 } from "./grid";
 export { reorderElementsByLayerAction } from "./layers";
+export { simplifyPolyline } from "./pathSimplification";
 export {
   getElementBends,
   getLinearElementPath,
@@ -36,6 +42,10 @@ export {
   getElementIdsInSelectionArea
 } from "./selection";
 export { snapPointToElements, snapPointToGrid } from "./snapping";
+export {
+  getElementIndicesInBounds,
+  SPATIAL_INDEX_MIN_ELEMENT_COUNT
+} from "./spatialIndex";
 export { transformSvgPathData } from "./svgPathData";
 export type { TransformedSvgPathData } from "./svgPathData";
 export {

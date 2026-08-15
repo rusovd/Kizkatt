@@ -167,12 +167,23 @@ export function getSegmentMidpoint(start: Point, end: Point) {
 }
 
 export function distanceToSegment(point: Point, start: Point, end: Point) {
+  return Math.sqrt(distanceSquaredToSegment(point, start, end));
+}
+
+export function distanceSquaredToSegment(
+  point: Point,
+  start: Point,
+  end: Point
+) {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   const lengthSquared = dx * dx + dy * dy;
 
   if (lengthSquared === 0) {
-    return Math.hypot(point.x - start.x, point.y - start.y);
+    const pointDx = point.x - start.x;
+    const pointDy = point.y - start.y;
+
+    return pointDx * pointDx + pointDy * pointDy;
   }
 
   const t = Math.max(
@@ -182,12 +193,12 @@ export function distanceToSegment(point: Point, start: Point, end: Point) {
       ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared
     )
   );
-  const projected = {
-    x: start.x + t * dx,
-    y: start.y + t * dy
-  };
+  const projectedX = start.x + t * dx;
+  const projectedY = start.y + t * dy;
+  const projectedDx = point.x - projectedX;
+  const projectedDy = point.y - projectedY;
 
-  return Math.hypot(point.x - projected.x, point.y - projected.y);
+  return projectedDx * projectedDx + projectedDy * projectedDy;
 }
 
 export function isPointInPolygon(point: Point, polygon: Point[]) {

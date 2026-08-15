@@ -11,6 +11,7 @@ import type {
   ResizeHandle,
   SkewHandle
 } from "../model/types";
+import { getIdSet } from "../model/collections";
 import { getElementBends } from "./linearElements";
 import {
   getElementAxes,
@@ -184,7 +185,7 @@ export function resizeElementsFromSelectionHandle(
   handle: ResizeHandle,
   point: Point
 ) {
-  const selectedIdSet = new Set(selectedIds);
+  const selectedIdSet = getIdSet(selectedIds);
   const { sx, sy } = getResizeHandle(handle);
   const anchor = {
     x:
@@ -265,7 +266,7 @@ export function rotateElementsAroundPoint(
   center: Point,
   angleDelta: number
 ) {
-  const selectedIdSet = new Set(selectedIds);
+  const selectedIdSet = getIdSet(selectedIds);
   const cos = Math.cos(angleDelta);
   const sin = Math.sin(angleDelta);
 
@@ -300,7 +301,7 @@ export function skewElementsFromSelectionHandle(
   start: Point,
   point: Point
 ) {
-  const selectedIdSet = new Set(selectedIds);
+  const selectedIdSet = getIdSet(selectedIds);
   const width = Math.max(
     SKEW_TRANSFORM_MIN_DENOMINATOR,
     originalBounds.width

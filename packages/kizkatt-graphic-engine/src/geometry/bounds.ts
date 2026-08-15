@@ -4,6 +4,7 @@ import {
   EMPTY_COLLECTION_LENGTH,
   FIRST_ARRAY_INDEX,
   LINE_ELEMENT_TYPE,
+  MIN_ELEMENT_SIZE,
   NEXT_ARRAY_INDEX_OFFSET,
   NO_ROTATION_ANGLE
 } from "../config/constants";
@@ -12,8 +13,7 @@ import { getElementBends, getLinearElementPoints } from "./linearElements";
 import {
   getBoundsFromPointList,
   getBoundsFromPoints,
-  getElementEnd,
-  transformElementPoint
+  getElementEnd
 } from "./primitives";
 
 export function getElementBounds(element: KizkattElement) {
@@ -22,15 +22,27 @@ export function getElementBounds(element: KizkattElement) {
     element.points &&
     element.points.length > EMPTY_COLLECTION_LENGTH
   ) {
-    return (
-      getBoundsFromPointList(
-        element.points.map((point) => ({
-          x: element.x + point.x,
-          y: element.y + point.y
-        })),
-        true
-      ) ?? getBoundsFromPoints({ x: element.x, y: element.y }, getElementEnd(element))
-    );
+    const points = element.points;
+    let minX = element.x + points[0].x;
+    let minY = element.y + points[0].y;
+    let maxX = minX;
+    let maxY = minY;
+
+    for (let index = 1; index < points.length; index += 1) {
+      const x = element.x + points[index].x;
+      const y = element.y + points[index].y;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+
+    return {
+      height: Math.max(MIN_ELEMENT_SIZE, maxY - minY),
+      width: Math.max(MIN_ELEMENT_SIZE, maxX - minX),
+      x: minX,
+      y: minY
+    };
   }
 
   if (
@@ -58,7 +70,6 @@ export function getElementBounds(element: KizkattElement) {
 
 export function getElementTransformedBounds(element: KizkattElement) {
   const bounds = getElementBounds(element);
-  const transformedCorners = getElementTransformedCorners(element);
 
   if (
     element.angle === NO_ROTATION_ANGLE &&
@@ -67,6 +78,8 @@ export function getElementTransformedBounds(element: KizkattElement) {
   ) {
     return bounds;
   }
+
+  const transformedCorners = getElementTransformedCorners(element, bounds);
 
   return getBoundsFromPointList(transformedCorners) ?? bounds;
 }
@@ -82,10 +95,45 @@ export function getElementBoundsCorners(element: KizkattElement) {
   ];
 }
 
-export function getElementTransformedCorners(element: KizkattElement) {
-  return getElementBoundsCorners(element).map((point) =>
-    transformElementPoint(element, point)
-  );
+export function getElementTransformedCorners(
+  element: KizkattElement,
+  bounds = getElementBounds(element)
+) {
+  const corners = [
+    { x: bounds.x, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    { x: bounds.x, y: bounds.y + bounds.height }
+  ];
+
+  if (
+    element.angle === NO_ROTATION_ANGLE &&
+    (element.skewX ?? 0) === 0 &&
+    (element.skewY ?? 0) === 0
+  ) {
+    return corners;
+  }
+
+  const center = {
+    x: element.x + element.width / 2,
+    y: element.y + element.height / 2
+  };
+  const skewX = Math.tan(element.skewX ?? 0);
+  const skewY = Math.tan(element.skewY ?? 0);
+  const cos = Math.cos(element.angle);
+  const sin = Math.sin(element.angle);
+
+  return corners.map((point) => {
+    const localX = point.x - center.x;
+    const localY = point.y - center.y;
+    const skewedY = localY + localX * skewY;
+    const skewedX = localX + skewedY * skewX;
+
+    return {
+      x: center.x + skewedX * cos - skewedY * sin,
+      y: center.y + skewedX * sin + skewedY * cos
+    };
+  });
 }
 
 export function selectionBounds(

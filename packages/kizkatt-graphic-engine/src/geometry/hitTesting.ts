@@ -3,11 +3,60 @@ import type { KizkattElement, Point } from "../model/types";
 import { getElementBounds } from "./bounds";
 import { getLinearElementPoints } from "./linearElements";
 import {
-  distanceToSegment,
+  distanceSquaredToSegment,
   getElementCenter,
   getElementLocalPoint,
   isPointInPolygon
 } from "./primitives";
+import { getHitTestCandidateIndices } from "./spatialIndex";
+
+export type HitTestProfileSample = {
+  candidateCount: number;
+  durationMs: number;
+  elementCount: number;
+  hitElementId?: string;
+  point: Point;
+};
+
+export type HitTestObserver = (sample: HitTestProfileSample) => void;
+
+const hitTestObservers = new Set<HitTestObserver>();
+
+export function observeHitTesting(observer: HitTestObserver) {
+  hitTestObservers.add(observer);
+
+  return () => {
+    hitTestObservers.delete(observer);
+  };
+}
+
+function getProfileTimestamp() {
+  return globalThis.performance?.now?.() ?? Date.now();
+}
+
+function reportHitTest(
+  elements: KizkattElement[],
+  point: Point,
+  startedAt: number,
+  hitElement: KizkattElement | undefined,
+  candidateCount: number
+) {
+  const sample: HitTestProfileSample = {
+    candidateCount,
+    durationMs: getProfileTimestamp() - startedAt,
+    elementCount: elements.length,
+    hitElementId: hitElement?.id,
+    point: { ...point }
+  };
+
+  hitTestObservers.forEach((observer) => {
+    try {
+      observer(sample);
+    } catch {
+      
+    }
+  });
+}
 
 function getElementHit(element: KizkattElement, point: Point) {
   const localPoint =
@@ -17,6 +66,7 @@ function getElementHit(element: KizkattElement, point: Point) {
       ? point
       : getElementLocalPoint(element, point);
   const tolerance = Math.max(8, element.strokeWidth + 6);
+  const toleranceSquared = tolerance * tolerance;
   const bounds = getElementBounds(element);
   const withinBounds =
     localPoint.x >= bounds.x - tolerance &&
@@ -45,11 +95,11 @@ function getElementHit(element: KizkattElement, point: Point) {
       const previous = points[index - 1];
 
       return (
-        distanceToSegment(
+        distanceSquaredToSegment(
           localPoint,
           { x: element.x + previous.x, y: element.y + previous.y },
           { x: element.x + pointInPath.x, y: element.y + pointInPath.y }
-        ) <= tolerance
+        ) <= toleranceSquared
       );
     });
 
@@ -63,7 +113,10 @@ function getElementHit(element: KizkattElement, point: Point) {
         return false;
       }
 
-      return distanceToSegment(localPoint, points[index - 1], pointInPath) <= tolerance;
+      return (
+        distanceSquaredToSegment(localPoint, points[index - 1], pointInPath) <=
+        toleranceSquared
+      );
     });
 
     return { fill: false, stroke };
@@ -93,11 +146,11 @@ function getElementHit(element: KizkattElement, point: Point) {
       { x: element.x, y: center.y }
     ];
     const stroke = polygon.some((corner, index) =>
-      distanceToSegment(
+      distanceSquaredToSegment(
         localPoint,
         corner,
         polygon[(index + 1) % polygon.length]
-      ) <= tolerance
+      ) <= toleranceSquared
     );
 
     return {
@@ -128,14 +181,25 @@ function getElementHit(element: KizkattElement, point: Point) {
 }
 
 export function findElementAtPoint(elements: KizkattElement[], point: Point) {
+  const shouldProfile = hitTestObservers.size > 0;
+  const startedAt = shouldProfile ? getProfileTimestamp() : 0;
   let firstFillHit: KizkattElement | undefined;
+  let hitElement: KizkattElement | undefined;
+  const candidateIndices = getHitTestCandidateIndices(elements, point);
+  const candidateCount = candidateIndices?.length ?? elements.length;
 
-  for (let index = elements.length - 1; index >= 0; index -= 1) {
-    const element = elements[index];
+  for (
+    let candidateIndex = candidateCount - 1;
+    candidateIndex >= 0;
+    candidateIndex -= 1
+  ) {
+    const elementIndex = candidateIndices?.[candidateIndex] ?? candidateIndex;
+    const element = elements[elementIndex];
     const hit = getElementHit(element, point);
 
     if (hit.stroke) {
-      return element;
+      hitElement = element;
+      break;
     }
 
     if (!firstFillHit && hit.fill) {
@@ -143,5 +207,11 @@ export function findElementAtPoint(elements: KizkattElement[], point: Point) {
     }
   }
 
-  return firstFillHit;
+  hitElement ??= firstFillHit;
+
+  if (shouldProfile) {
+    reportHitTest(elements, point, startedAt, hitElement, candidateCount);
+  }
+
+  return hitElement;
 }
