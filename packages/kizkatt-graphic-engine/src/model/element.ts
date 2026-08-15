@@ -70,23 +70,26 @@ export function normalizeElement(element: KizkattElement): KizkattElement {
       return next;
     }
 
-    const absolutePoints = points.map((point) => ({
-      x: next.x + point.x,
-      y: next.y + point.y
-    }));
-    const xs = absolutePoints.map((point) => point.x);
-    const ys = absolutePoints.map((point) => point.y);
-    const minX = Math.min(...xs);
-    const minY = Math.min(...ys);
-    const maxX = Math.max(...xs);
-    const maxY = Math.max(...ys);
+    let minX = next.x + points[0].x;
+    let minY = next.y + points[0].y;
+    let maxX = minX;
+    let maxY = minY;
+
+    for (let index = 1; index < points.length; index += 1) {
+      const absoluteX = next.x + points[index].x;
+      const absoluteY = next.y + points[index].y;
+      minX = Math.min(minX, absoluteX);
+      minY = Math.min(minY, absoluteY);
+      maxX = Math.max(maxX, absoluteX);
+      maxY = Math.max(maxY, absoluteY);
+    }
 
     return {
       ...next,
       height: Math.max(MIN_ELEMENT_SIZE, maxY - minY),
-      points: absolutePoints.map((point) => ({
-        x: point.x - minX,
-        y: point.y - minY
+      points: points.map((point) => ({
+        x: next.x + point.x - minX,
+        y: next.y + point.y - minY
       })),
       width: Math.max(MIN_ELEMENT_SIZE, maxX - minX),
       x: minX,
@@ -129,6 +132,10 @@ export function getObjectBase(element: KizkattElement): ObjectBase {
     groupName: _groupName,
     id: _id,
     name: _name,
+    src: _src,
+    svgContent: _svgContent,
+    svgUseElementStyle: _svgUseElementStyle,
+    svgViewBox: _svgViewBox,
     x,
     y,
     ...baseElement

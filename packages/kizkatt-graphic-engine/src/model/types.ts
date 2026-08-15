@@ -94,7 +94,17 @@ export type KizkattElement = {
 
 export type ObjectBase = Omit<
   KizkattElement,
-  "base" | "groupId" | "groupName" | "id" | "name" | "x" | "y"
+  | "base"
+  | "groupId"
+  | "groupName"
+  | "id"
+  | "name"
+  | "src"
+  | "svgContent"
+  | "svgUseElementStyle"
+  | "svgViewBox"
+  | "x"
+  | "y"
 > & {
   center: Point;
 };
@@ -112,6 +122,7 @@ export type Interaction =
   | {
       type: "create";
       current: Point;
+      freehandPoints?: Point[];
       hasMoved: boolean;
       elementId: string;
       origin: Point;
