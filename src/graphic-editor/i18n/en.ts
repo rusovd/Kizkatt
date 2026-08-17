@@ -7,7 +7,8 @@ export const ENGLISH_TRANSLATIONS = {
     boardAriaLabel: "Kizkatt diagram canvas",
     canvasAriaLabel: "Drawing canvas",
     chooseImage: "Choose image",
-    editText: "Edit text"
+    editText: "Edit text",
+    loading: "Loading"
   },
   elementNames: {
     arrow: "Arrow",

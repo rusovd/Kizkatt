@@ -1,11 +1,14 @@
+import type { CSSProperties } from "react";
+
 import {
+  CANVAS_TAB_INDEX,
   DEFAULT_CANVAS_BACKGROUND,
   DEFAULT_CANVAS_BACKGROUND_BY_THEME,
   DEFAULT_ELEMENT_STYLE_BY_THEME,
   DEFAULT_GRID_COLOR,
   DEFAULT_GRID_COLOR_BY_THEME,
   PERCENT_MAX_VALUE,
-  KizkattGraphicEditor as EngineKizkattGraphicEditor,
+  KizkattGraphicEditorController,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
   TEXT_ELEMENT_DEFAULT_WIDTH,
   findElementAtPoint,
@@ -28,6 +31,7 @@ import {
   storeGridColor,
   storeTheme,
   storeUiScale,
+  type KizkattGraphicEditorViewModel,
   type ObjectPanelProps,
   type StylePanelProps,
   type TextEditorProps
@@ -61,6 +65,7 @@ import {
 import { Toolbar } from "../ui/controls/Toolbar";
 import { I18nProvider, useI18n } from "../i18n";
 import { GraphicEditorSettingsProvider } from "../ui/settings/GraphicEditorSettings";
+import { EditorLoader } from "../ui/feedback/EditorLoader";
 
 export {
   DEFAULT_CANVAS_BACKGROUND,
@@ -132,29 +137,89 @@ function AppObjectPanel(props: ObjectPanelProps) {
   return <ObjectPanel {...props} />;
 }
 
-const editorComponents = {
-  CanvasContextMenu,
+const canvasComponents = {
   CanvasGrid,
-  FooterControls,
-  MainMenu,
-  ObjectPanel: AppObjectPanel,
   SelectedBounds,
-  SelectionArea,
-  StylePanel: AppStylePanel,
-  TextEditor,
-  Toolbar
+  SelectionArea
 };
+
+function KizkattGraphicEditorView({
+  viewModel
+}: {
+  viewModel: KizkattGraphicEditorViewModel;
+}) {
+  const { strings } = useI18n();
+  const {
+    boardBindings,
+    canvas,
+    commandControls,
+    documentControls,
+    imageInputBindings,
+    selectionGeometryControls,
+    state,
+    styleControls,
+    textEditing,
+    toolControls,
+    workspaceControls
+  } = viewModel;
+  const showObjectPanel =
+    !state.viewMode &&
+    !state.zenMode &&
+    !state.menuOpen &&
+    Boolean(selectionGeometryControls);
+  const showStylePanel =
+    !state.viewMode &&
+    !state.zenMode &&
+    !state.menuOpen &&
+    (STYLE_TOOLS.has(styleControls.activeTool) ||
+      (styleControls.selectedElements.length > EMPTY_COLLECTION_LENGTH &&
+        (styleControls.activeTool === DEFAULT_SELECT_TOOL ||
+          SELECTED_ELEMENT_STYLE_TOOLS.has(styleControls.activeTool))));
+
+  return (
+    <section
+      {...boardBindings}
+      aria-label={strings.canvas.boardAriaLabel}
+      className={`kizkatt-board kizkatt-board--${state.theme}`}
+      aria-busy={state.isLoading}
+      style={{ "--kizkatt-ui-scale": state.uiScale } as CSSProperties}
+      tabIndex={CANVAS_TAB_INDEX}
+    >
+      {!state.zenMode && <Toolbar {...toolControls} />}
+
+      <input
+        {...imageInputBindings}
+        aria-label={strings.canvas.chooseImage}
+        className="kizkatt-file-input"
+        type="file"
+      />
+
+      {state.isLoading && <EditorLoader label={strings.canvas.loading} />}
+
+      <CanvasContextMenu {...commandControls} />
+      <MainMenu {...documentControls} />
+
+      {showObjectPanel && selectionGeometryControls && (
+        <AppObjectPanel {...selectionGeometryControls} />
+      )}
+      {showStylePanel && <AppStylePanel {...styleControls} />}
+      {textEditing && <TextEditor {...textEditing} />}
+
+      {canvas}
+
+      <FooterControls {...workspaceControls} />
+    </section>
+  );
+}
 
 function KizkattGraphicEditorContent() {
   const { strings } = useI18n();
 
   return (
-    <EngineKizkattGraphicEditor
-      boardAriaLabel={strings.canvas.boardAriaLabel}
+    <KizkattGraphicEditorController
       canvasAriaLabel={strings.canvas.canvasAriaLabel}
-      components={editorComponents}
+      components={canvasComponents}
       defaultElementStyleByTheme={DEFAULT_ELEMENT_STYLE_BY_THEME}
-      imageInputAriaLabel={strings.canvas.chooseImage}
       naming={ELEMENT_NAMING}
       getToolForSelectedElement={(element) =>
         ELEMENT_TOOL_BY_TYPE[element.type]
@@ -163,13 +228,11 @@ function KizkattGraphicEditorContent() {
       renderElement={renderElement}
       renderElementOverlay={renderElementOverlay}
       serializeSvg={serializeSvg}
-      shouldShowStylePanel={({ activeTool, selectedElements }) =>
-        STYLE_TOOLS.has(activeTool) ||
-        (selectedElements.length > EMPTY_COLLECTION_LENGTH &&
-          (activeTool === DEFAULT_SELECT_TOOL ||
-            SELECTED_ELEMENT_STYLE_TOOLS.has(activeTool)))
-      }
-    />
+    >
+      {(viewModel) => (
+        <KizkattGraphicEditorView viewModel={viewModel} />
+      )}
+    </KizkattGraphicEditorController>
   );
 }
 

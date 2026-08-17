@@ -1,0 +1,22 @@
+.kizkatt-editor-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  background: rgba(18, 18, 18, 0.2);
+  background: color-mix(in srgb, var(--kizkatt-control-bg) 20%, transparent);
+  color: var(--kizkatt-text);
+  cursor: progress;
+}
+
+.kizkatt-editor-loader > span {
+  min-width: 3.5rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 0.75rem;
+  background: var(--kizkatt-control-bg);
+  box-shadow: 0 0.75rem 2rem var(--kizkatt-shadow);
+  text-align: center;
+  letter-spacing: 0.3em;
+}
