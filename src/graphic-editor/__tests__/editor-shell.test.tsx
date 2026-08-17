@@ -785,6 +785,31 @@ describe("KizkattGraphicEditor shell", () => {
     ).toContain('"elements"');
     expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(1);
 
+    const rectangle = canvas.querySelector("[data-element-id] rect");
+    const getStoredRectanglePosition = () => {
+      const storedState = JSON.parse(
+        window.localStorage.getItem("kizkatt:graphic-engine:canvas-state") ??
+          "{}"
+      );
+
+      return {
+        x: storedState.elements?.[0]?.x,
+        y: storedState.elements?.[0]?.y
+      };
+    };
+
+    firePointerEvent(rectangle as Element, "pointerdown", {
+      clientX: 80,
+      clientY: 80
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 100, clientY: 110 });
+
+    expect(getStoredRectanglePosition()).toEqual({ x: 40, y: 50 });
+
+    firePointerEvent(canvas, "pointerup", { clientX: 100, clientY: 110 });
+
+    expect(getStoredRectanglePosition()).toEqual({ x: 60, y: 80 });
+
     unmount();
     render(<KizkattGraphicEditor />);
 

@@ -1076,6 +1076,53 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     });
   });
 
+  it("does not duplicate immutable image and SVG sources in object bases", () => {
+    const source = "data:image/png;base64," + "A".repeat(4_096);
+    const svgContent = `<svg>${"<path />".repeat(256)}</svg>`;
+    const element: KizkattElement = {
+      angle: 0,
+      backgroundColor: "transparent",
+      height: 120,
+      id: "image",
+      opacity: 100,
+      src: source,
+      strokeColor: "#111111",
+      strokeStyle: "solid",
+      strokeWidth: 0,
+      svgContent,
+      svgUseElementStyle: true,
+      svgViewBox: "0 0 160 120",
+      type: "image",
+      width: 160,
+      x: 10,
+      y: 20
+    };
+
+    const based = withUpdatedObjectBase(element);
+
+    expect(based.base).not.toHaveProperty("src");
+    expect(based.base).not.toHaveProperty("svgContent");
+    expect(based.base).not.toHaveProperty("svgUseElementStyle");
+    expect(based.base).not.toHaveProperty("svgViewBox");
+
+    const restored = revertElementToObjectBase({
+      ...based,
+      height: 60,
+      strokeWidth: 8,
+      width: 80
+    });
+
+    expect(restored).toMatchObject({
+      height: 120,
+      src: source,
+      strokeWidth: 0,
+      svgContent,
+      svgUseElementStyle: true,
+      svgViewBox: "0 0 160 120",
+      width: 160
+    });
+  });
+
   it("restores distinct object bases for multiple selected elements", () => {
     const elements: KizkattElement[] = [
       withUpdatedObjectBase({

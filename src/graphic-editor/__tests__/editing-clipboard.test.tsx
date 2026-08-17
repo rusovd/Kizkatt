@@ -1,6 +1,7 @@
 import { describe, it } from "vitest";
 import { storeCanvasState } from "kizkatt-graphic-engine";
 import {
+  act,
   chooseGroupedTool,
   KizkattGraphicEditor,
   expect,
@@ -22,6 +23,50 @@ function hoverContextSubmenuItem(element: Element) {
 }
 
 describe("KizkattGraphicEditor editing and clipboard", () => {
+  it("shows a loader while an image file is being read and decoded", () => {
+    let completeRead = () => {};
+
+    class FileReaderMock {
+      result = "data:image/png;base64,deferred";
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+
+      readAsDataURL() {
+        completeRead = () => this.onload?.();
+      }
+    }
+    class ImageMock {
+      complete = false;
+      naturalHeight = 100;
+      naturalWidth = 200;
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+
+      set src(_value: string) {
+        this.complete = true;
+        this.onload?.();
+      }
+    }
+
+    vi.stubGlobal("FileReader", FileReaderMock);
+    vi.stubGlobal("Image", ImageMock);
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.change(screen.getByLabelText("Choose image"), {
+      target: {
+        files: [new File(["kizkatt"], "kizkatt.png", { type: "image/png" })]
+      }
+    });
+
+    expect(screen.getByRole("status", { name: "Loading" }))
+      .toBeInTheDocument();
+
+    act(() => completeRead());
+
+    expect(screen.queryByRole("status", { name: "Loading" })).not
+      .toBeInTheDocument();
+  });
+
   it("serializes selected objects as a cropped transparent export", () => {
     storeCanvasState({
       elements: [
@@ -58,7 +103,14 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     });
     render(<KizkattGraphicEditor />);
 
-    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const canvas = document.querySelector<SVGSVGElement>(
+      "svg[role='application'][aria-label='Drawing canvas']"
+    );
+    expect(canvas).not.toBeNull();
+
+    if (!canvas) {
+      throw new Error("Drawing canvas was not rendered");
+    }
     const exportOptions = {
       bounds: { height: 90, width: 140, x: 30, y: 40 },
       elementIds: ["selected-rectangle"],
@@ -66,10 +118,10 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
       transparentBackground: true
     };
     const screenDpiMarkup = serializeSvg(
-      canvas as SVGSVGElement,
+      canvas,
       exportOptions
     );
-    const markup = serializeSvg(canvas as SVGSVGElement, {
+    const markup = serializeSvg(canvas, {
       ...exportOptions,
       scaleStrokes: true
     });
