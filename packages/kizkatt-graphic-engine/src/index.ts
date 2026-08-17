@@ -1,12 +1,12 @@
 export * from "./config/constants";
-export * from "./editor/KizkattGraphicEditor";
+export * from "./export/exportBounds";
 export * from "./export/svgExport";
 export * from "./geometry";
-export * from "./hooks/useCanvasHistory";
+export * from "./import/imageSizing";
+export * from "./model/collections";
 export * from "./model/element";
 export * from "./model/groups";
 export * from "./model/naming";
 export type * from "./model/types";
-export * from "./platform/keyboard";
-export * from "./platform/storage";
-export * from "./tools/pointer";
+export * from "./svg/import";
+export * from "./svg/parsing";

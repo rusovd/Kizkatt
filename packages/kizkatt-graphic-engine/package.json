@@ -1,6 +1,6 @@
 {
   "name": "kizkatt-graphic-engine",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "exports": {
@@ -8,9 +8,5 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts"
     }
-  },
-  "peerDependencies": {
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
   }
 }

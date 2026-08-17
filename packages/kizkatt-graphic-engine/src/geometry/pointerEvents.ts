@@ -1,9 +1,12 @@
-import type { PointerEvent } from "react";
-
 import type { Point } from "../model/types";
 
+type PointerCoordinates = {
+  clientX: number;
+  clientY: number;
+};
+
 export function getWorldPoint(
-  event: PointerEvent<SVGSVGElement>,
+  event: PointerCoordinates,
   svg: SVGSVGElement | null,
   zoom: number,
   pan: Point
@@ -20,7 +23,7 @@ export function getWorldPoint(
   };
 }
 
-export function getClientPoint(event: PointerEvent<SVGSVGElement>) {
+export function getClientPoint(event: PointerCoordinates) {
   return {
     x: Number.isFinite(event.clientX) ? event.clientX : 0,
     y: Number.isFinite(event.clientY) ? event.clientY : 0
