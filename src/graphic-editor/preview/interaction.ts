@@ -1,7 +1,7 @@
-import { SINGLE_SELECTION_COUNT } from "../config/constants";
-import { getResizeCursor } from "../geometry";
-import { getElementMap, getIdSet } from "../model/collections";
-import type { Interaction, KizkattElement } from "../model/types";
+import { SINGLE_SELECTION_COUNT } from "kizkatt-graphic-engine";
+import { getResizeCursor } from "kizkatt-graphic-engine";
+import { getElementMap, getIdSet } from "kizkatt-graphic-engine";
+import type { Interaction, KizkattElement } from "kizkatt-graphic-engine";
 
 export function getActiveInteractionCursor(interaction: Interaction | null) {
   if (!interaction) {

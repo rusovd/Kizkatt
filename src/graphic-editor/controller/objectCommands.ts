@@ -2,14 +2,14 @@ import {
   MIN_ELEMENT_SIZE,
   PERCENT_MAX_VALUE,
   VIEWPORT_CENTER_DIVISOR
-} from "../config/constants";
+} from "kizkatt-graphic-engine";
 import {
   getElementCenter,
   selectionBounds,
   transformSvgPathData
-} from "../geometry";
-import { getObjectBase } from "../model/element";
-import type { Bounds, KizkattElement, Point } from "../model/types";
+} from "kizkatt-graphic-engine";
+import { getObjectBase } from "kizkatt-graphic-engine";
+import type { Bounds, KizkattElement, Point } from "kizkatt-graphic-engine";
 import type { ObjectMirrorAxis, ObjectPanelGeometry } from "./types";
 
 export const RADIANS_PER_DEGREE = Math.PI / 180;
@@ -135,4 +135,3 @@ export function mirrorElementAroundPoint(
     y: nextCenter.y - mirroredElement.height / VIEWPORT_CENTER_DIVISOR
   };
 }
-

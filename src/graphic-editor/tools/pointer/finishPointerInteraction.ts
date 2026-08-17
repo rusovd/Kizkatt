@@ -4,7 +4,7 @@ import {
   getDistance,
   getElementIdsInSelectionArea,
   simplifyPolyline
-} from "../../geometry";
+} from "kizkatt-graphic-engine";
 import {
   DEFAULT_IMAGE_ELEMENT_TYPE,
   DEFAULT_IMAGE_SIZE,
@@ -14,14 +14,14 @@ import {
   MIN_CREATE_HOLD_DURATION_MS,
   MIN_SELECT_DRAG_DISTANCE,
   TRANSPARENT_COLOR
-} from "../../config/constants";
+} from "kizkatt-graphic-engine";
 import {
   createElement,
   normalizeElement,
   withUpdatedObjectBase
-} from "../../model/element";
-import { getIdSet } from "../../model/collections";
-import type { CanvasState, Interaction, KizkattElement } from "../../model/types";
+} from "kizkatt-graphic-engine";
+import { getIdSet } from "kizkatt-graphic-engine";
+import type { CanvasState, Interaction, KizkattElement } from "kizkatt-graphic-engine";
 import type { PointerHandlerContext } from "./types";
 
 function hasElementPreviewChanged(

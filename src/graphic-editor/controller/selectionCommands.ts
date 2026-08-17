@@ -1,23 +1,23 @@
 import {
   DUPLICATED_ELEMENT_OFFSET,
   EMPTY_COLLECTION_LENGTH
-} from "../config/constants";
+} from "kizkatt-graphic-engine";
 import {
   createId,
   revertElementToObjectBase,
   withUpdatedObjectBase
-} from "../model/element";
+} from "kizkatt-graphic-engine";
 import {
   cloneElementsWithFreshIdsAndGroups,
   expandElementIdsToGroups,
   groupSelectedElements,
   ungroupSelectedElements
-} from "../model/groups";
-import { createGroupName } from "../model/naming";
-import type { ElementNamingConfig } from "../model/naming";
-import type { CanvasState, KizkattElement } from "../model/types";
-import { breakApartSvgElement } from "../svg/import";
-import { isBreakApartableSvgElement } from "../svg/parsing";
+} from "kizkatt-graphic-engine";
+import { createGroupName } from "kizkatt-graphic-engine";
+import type { ElementNamingConfig } from "kizkatt-graphic-engine";
+import type { CanvasState, KizkattElement } from "kizkatt-graphic-engine";
+import { breakApartSvgElement } from "kizkatt-graphic-engine";
+import { isBreakApartableSvgElement } from "kizkatt-graphic-engine";
 
 export function selectAllElements(canvasState: CanvasState): CanvasState {
   return {

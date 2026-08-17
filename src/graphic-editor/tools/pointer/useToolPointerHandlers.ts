@@ -5,8 +5,8 @@ import {
   getWorldPoint,
   snapPointToElements,
   snapPointToGrid
-} from "../../geometry";
-import type { Interaction, Point } from "../../model/types";
+} from "kizkatt-graphic-engine";
+import type { Interaction, Point } from "kizkatt-graphic-engine";
 import { finishPointerInteraction } from "./finishPointerInteraction";
 import { startPointerInteraction } from "./startPointerInteraction";
 import type { PointerHandlerContext, UseToolPointerHandlersArgs } from "./types";

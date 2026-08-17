@@ -8,7 +8,7 @@ import {
   ROTATE_HANDLE_MIN_RADIUS,
   SINGLE_SELECTION_COUNT,
   TEXT_TOOL
-} from "../../config/constants";
+} from "kizkatt-graphic-engine";
 import {
   findElementAtPoint,
   getClientPoint,
@@ -16,14 +16,14 @@ import {
   getLinearElementPoints,
   getLinearElementSegmentMidpoint,
   selectionBounds
-} from "../../geometry";
-import { createElement, withUpdatedObjectBase } from "../../model/element";
-import { getIdSet } from "../../model/collections";
+} from "kizkatt-graphic-engine";
+import { createElement, withUpdatedObjectBase } from "kizkatt-graphic-engine";
+import { getIdSet } from "kizkatt-graphic-engine";
 import type {
   ElementType,
   LinearEndpoint,
   Tool
-} from "../../model/types";
+} from "kizkatt-graphic-engine";
 import {
   getEventTargetElement,
   getHandleTarget,
@@ -33,7 +33,7 @@ import {
 import {
   expandElementIdsToGroups,
   getNextSelectedIdsForHit
-} from "../../model/groups";
+} from "kizkatt-graphic-engine";
 import type { PointerHandlerContext } from "./types";
 
 function isCreatableElementTool(tool: Tool): tool is ElementType {

@@ -8,8 +8,8 @@ import type {
   RefObject
 } from "react";
 
-import type { SvgSerializeOptions } from "../export/svgExport";
-import type { ElementNamingConfig } from "../model/naming";
+import type { SvgSerializeOptions } from "kizkatt-graphic-engine";
+import type { ElementNamingConfig } from "kizkatt-graphic-engine";
 import type {
   Bounds,
   ContextMenuState,
@@ -22,7 +22,7 @@ import type {
   SelectionTransformMode,
   StyleState,
   Tool
-} from "../model/types";
+} from "kizkatt-graphic-engine";
 
 export type KizkattRenderElementOptions = {
   linearEndpointMode?: "node" | "resize";

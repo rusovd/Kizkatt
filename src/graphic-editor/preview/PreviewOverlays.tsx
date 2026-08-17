@@ -1,18 +1,18 @@
-import { EMPTY_COLLECTION_LENGTH, MIN_ELEMENT_SIZE } from "../config/constants";
+import { EMPTY_COLLECTION_LENGTH, MIN_ELEMENT_SIZE } from "kizkatt-graphic-engine";
 import {
   getElementTransformedCorners,
   getLinearElementPath,
   getLinearElementPoints,
   transformElementPoint
-} from "../geometry";
+} from "kizkatt-graphic-engine";
 import type {
   Bounds,
   Interaction,
   KizkattElement,
   Point
-} from "../model/types";
-import type { Size } from "../import/imageSizing";
-import { getIdSet } from "../model/collections";
+} from "kizkatt-graphic-engine";
+import type { Size } from "kizkatt-graphic-engine";
+import { getIdSet } from "kizkatt-graphic-engine";
 
 export function TransformPreview({
   elements,

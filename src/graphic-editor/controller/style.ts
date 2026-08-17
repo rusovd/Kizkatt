@@ -1,4 +1,4 @@
-import type { StyleState } from "../model/types";
+import type { StyleState } from "kizkatt-graphic-engine";
 
 const IMAGE_BORDER_STYLE_KEYS: ReadonlyArray<keyof StyleState> = [
   "edgeStyle",

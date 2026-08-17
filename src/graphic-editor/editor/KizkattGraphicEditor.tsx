@@ -8,34 +8,38 @@ import {
   DEFAULT_GRID_COLOR,
   DEFAULT_GRID_COLOR_BY_THEME,
   PERCENT_MAX_VALUE,
-  KizkattGraphicEditorController,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
   TEXT_ELEMENT_DEFAULT_WIDTH,
   findElementAtPoint,
   getElementIdsInSelectionArea,
   getResizeAnchorPoint,
   getResizeCursor,
+  reorderElementsByLayerAction,
+  resizeElementFromHandle,
+  resizeElementsFromSelectionHandle,
+  rotateElementsAroundPoint,
+  skewElementsFromSelectionHandle
+} from "kizkatt-graphic-engine";
+import {
+  KizkattGraphicEditorController,
+  type KizkattGraphicEditorViewModel,
+  type ObjectPanelProps,
+  type StylePanelProps,
+  type TextEditorProps
+} from "../controller/KizkattGraphicEditorController";
+import {
   getStoredCanvasBackgroundColor,
   getStoredCustomCanvasBackgroundColor,
   getStoredGridColor,
   getStoredTheme,
   getStoredUiScale,
-  reorderElementsByLayerAction,
-  resizeElementFromHandle,
-  resizeElementsFromSelectionHandle,
-  rotateElementsAroundPoint,
-  skewElementsFromSelectionHandle,
-  stopDrawingEngineShortcuts,
   storeCanvasBackgroundColor,
   storeCustomCanvasBackgroundColor,
   storeGridColor,
   storeTheme,
-  storeUiScale,
-  type KizkattGraphicEditorViewModel,
-  type ObjectPanelProps,
-  type StylePanelProps,
-  type TextEditorProps
-} from "kizkatt-graphic-engine";
+  storeUiScale
+} from "../platform/storage";
+import { stopDrawingEngineShortcuts } from "../platform/keyboard";
 
 import {
   COLOR_PANEL_COLUMN_COUNT,

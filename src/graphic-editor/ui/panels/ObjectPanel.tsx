@@ -5,9 +5,9 @@ import {
   DEFAULT_STROKE_STYLE,
   DEFAULT_STROKE_WIDTH,
   getCalibratedMillimetersWorldSize,
-  type ObjectPanelProps,
   type StyleState
 } from "kizkatt-graphic-engine";
+import type { ObjectPanelProps } from "../../controller/types";
 
 import { OBJECT_PANEL_UI_SETTINGS } from "../../config/defaultSettings";
 import { useI18n } from "../../i18n";

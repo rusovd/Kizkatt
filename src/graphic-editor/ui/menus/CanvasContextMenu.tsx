@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  formatKeyboardShortcut,
   getStoredContextMenuDefaults,
   storeContextMenuDefaults
-} from "kizkatt-graphic-engine";
+} from "../../platform/storage";
+import { formatKeyboardShortcut } from "../../platform/keyboard";
 import type {
   ContextMenuCopyDefault,
   ContextMenuDefaults,
   ContextMenuPasteDefault,
   ContextMenuSelectionDefault,
   ContextMenuSnappingDefault
-} from "kizkatt-graphic-engine";
+} from "../../platform/storage";
 
 import type { ContextMenuState, SelectionAreaMode } from "../../model/types";
 import { useI18n } from "../../i18n";

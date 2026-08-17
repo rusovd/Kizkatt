@@ -6,11 +6,11 @@ import {
   PNG_IMAGE_MIME_TYPE,
   SCREEN_DPI,
   SVG_IMAGE_MIME_TYPE
-} from "../config/constants";
-import type { CopiedPngExport } from "../import/imageSizing";
-import type { KizkattElement } from "../model/types";
-import { getExportBounds } from "./exportBounds";
-import type { SvgSerializeOptions } from "./svgExport";
+} from "kizkatt-graphic-engine";
+import type { CopiedPngExport } from "kizkatt-graphic-engine";
+import type { KizkattElement } from "kizkatt-graphic-engine";
+import { getExportBounds } from "kizkatt-graphic-engine";
+import type { SvgSerializeOptions } from "kizkatt-graphic-engine";
 
 type SerializeSvg = (
   svg: SVGSVGElement,

@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-import type { KizkattElement, Point } from "../model/types";
+import type { KizkattElement, Point } from "kizkatt-graphic-engine";
 import type {
   KizkattGraphicEditorProps,
   KizkattRenderElementOptions

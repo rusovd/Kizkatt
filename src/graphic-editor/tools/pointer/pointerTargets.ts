@@ -1,7 +1,7 @@
 import type { PointerEvent } from "react";
 
-import { RESIZE_HANDLES } from "../../config/constants";
-import type { ResizeHandle, SkewHandle } from "../../model/types";
+import { RESIZE_HANDLES } from "kizkatt-graphic-engine";
+import type { ResizeHandle, SkewHandle } from "kizkatt-graphic-engine";
 
 const SKEW_HANDLES: readonly SkewHandle[] = [
   "top",

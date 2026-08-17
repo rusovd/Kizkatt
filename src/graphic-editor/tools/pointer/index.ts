@@ -1,1 +1,1 @@
-export { useToolPointerHandlers } from "kizkatt-graphic-engine";
+export { useToolPointerHandlers } from "./useToolPointerHandlers";

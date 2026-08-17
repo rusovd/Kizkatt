@@ -10,7 +10,7 @@ import type {
   SelectionTransformMode,
   StyleState,
   Tool
-} from "../../model/types";
+} from "kizkatt-graphic-engine";
 
 export type UseToolPointerHandlersArgs = {
   canvasState: CanvasState;

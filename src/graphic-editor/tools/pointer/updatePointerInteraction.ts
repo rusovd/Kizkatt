@@ -10,14 +10,14 @@ import {
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,
   skewElementsFromSelectionHandle
-} from "../../geometry";
+} from "kizkatt-graphic-engine";
 import {
   MIN_CREATE_DRAG_DISTANCE,
   MIN_SELECT_DRAG_DISTANCE,
   SINGLE_SELECTION_COUNT
-} from "../../config/constants";
-import type { Interaction } from "../../model/types";
-import { getIdSet } from "../../model/collections";
+} from "kizkatt-graphic-engine";
+import type { Interaction } from "kizkatt-graphic-engine";
+import { getIdSet } from "kizkatt-graphic-engine";
 import type { PointerHandlerContext } from "./types";
 
 export function updatePointerInteraction(

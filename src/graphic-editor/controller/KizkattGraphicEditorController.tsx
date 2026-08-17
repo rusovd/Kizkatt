@@ -50,20 +50,20 @@ import {
   TRANSPARENT_COLOR,
   VIEWPORT_CENTER_DIVISOR,
   ZOOM_STEP
-} from "../config/constants";
+} from "kizkatt-graphic-engine";
 import {
   createElement,
   withUpdatedObjectBase
-} from "../model/element";
+} from "kizkatt-graphic-engine";
 import {
   createElementName as buildElementName,
   normalizeElementNames
-} from "../model/naming";
+} from "kizkatt-graphic-engine";
 import {
   canGroupSelection,
   canUngroupSelection,
   expandElementIdsToGroups
-} from "../model/groups";
+} from "kizkatt-graphic-engine";
 import {
   getElementBends,
   getElementIndicesInBounds,
@@ -72,7 +72,7 @@ import {
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,
   selectionBounds
-} from "../geometry";
+} from "kizkatt-graphic-engine";
 import {
   isAllowedEditingShortcut,
   isEditableKeyboardTarget,
@@ -111,7 +111,7 @@ import type {
   StyleState,
   KizkattTheme,
   Tool
-} from "../model/types";
+} from "kizkatt-graphic-engine";
 import {
   copySelectionAsPng,
   copySelectionAsSvg
@@ -123,7 +123,7 @@ import {
   isExpectedCopiedPngSize,
   type CopiedPngExport,
   type Size
-} from "../import/imageSizing";
+} from "kizkatt-graphic-engine";
 import {
   getImagePlacementBounds,
   ImagePlacementPreview,
@@ -137,8 +137,8 @@ import {
 import {
   isBreakApartableSvgElement,
   parseSvgCode
-} from "../svg/parsing";
-import { breakApartSvgElement } from "../svg/import";
+} from "kizkatt-graphic-engine";
+import { breakApartSvgElement } from "kizkatt-graphic-engine";
 import type {
   KizkattGraphicEditorControllerProps,
   KizkattRenderElementOptions,
