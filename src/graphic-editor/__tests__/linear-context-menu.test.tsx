@@ -1,9 +1,9 @@
 import { describe, it } from "vitest";
 import {
   formatKeyboardShortcut,
-  isPrimaryShortcutModifierPressed,
-  storeCanvasState
-} from "kizkatt-graphic-engine";
+  isPrimaryShortcutModifierPressed
+} from "../platform/keyboard";
+import { storeCanvasState } from "../platform/storage";
 import {
   chooseGroupedTool,
   KizkattGraphicEditor,

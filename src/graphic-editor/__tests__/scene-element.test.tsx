@@ -1,11 +1,9 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { SceneElement } from "../../../packages/kizkatt-graphic-engine/src/editor/SceneElement";
-import type {
-  KizkattElement,
-  KizkattRenderElementOptions
-} from "kizkatt-graphic-engine";
+import { SceneElement } from "../controller/SceneElement";
+import type { KizkattRenderElementOptions } from "../controller/types";
+import type { KizkattElement } from "kizkatt-graphic-engine";
 
 const rectangle: KizkattElement = {
   angle: 0,

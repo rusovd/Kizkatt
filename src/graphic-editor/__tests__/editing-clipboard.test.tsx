@@ -1,5 +1,5 @@
 import { describe, it } from "vitest";
-import { storeCanvasState } from "kizkatt-graphic-engine";
+import { storeCanvasState } from "../platform/storage";
 import {
   act,
   chooseGroupedTool,
