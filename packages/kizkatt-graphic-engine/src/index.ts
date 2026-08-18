@@ -1,3 +1,4 @@
+export * from "./assets/engineIcon";
 export * from "./config/constants";
 export * from "./export/exportBounds";
 export * from "./export/svgExport";
