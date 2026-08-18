@@ -19,13 +19,14 @@ export function serializeSvg(
   options: SvgSerializeOptions = {}
 ) {
   const clone = svg.cloneNode(true) as SVGSVGElement;
-  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.removeAttribute("xmlns");
   clone
     .querySelectorAll(
       [
         ".kizkatt-selection-overlay",
         ".kizkatt-line-overlay",
         ".kizkatt-multi-selection",
+        "[data-export-ignore]",
         "[data-element-overlay-id]"
       ].join(", ")
     )

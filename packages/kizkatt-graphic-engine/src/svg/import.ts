@@ -1378,6 +1378,44 @@ function createImportedLinearElement(
   });
 }
 
+function createImportedDrawElement(
+  root: SVGSVGElement,
+  group: Element,
+  sourceElement: KizkattElement,
+  viewBox: Bounds,
+  existingElements: KizkattElement[],
+  importedElements: KizkattElement[],
+  groupIdMap: Map<string, string>,
+  fallbackStyle: StyleState,
+  naming?: ElementNamingConfig
+) {
+  const path = Array.from(group.children).find(
+    (child) => child.tagName.toLowerCase() === "path"
+  );
+
+  if (!path) {
+    return null;
+  }
+
+  const importedElement = createImportedGenericPathElement(
+    root,
+    path,
+    sourceElement,
+    viewBox,
+    existingElements,
+    importedElements,
+    fallbackStyle,
+    naming
+  );
+
+  return importedElement
+    ? {
+        ...importedElement,
+        ...getImportedGroup(group, groupIdMap, createId)
+      }
+    : null;
+}
+
 function createImportedImageElement(
   group: Element,
   shape: Element,
@@ -1498,7 +1536,26 @@ export function breakApartSvgElement(
   groups.forEach((group) => {
     const type = getElementTypeFromSvgGroup(group);
 
-    if (!type || type === "draw") {
+    if (!type) {
+      return;
+    }
+
+    if (type === "draw") {
+      const importedDrawElement = createImportedDrawElement(
+        root,
+        group,
+        sourceElement,
+        viewBox,
+        existingElements,
+        importedElements,
+        groupIdMap,
+        fallbackStyle,
+        naming
+      );
+
+      if (importedDrawElement) {
+        importedElements.push(importedDrawElement);
+      }
       return;
     }
 

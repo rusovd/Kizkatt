@@ -229,6 +229,7 @@ export function parseSvgCode(svgCode: string) {
     : getFittedImageSize(rawWidth, rawHeight);
 
   return {
+    canvasBounds: isKizkattExport ? viewBoxSize : undefined,
     content: getSvgContent(root),
     size,
     useElementStyle: !isKizkattExport,
