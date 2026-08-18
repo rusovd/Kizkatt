@@ -42,22 +42,18 @@ export type ContextMenuSnappingDefault =
   | "snapToMidpoints"
   | "snapToObjects"
   | "toggleGrid";
-export type ContextMenuViewDefault = "viewMode" | "zenMode";
-
 export type ContextMenuDefaults = {
   copy: ContextMenuCopyDefault;
   paste: ContextMenuPasteDefault;
   selection: ContextMenuSelectionDefault;
   snapping: ContextMenuSnappingDefault;
-  view: ContextMenuViewDefault;
 };
 
 const DEFAULT_CONTEXT_MENU_DEFAULTS: ContextMenuDefaults = {
   copy: "selection",
   paste: "clipboard",
   selection: "intersect",
-  snapping: "toggleGrid",
-  view: "zenMode"
+  snapping: "toggleGrid"
 };
 
 const CONTEXT_MENU_DEFAULT_OPTIONS = {
@@ -70,8 +66,7 @@ const CONTEXT_MENU_DEFAULT_OPTIONS = {
     "snapToMidpoints",
     "snapToObjects",
     "toggleGrid"
-  ],
-  view: ["viewMode", "zenMode"]
+  ]
 } as const;
 
 function isTheme(value: unknown): value is KizkattTheme {
@@ -146,10 +141,7 @@ export function getStoredContextMenuDefaults(
         : DEFAULT_CONTEXT_MENU_DEFAULTS.selection,
       snapping: isValidContextMenuDefault("snapping", parsed.snapping)
         ? parsed.snapping
-        : DEFAULT_CONTEXT_MENU_DEFAULTS.snapping,
-      view: isValidContextMenuDefault("view", parsed.view)
-        ? parsed.view
-        : DEFAULT_CONTEXT_MENU_DEFAULTS.view
+        : DEFAULT_CONTEXT_MENU_DEFAULTS.snapping
     };
   } catch {
     return DEFAULT_CONTEXT_MENU_DEFAULTS;

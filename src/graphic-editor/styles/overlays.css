@@ -174,10 +174,49 @@
   pointer-events: none;
 }
 
-.kizkatt-transform-preview path {
+.kizkatt-transform-preview-contour {
   fill: none;
   stroke: var(--kizkatt-selection-strong);
   stroke-dasharray: 7 5;
+  stroke-linejoin: round;
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-board--wireframe .kizkatt-transform-preview-contour {
+  stroke: var(--kizkatt-wireframe-stroke);
+  stroke-dasharray: none;
+  stroke-width: 1;
+}
+
+.kizkatt-info-overlay {
+  pointer-events: none;
+  user-select: none;
+}
+
+.kizkatt-info-label rect {
+  fill: var(--kizkatt-info-bg);
+  stroke: var(--kizkatt-info-border);
+  stroke-width: 0.75;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-info-leader {
+  stroke: var(--kizkatt-info-border);
+  stroke-width: 0.75;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-info-anchor {
+  fill: var(--kizkatt-info-text);
+  stroke: var(--kizkatt-info-bg);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-info-label text {
+  fill: var(--kizkatt-info-text);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }

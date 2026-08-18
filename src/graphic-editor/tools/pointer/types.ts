@@ -49,7 +49,6 @@ export type UseToolPointerHandlersArgs = {
   style: StyleState;
   svgRef: RefObject<SVGSVGElement | null>;
   tool: Tool;
-  viewMode: boolean;
   zoom: number;
 };
 

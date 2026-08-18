@@ -8,6 +8,8 @@ export const ENGLISH_TRANSLATIONS = {
     canvasAriaLabel: "Drawing canvas",
     chooseImage: "Choose image",
     editText: "Edit text",
+    layer: "Layer",
+    layers: "Layers",
     loading: "Loading"
   },
   elementNames: {
@@ -44,8 +46,6 @@ export const ENGLISH_TRANSLATIONS = {
     toggleGrid: "Toggle grid",
     ungroup: "Ungroup",
     updateObjectBase: "Update object base",
-    viewMode: "View mode",
-    zenMode: "Zen mode",
     tooltips: {
       arrowBinding: "Toggle automatic arrow binding",
       breakApart: "Convert this SVG object back into separate objects",
@@ -65,9 +65,7 @@ export const ENGLISH_TRANSLATIONS = {
       snapToObjects: "Snap pointers to nearby objects",
       toggleGrid: "Show or hide the canvas grid",
       ungroup: "Ungroup the selected group",
-      updateObjectBase: "Save selected objects' current state as their base",
-      viewMode: "Toggle view-only mode",
-      zenMode: "Toggle zen mode"
+      updateObjectBase: "Save selected objects' current state as their base"
     }
   },
   footer: {
@@ -131,22 +129,30 @@ export const ENGLISH_TRANSLATIONS = {
   },
   settings: {
     disableAutohide: "Disable Autohide",
+    displayMode: "Display",
     enableAutohide: "Enable Autohide",
     editorSettings: "Editor settings",
     grid: "Grid",
     horizontalToolbar: "Horizontal toolbar",
+    infoMode: "Info mode",
+    previewMode: "Preview",
     stickPanels: "Stick panels",
     toolbarSettings: "Toolbar settings",
     unstickPanels: "Unstick panels",
     verticalToolbar: "Vertical toolbar",
+    wireframeMode: "Wireframe",
     tooltips: {
       autohideToolbar: "Turn toolbar autohide on or off",
+      displayMode: "Choose a canvas display mode",
       editorSettings: "Open editor settings",
       gridSettings: "Open grid settings",
+      infoMode: "Show object names and layer numbers",
       panelDragHandle: "Drag this panel",
       panelStickiness: "Turn panel dragging on or off",
+      previewMode: "Toggle preview mode",
       toolbarOrientation: "Switch toolbar orientation",
-      toolbarSettings: "Open toolbar settings"
+      toolbarSettings: "Open toolbar settings",
+      wireframeMode: "Toggle wireframe mode"
     }
   },
   theme: {

@@ -604,19 +604,19 @@ export const SnapIcon = createIcon(
   </g>
 );
 
-export const ViewModeIcon = createIcon(
+export const WireframeIcon = createIcon(
   <g strokeWidth="1.5">
-    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-    <circle cx="12" cy="12" r="2.5" />
+    <path d="M4 6.5 12 3l8 3.5v11L12 21l-8-3.5Z" />
+    <path d="m4 6.5 8 4 8-4M12 10.5V21M4 17.5l8-7 8 7.1" />
+    <circle cx="12" cy="10.5" r="1" fill="currentColor" stroke="none" />
   </g>
 );
 
-export const ZenIcon = createIcon(
+export const InfoIcon = createIcon(
   <g strokeWidth="1.5">
-    <path d="M5 7h14" />
-    <path d="M7 12h10" />
-    <path d="M9 17h6" />
-    <path d="M4 4l16 16" />
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 10.5v6" />
+    <path d="M12 7.5v.01" strokeWidth="2.2" />
   </g>
 );
 

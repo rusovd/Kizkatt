@@ -94,67 +94,12 @@ export function startPointerInteraction(
     setTool,
     style,
     tool,
-    updateInteraction,
-    viewMode
+    updateInteraction
   } = context;
   const target = getEventTargetElement(event);
   const worldPoint = getPointerWorldPoint(event);
 
   closeContextMenu();
-
-  if (viewMode) {
-    if (tool === "hand") {
-      updateInteraction({
-        type: "pan",
-        hasMoved: false,
-        startedOnEmptyCanvas: !findElementAtPoint(
-          canvasState.elements,
-          worldPoint
-        ),
-        start: getClientPoint(event),
-        originalPan: pan
-      });
-      return;
-    }
-
-    if (isSelectionTool(tool)) {
-      const hitElement = findElementAtPoint(canvasState.elements, worldPoint);
-
-      if (hitElement) {
-        const selectionMode = event.shiftKey
-          ? "add"
-          : event.ctrlKey
-          ? "remove"
-          : "replace";
-        const selectedIds = getNextSelectedIdsForHit(
-          canvasState.elements,
-          canvasState.selectedIds,
-          hitElement.id,
-          selectionMode
-        );
-
-        replaceActiveState({
-          ...canvasState,
-          selectedBend: undefined,
-          selectedIds
-        });
-        return;
-      }
-
-      replaceActiveState({
-        ...canvasState,
-        selectedBend: undefined,
-        selectedIds: []
-      });
-      updateInteraction({
-        type: "selectArea",
-        current: worldPoint,
-        origin: worldPoint
-      });
-    }
-
-    return;
-  }
 
   const linearEndpointTarget = getHandleTarget(target, "linear-endpoint");
   if (linearEndpointTarget) {

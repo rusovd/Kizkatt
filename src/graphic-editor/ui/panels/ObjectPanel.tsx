@@ -587,7 +587,7 @@ export function ObjectPanel({
             </IconButton>
           ))}
         </div>
-        <div className="kizkatt-object-panel-group">
+        <div className="kizkatt-object-panel-group kizkatt-object-panel-stack">
           <ObjectSelectField
             className="kizkatt-object-select-field--stroke-style"
             icon={STROKE_STYLE_ICONS[strokeStyle]}
@@ -597,22 +597,22 @@ export function ObjectPanel({
             options={strokeStyleOptions}
             onChange={(value) => updateStyle({ strokeStyle: value })}
           />
+          <StrokeWidthField
+            label={strings.objectPanel.strokeWidth}
+            title={strings.objectPanel.tooltips.strokeWidth}
+            step={OBJECT_PANEL_UI_SETTINGS.positionStep}
+            suffix={unit}
+            value={formatNumber(toDisplayUnit(strokeWidth), precision)}
+            presetLabel={strings.objectPanel.strokeWidthPresetSelect}
+            presetOptions={strokeWidthPresetOptions}
+            onChange={updateStrokeWidth}
+            onCommit={onStyleChangeEnd}
+            onPresetSelect={(value) => {
+              updateStrokeWidth(value);
+              onStyleChangeEnd();
+            }}
+          />
         </div>
-        <StrokeWidthField
-          label={strings.objectPanel.strokeWidth}
-          title={strings.objectPanel.tooltips.strokeWidth}
-          step={OBJECT_PANEL_UI_SETTINGS.positionStep}
-          suffix={unit}
-          value={formatNumber(toDisplayUnit(strokeWidth), precision)}
-          presetLabel={strings.objectPanel.strokeWidthPresetSelect}
-          presetOptions={strokeWidthPresetOptions}
-          onChange={updateStrokeWidth}
-          onCommit={onStyleChangeEnd}
-          onPresetSelect={(value) => {
-            updateStrokeWidth(value);
-            onStyleChangeEnd();
-          }}
-        />
       </div>
     </DraggablePanel>
   );

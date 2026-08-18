@@ -19,12 +19,18 @@ import {
   getCalibratedMillimetersWorldSize,
   getDefaultGridSettings
 } from "../../geometry";
-import type { GridSettings, GridUnit, KizkattTheme } from "../../model/types";
+import type {
+  EditorDisplayMode,
+  GridSettings,
+  GridUnit,
+  KizkattTheme
+} from "../../model/types";
 import { useI18n } from "../../i18n";
 import {
   ChevronRightIcon,
   EyeIcon,
   GridIcon,
+  InfoIcon,
   LayoutHorizontalIcon,
   LayoutVerticalIcon,
   PinIcon,
@@ -32,8 +38,7 @@ import {
   SettingsIcon,
   SnapIcon,
   UndoIcon,
-  ViewModeIcon,
-  ZenIcon
+  WireframeIcon
 } from "../icons";
 import {
   closeOtherFloatingPanels,
@@ -47,18 +52,20 @@ import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 const FOOTER_SETTINGS_PANEL_SOURCE = "footer-settings";
 
 type FooterControlsProps = {
+  activeDisplayMode: EditorDisplayMode | null;
   canRedo: boolean;
   canUndo: boolean;
   canUseGrid: boolean;
   gridColor: string;
   gridSettings: GridSettings;
+  infoMode: boolean;
   onGridColorChange: (color: string) => void;
   onGridSettingsChange: (settings: GridSettings) => void;
   onRedo: () => void;
   onToggleGrid: () => void;
   onToggleSnapToGrid: () => void;
-  onToggleViewMode: () => void;
-  onToggleZenMode: () => void;
+  onToggleDisplayMode: (mode: EditorDisplayMode) => void;
+  onToggleInfoMode: () => void;
   onUiScaleChange: (scale: number) => void;
   onUndo: () => void;
   onZoomIn: () => void;
@@ -67,8 +74,6 @@ type FooterControlsProps = {
   snapToGrid: boolean;
   theme: KizkattTheme;
   uiScale: number;
-  viewMode: boolean;
-  zenMode: boolean;
   zoom: number;
 };
 
@@ -218,45 +223,46 @@ function GridNumberInput({
 }
 
 function EditorSettingsMenu({
+  activeDisplayMode,
   canUseGrid,
   gridColor,
   gridSettings,
+  infoMode,
   onGridColorChange,
   onGridSettingsChange,
   onToggleGrid,
   onToggleSnapToGrid,
-  onToggleViewMode,
-  onToggleZenMode,
+  onToggleDisplayMode,
+  onToggleInfoMode,
   onUiScaleChange,
   onRequestClose,
   showGrid,
   snapToGrid,
   theme,
-  uiScale,
-  viewMode,
-  zenMode
+  uiScale
 }: Pick<
   FooterControlsProps,
+  | "activeDisplayMode"
   | "canUseGrid"
   | "gridColor"
   | "gridSettings"
+  | "infoMode"
   | "onGridColorChange"
   | "onGridSettingsChange"
   | "onToggleGrid"
   | "onToggleSnapToGrid"
-  | "onToggleViewMode"
-  | "onToggleZenMode"
+  | "onToggleDisplayMode"
+  | "onToggleInfoMode"
   | "onUiScaleChange"
   | "showGrid"
   | "snapToGrid"
   | "theme"
   | "uiScale"
-  | "viewMode"
-  | "zenMode"
 > & {
   onRequestClose: () => void;
 }) {
-  const [openSubmenu, setOpenSubmenu] = useState<"grid" | "view" | null>(null);
+  const [openSubmenu, setOpenSubmenu] =
+    useState<"display" | "grid" | null>(null);
   const {
     autohideToolbar,
     dragEnabled,
@@ -296,7 +302,7 @@ function EditorSettingsMenu({
       metricScale: gridSettings.metricScale
     });
   };
-  const openSettingsSubmenu = (submenu: "grid" | "view") => {
+  const openSettingsSubmenu = (submenu: "display" | "grid") => {
     setOpenSubmenu(submenu);
   };
 
@@ -556,34 +562,45 @@ function EditorSettingsMenu({
       </div>
       <div className="kizkatt-settings-submenu-row">
         <SettingsSubmenuButton
-          icon={ViewModeIcon}
-          open={openSubmenu === "view"}
-          title={strings.contextMenu.tooltips.viewMode}
-          onOpen={() => openSettingsSubmenu("view")}
+          icon={EyeIcon}
+          open={openSubmenu === "display"}
+          title={strings.settings.tooltips.displayMode}
+          onOpen={() => openSettingsSubmenu("display")}
         >
-          {strings.contextMenu.viewMode}
+          {strings.settings.displayMode}
         </SettingsSubmenuButton>
-        {openSubmenu === "view" && (
+        {openSubmenu === "display" && (
           <div className="kizkatt-footer-settings-submenu" role="menu">
             <SettingsCheckButton
-              checked={viewMode}
+              checked={activeDisplayMode === "preview"}
               closeOnClick={false}
-              icon={ViewModeIcon}
-              title={strings.contextMenu.tooltips.viewMode}
+              icon={EyeIcon}
+              title={strings.settings.tooltips.previewMode}
               onRequestClose={onRequestClose}
-              onClick={onToggleViewMode}
+              onClick={() => onToggleDisplayMode("preview")}
             >
-              {strings.contextMenu.viewMode}
+              {strings.settings.previewMode}
             </SettingsCheckButton>
             <SettingsCheckButton
-              checked={zenMode}
+              checked={activeDisplayMode === "wireframe"}
               closeOnClick={false}
-              icon={ZenIcon}
-              title={strings.contextMenu.tooltips.zenMode}
+              icon={WireframeIcon}
+              title={strings.settings.tooltips.wireframeMode}
               onRequestClose={onRequestClose}
-              onClick={onToggleZenMode}
+              onClick={() => onToggleDisplayMode("wireframe")}
             >
-              {strings.contextMenu.zenMode}
+              {strings.settings.wireframeMode}
+            </SettingsCheckButton>
+            <div className="kizkatt-menu-divider" />
+            <SettingsCheckButton
+              checked={infoMode}
+              closeOnClick={false}
+              icon={InfoIcon}
+              title={strings.settings.tooltips.infoMode}
+              onRequestClose={onRequestClose}
+              onClick={onToggleInfoMode}
+            >
+              {strings.settings.infoMode}
             </SettingsCheckButton>
           </div>
         )}
@@ -610,18 +627,20 @@ function EditorSettingsMenu({
 }
 
 export function FooterControls({
+  activeDisplayMode,
   canRedo,
   canUndo,
   canUseGrid,
   gridColor,
   gridSettings,
+  infoMode,
   onGridColorChange,
   onGridSettingsChange,
   onRedo,
   onToggleGrid,
   onToggleSnapToGrid,
-  onToggleViewMode,
-  onToggleZenMode,
+  onToggleDisplayMode,
+  onToggleInfoMode,
   onUiScaleChange,
   onUndo,
   onZoomIn,
@@ -630,8 +649,6 @@ export function FooterControls({
   snapToGrid,
   theme,
   uiScale,
-  viewMode,
-  zenMode,
   zoom
 }: FooterControlsProps) {
   const { strings } = useI18n();
@@ -762,23 +779,23 @@ export function FooterControls({
         </button>
         {settingsOpen && (
           <EditorSettingsMenu
+            activeDisplayMode={activeDisplayMode}
             canUseGrid={canUseGrid}
             gridColor={gridColor}
             gridSettings={gridSettings}
+            infoMode={infoMode}
             onGridColorChange={onGridColorChange}
             onGridSettingsChange={onGridSettingsChange}
             onToggleGrid={onToggleGrid}
             onToggleSnapToGrid={onToggleSnapToGrid}
-            onToggleViewMode={onToggleViewMode}
-            onToggleZenMode={onToggleZenMode}
+            onToggleDisplayMode={onToggleDisplayMode}
+            onToggleInfoMode={onToggleInfoMode}
             onUiScaleChange={onUiScaleChange}
             onRequestClose={closeSettings}
             showGrid={showGrid}
             snapToGrid={snapToGrid}
             theme={theme}
             uiScale={uiScale}
-            viewMode={viewMode}
-            zenMode={zenMode}
           />
         )}
       </div>

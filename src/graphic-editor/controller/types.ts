@@ -23,6 +23,12 @@ import type {
   StyleState,
   Tool
 } from "kizkatt-graphic-engine";
+import type {
+  EditorDisplayMode,
+  ElementInfoOverlayItem
+} from "../model/types";
+
+export type { EditorDisplayMode } from "../model/types";
 
 export type KizkattRenderElementOptions = {
   linearEndpointMode?: "node" | "resize";
@@ -34,6 +40,7 @@ export type KizkattRenderElementOptions = {
   showRotateHoverIcon?: boolean;
   showRotateHandle?: boolean;
   showSelectionBounds?: boolean;
+  wireframe?: boolean;
 };
 
 export type ToolControls = {
@@ -70,12 +77,13 @@ export type EditorCommandControls = {
   setSnapToObjects: (updater: (value: boolean) => boolean) => void;
   snapToMidpoints: boolean;
   snapToObjects: boolean;
-  viewMode: boolean;
 };
 
 export type DocumentControls = {
+  activeDisplayMode: EditorDisplayMode | null;
   canvasBackgroundColor: string;
   customCanvasBackgroundColor: string;
+  lastDisplayMode: EditorDisplayMode;
   menuOpen: boolean;
   onCanvasBackgroundChange: (color: string) => void;
   onExport: () => void;
@@ -84,6 +92,7 @@ export type DocumentControls = {
   onMenuOpenChange: (open: boolean) => void;
   onResetCanvas: () => void;
   onThemeChange: (theme: KizkattTheme) => void;
+  onToggleLastDisplayMode: () => void;
   theme: KizkattTheme;
 };
 
@@ -151,18 +160,20 @@ export type TextEditorProps = {
 };
 
 export type WorkspaceControls = {
+  activeDisplayMode: EditorDisplayMode | null;
   canUseGrid: boolean;
   canRedo: boolean;
   canUndo: boolean;
   gridColor: string;
   gridSettings: GridSettings;
+  infoMode: boolean;
   onRedo: () => void;
   onGridColorChange: (color: string) => void;
   onGridSettingsChange: (settings: GridSettings) => void;
   onToggleGrid: () => void;
   onToggleSnapToGrid: () => void;
-  onToggleViewMode: () => void;
-  onToggleZenMode: () => void;
+  onToggleDisplayMode: (mode: EditorDisplayMode) => void;
+  onToggleInfoMode: () => void;
   onUndo: () => void;
   onUiScaleChange: (scale: number) => void;
   onZoomIn: () => void;
@@ -171,8 +182,6 @@ export type WorkspaceControls = {
   snapToGrid: boolean;
   theme: KizkattTheme;
   uiScale: number;
-  viewMode: boolean;
-  zenMode: boolean;
   zoom: number;
 };
 
@@ -181,6 +190,10 @@ export type KizkattGraphicEditorCanvasComponents = {
     gridSettings: GridSettings;
     pan: Point;
     visible: boolean;
+    zoom: number;
+  }>;
+  InfoOverlay?: ComponentType<{
+    items: ElementInfoOverlayItem[];
     zoom: number;
   }>;
   SelectedBounds: ComponentType<{
@@ -210,12 +223,11 @@ export type KizkattGraphicEditorViewModel = {
   };
   selectionGeometryControls: ObjectPanelProps | null;
   state: {
+    activeDisplayMode: EditorDisplayMode | null;
     isLoading: boolean;
     menuOpen: boolean;
     theme: KizkattTheme;
     uiScale: number;
-    viewMode: boolean;
-    zenMode: boolean;
   };
   styleControls: StylePanelProps;
   textEditing: TextEditorProps | null;

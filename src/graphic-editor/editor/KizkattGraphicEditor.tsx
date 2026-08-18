@@ -49,6 +49,7 @@ import {
 import {
   CanvasGrid,
   getCanvasCursor,
+  InfoOverlay,
   SelectedBounds,
   SelectionArea,
   renderElement,
@@ -143,6 +144,7 @@ function AppObjectPanel(props: ObjectPanelProps) {
 
 const canvasComponents = {
   CanvasGrid,
+  InfoOverlay,
   SelectedBounds,
   SelectionArea
 };
@@ -166,14 +168,13 @@ function KizkattGraphicEditorView({
     toolControls,
     workspaceControls
   } = viewModel;
+  const previewMode = state.activeDisplayMode === "preview";
   const showObjectPanel =
-    !state.viewMode &&
-    !state.zenMode &&
+    !previewMode &&
     !state.menuOpen &&
     Boolean(selectionGeometryControls);
   const showStylePanel =
-    !state.viewMode &&
-    !state.zenMode &&
+    !previewMode &&
     !state.menuOpen &&
     (STYLE_TOOLS.has(styleControls.activeTool) ||
       (styleControls.selectedElements.length > EMPTY_COLLECTION_LENGTH &&
@@ -184,12 +185,20 @@ function KizkattGraphicEditorView({
     <section
       {...boardBindings}
       aria-label={strings.canvas.boardAriaLabel}
-      className={`kizkatt-board kizkatt-board--${state.theme}`}
+      className={[
+        "kizkatt-board",
+        `kizkatt-board--${state.theme}`,
+        state.activeDisplayMode
+          ? `kizkatt-board--${state.activeDisplayMode}`
+          : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
       aria-busy={state.isLoading}
       style={{ "--kizkatt-ui-scale": state.uiScale } as CSSProperties}
       tabIndex={CANVAS_TAB_INDEX}
     >
-      {!state.zenMode && <Toolbar {...toolControls} />}
+      {!previewMode && <Toolbar {...toolControls} />}
 
       <input
         {...imageInputBindings}

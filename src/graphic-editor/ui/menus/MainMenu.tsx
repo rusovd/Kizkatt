@@ -1,7 +1,8 @@
 import { CANVAS_BACKGROUNDS_BY_THEME } from "../../config/constants";
 import { formatKeyboardShortcut } from "../../platform/keyboard";
-import type { KizkattTheme } from "../../model/types";
+import type { EditorDisplayMode, KizkattTheme } from "../../model/types";
 import {
+  EyeIcon,
   ExportIcon,
   EyedropperIcon,
   HamburgerMenuIcon,
@@ -9,14 +10,17 @@ import {
   MoonIcon,
   OpenIcon,
   ResetIcon,
-  SunIcon
+  SunIcon,
+  WireframeIcon
 } from "../icons";
 import { SUPPORTED_LOCALES, useI18n, type Locale } from "../../i18n";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 
 export function MainMenu({
+  activeDisplayMode,
   canvasBackgroundColor,
   customCanvasBackgroundColor,
+  lastDisplayMode,
   menuOpen,
   onCanvasBackgroundChange,
   onExport,
@@ -25,10 +29,13 @@ export function MainMenu({
   onMenuOpenChange,
   onResetCanvas,
   onThemeChange,
+  onToggleLastDisplayMode,
   theme
 }: {
+  activeDisplayMode: EditorDisplayMode | null;
   canvasBackgroundColor: string;
   customCanvasBackgroundColor: string;
+  lastDisplayMode: EditorDisplayMode;
   menuOpen: boolean;
   onCanvasBackgroundChange: (color: string) => void;
   onExport: () => void;
@@ -37,11 +44,20 @@ export function MainMenu({
   onMenuOpenChange: (open: boolean) => void;
   onResetCanvas: () => void;
   onThemeChange: (theme: KizkattTheme) => void;
+  onToggleLastDisplayMode: () => void;
   theme: KizkattTheme;
 }) {
   const { autohideToolbar, setAutohideToolbar } = useGraphicEditorSettings();
   const { locale, setLocale, strings } = useI18n();
   const canvasBackgrounds = CANVAS_BACKGROUNDS_BY_THEME[theme];
+  const lastDisplayModeLabel =
+    lastDisplayMode === "preview"
+      ? strings.settings.previewMode
+      : strings.settings.wireframeMode;
+  const lastDisplayModeTooltip =
+    lastDisplayMode === "preview"
+      ? strings.settings.tooltips.previewMode
+      : strings.settings.tooltips.wireframeMode;
   const runMenuAction = (action: () => void) => {
     action();
     onMenuOpenChange(false);
@@ -49,6 +65,16 @@ export function MainMenu({
 
   return (
     <div className="kizkatt-main-menu-anchor">
+      <button
+        type="button"
+        className="kizkatt-display-mode-shortcut"
+        aria-label={lastDisplayModeLabel}
+        aria-pressed={activeDisplayMode === lastDisplayMode}
+        title={lastDisplayModeTooltip}
+        onClick={onToggleLastDisplayMode}
+      >
+        {lastDisplayMode === "preview" ? EyeIcon : WireframeIcon}
+      </button>
       <button
         type="button"
         className="kizkatt-menu-button"

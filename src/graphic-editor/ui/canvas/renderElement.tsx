@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import {
   getElementBends,
@@ -10,12 +10,15 @@ import {
 import { canElementUseBackground, isElementPathClosed } from "../../model/element";
 import type { KizkattElement } from "../../model/types";
 import {
-  ARROW_MARKER_HEIGHT,
   ARROW_MARKER_PATH,
   ARROW_MARKER_REF_Y,
-  ARROW_MARKER_WIDTH,
   PERCENT_MAX_VALUE
 } from "../../config/constants";
+import {
+  getArrowheadGeometry,
+  shortenLinePoints,
+  type ArrowheadGeometry
+} from "./arrowheadGeometry";
 import { ElementGroup } from "./ElementGroup";
 import {
   ElementOverlay,
@@ -105,6 +108,9 @@ import {
   ZERO_COORDINATE
 } from "./renderingConstants";
 import type { RenderElementOptions } from "./types";
+
+const WIREFRAME_STROKE = "var(--kizkatt-wireframe-stroke)";
+const WIREFRAME_STROKE_WIDTH = 1;
 
 function hashElementId(id: string) {
   return id.split("").reduce((hash, character) => {
@@ -215,125 +221,6 @@ function DecorativeStroke({
       {...getPrimaryShapeProps(element)}
     />
   );
-}
-
-type ArrowheadGeometry = {
-  angle: number;
-  base: { x: number; y: number };
-  end: { x: number; y: number };
-  length: number;
-  scaleX: number;
-  scaleY: number;
-};
-
-function getLinePointsLength(
-  linePoints: Array<{ x: number; y: number }>
-) {
-  return linePoints.slice(1).reduce((length, point, index) => {
-    const previous = linePoints[index];
-
-    return length + Math.hypot(
-      point.x - previous.x,
-      point.y - previous.y
-    );
-  }, 0);
-}
-
-function getArrowheadGeometry(
-  element: KizkattElement,
-  linePoints: Array<{ x: number; y: number }>
-): ArrowheadGeometry | null {
-  if (element.type !== "arrow" || element.strokeWidth <= 0) {
-    return null;
-  }
-
-  const end = linePoints[linePoints.length - 1];
-
-  if (!end) {
-    return null;
-  }
-
-  let tangentStart: { x: number; y: number } | undefined;
-
-  for (let index = linePoints.length - 2; index >= 0; index -= 1) {
-    const point = linePoints[index];
-
-    if (Math.hypot(end.x - point.x, end.y - point.y) > Number.EPSILON) {
-      tangentStart = point;
-      break;
-    }
-  }
-
-  if (!tangentStart) {
-    return null;
-  }
-
-  const deltaX = end.x - tangentStart.x;
-  const deltaY = end.y - tangentStart.y;
-  const tangentLength = Math.hypot(deltaX, deltaY);
-  const strokeWidth = Math.max(
-    MIN_RENDERED_STROKE_WIDTH,
-    element.strokeWidth
-  );
-  const markerCoordinateSize = ARROW_MARKER_REF_Y * 2;
-  const logarithmicSizeFactor = 1 + Math.log(strokeWidth);
-  const desiredLength = ARROW_MARKER_WIDTH * logarithmicSizeFactor;
-  const lineLength = getLinePointsLength(linePoints);
-  const length = Math.min(
-    desiredLength,
-    lineLength * 0.75,
-    tangentLength
-  );
-  const scaleX = length / markerCoordinateSize;
-  const scaleY =
-    (ARROW_MARKER_HEIGHT / ARROW_MARKER_WIDTH) * scaleX;
-  const unitX = deltaX / tangentLength;
-  const unitY = deltaY / tangentLength;
-
-  return {
-    angle: Math.atan2(deltaY, deltaX) * (180 / Math.PI),
-    base: {
-      x: end.x - unitX * length,
-      y: end.y - unitY * length
-    },
-    end,
-    length,
-    scaleX,
-    scaleY
-  };
-}
-
-function shortenLinePoints(
-  linePoints: Array<{ x: number; y: number }>,
-  length: number
-) {
-  let remaining = length;
-
-  for (let index = linePoints.length - 1; index > 0; index -= 1) {
-    const start = linePoints[index - 1];
-    const end = linePoints[index];
-    const segmentLength = Math.hypot(end.x - start.x, end.y - start.y);
-
-    if (segmentLength <= Number.EPSILON) {
-      continue;
-    }
-
-    if (remaining < segmentLength) {
-      const retainedRatio = (segmentLength - remaining) / segmentLength;
-
-      return [
-        ...linePoints.slice(0, index),
-        {
-          x: start.x + (end.x - start.x) * retainedRatio,
-          y: start.y + (end.y - start.y) * retainedRatio
-        }
-      ];
-    }
-
-    remaining -= segmentLength;
-  }
-
-  return linePoints.slice(0, 1);
 }
 
 function Arrowhead({
@@ -475,7 +362,13 @@ function getInlineSvgFill(element: KizkattElement) {
     : getElementFill(element);
 }
 
-function InlineSvgObject({ element }: { element: KizkattElement }) {
+function InlineSvgObject({
+  element,
+  wireframe = false
+}: {
+  element: KizkattElement;
+  wireframe?: boolean;
+}) {
   const fill = getInlineSvgFill(element);
   const shapeProps = getElementShapeProps(element);
   const useElementStyle = element.svgUseElementStyle ?? true;
@@ -491,21 +384,22 @@ function InlineSvgObject({ element }: { element: KizkattElement }) {
     <svg
       className={[
         "kizkatt-inline-svg-object",
+        wireframe ? "is-wireframe" : "",
         useElementStyle ? "is-style-editing" : "",
         element.backgroundColor === TRANSPARENT_COLOR ? "" : "is-fill-editing"
       ]
         .filter(Boolean)
         .join(" ")}
-      color={element.strokeColor}
-      fill={fill}
+      color={wireframe ? WIREFRAME_STROKE : element.strokeColor}
+      fill={wireframe ? SVG_FILL_NONE : fill}
       height={element.height}
-      opacity={element.opacity / PERCENT_MAX_VALUE}
+      opacity={wireframe ? 1 : element.opacity / PERCENT_MAX_VALUE}
       preserveAspectRatio="xMidYMid meet"
-      stroke={element.strokeColor}
-      strokeDasharray={shapeProps.strokeDasharray}
+      stroke={wireframe ? WIREFRAME_STROKE : element.strokeColor}
+      strokeDasharray={wireframe ? undefined : shapeProps.strokeDasharray}
       strokeLinecap={shapeProps.strokeLinecap}
       strokeLinejoin={shapeProps.strokeLinejoin}
-      strokeWidth={element.strokeWidth}
+      strokeWidth={wireframe ? 1 : element.strokeWidth}
       style={style}
       viewBox={element.svgViewBox ?? `0 0 ${element.width} ${element.height}`}
       width={element.width}
@@ -917,11 +811,171 @@ export function renderElementOverlay(
   );
 }
 
+function WireframeArrowhead({ geometry }: { geometry: ArrowheadGeometry | null }) {
+  if (!geometry) {
+    return null;
+  }
+
+  const markerCoordinateSize = ARROW_MARKER_REF_Y * 2;
+
+  return (
+    <path
+      data-wireframe-arrowhead="true"
+      d={ARROW_MARKER_PATH}
+      fill={SVG_FILL_NONE}
+      stroke={WIREFRAME_STROKE}
+      strokeWidth={WIREFRAME_STROKE_WIDTH}
+      vectorEffect="non-scaling-stroke"
+      pointerEvents={SVG_POINTER_EVENTS_NONE}
+      transform={`translate(${geometry.end.x} ${geometry.end.y}) rotate(${geometry.angle}) scale(${geometry.scaleX} ${geometry.scaleY}) translate(${-markerCoordinateSize} ${-ARROW_MARKER_REF_Y})`}
+    />
+  );
+}
+
+function WireframeElement({
+  element,
+  options,
+  selected
+}: {
+  element: KizkattElement;
+  options: RenderElementOptions;
+  selected: boolean;
+}) {
+  const shapeProps = {
+    fill: SVG_FILL_NONE,
+    stroke: WIREFRAME_STROKE,
+    strokeDasharray: undefined,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    strokeWidth: WIREFRAME_STROKE_WIDTH,
+    vectorEffect: "non-scaling-stroke" as const
+  };
+  let shape: ReactNode;
+
+  if (element.type === "image") {
+    shape = element.svgContent ? (
+      <InlineSvgObject element={element} wireframe />
+    ) : (
+      <>
+        <rect
+          x={element.x}
+          y={element.y}
+          width={element.width}
+          height={element.height}
+          {...shapeProps}
+        />
+        <line
+          x1={element.x}
+          y1={element.y}
+          x2={element.x + element.width}
+          y2={element.y + element.height}
+          {...shapeProps}
+        />
+        <line
+          x1={element.x + element.width}
+          y1={element.y}
+          x2={element.x}
+          y2={element.y + element.height}
+          {...shapeProps}
+        />
+      </>
+    );
+  } else if (element.type === "rectangle") {
+    shape = (
+      <rect
+        x={element.x}
+        y={element.y}
+        width={element.width}
+        height={element.height}
+        {...shapeProps}
+      />
+    );
+  } else if (element.type === "diamond") {
+    const center = getElementCenter(element);
+    const points = [
+      `${center.x}${SVG_COORDINATE_SEPARATOR}${element.y}`,
+      `${element.x + element.width}${SVG_COORDINATE_SEPARATOR}${center.y}`,
+      `${center.x}${SVG_COORDINATE_SEPARATOR}${element.y + element.height}`,
+      `${element.x}${SVG_COORDINATE_SEPARATOR}${center.y}`
+    ].join(SVG_COMMAND_SEPARATOR);
+
+    shape = <polygon points={points} {...shapeProps} />;
+  } else if (element.type === "ellipse") {
+    shape = (
+      <ellipse
+        cx={element.x + element.width / HALF_DIVISOR}
+        cy={element.y + element.height / HALF_DIVISOR}
+        rx={Math.abs(element.width / HALF_DIVISOR)}
+        ry={Math.abs(element.height / HALF_DIVISOR)}
+        {...shapeProps}
+      />
+    );
+  } else if (element.type === "line" || element.type === "arrow") {
+    const linePoints = getLinearElementPoints(element, getElementBends(element));
+    const arrowheadGeometry = getArrowheadGeometry(
+      { ...element, strokeWidth: WIREFRAME_STROKE_WIDTH },
+      linePoints
+    );
+    const renderedLinePoints = arrowheadGeometry
+      ? shortenLinePoints(linePoints, arrowheadGeometry.length)
+      : linePoints;
+    const canUseFill = canElementUseBackground(element);
+    const pathData = getLinearElementPath(renderedLinePoints, element.edgeStyle);
+
+    shape = (
+      <>
+        <path
+          d={`${pathData}${canUseFill ? SVG_PATH_CLOSE_COMMAND : ""}`}
+          {...shapeProps}
+        />
+        <WireframeArrowhead geometry={arrowheadGeometry} />
+      </>
+    );
+  } else if (element.type === "draw") {
+    const pathData = getFreehandPath(element);
+
+    shape = (
+      <path
+        d={`${pathData}${isElementPathClosed(element) ? SVG_PATH_CLOSE_COMMAND : ""}`}
+        {...shapeProps}
+      />
+    );
+  } else {
+    shape = (
+      <text
+        x={element.x}
+        y={element.y + TEXT_BASELINE_OFFSET}
+        className="kizkatt-text"
+        fill={WIREFRAME_STROKE}
+      >
+        {element.text}
+      </text>
+    );
+  }
+
+  return (
+    <ElementGroup element={element}>
+      <g data-wireframe-element="true">{shape}</g>
+      {selected && <SelectedElementOverlay element={element} options={options} />}
+    </ElementGroup>
+  );
+}
+
 export function renderElement(
   element: KizkattElement,
   selected: boolean,
   options: RenderElementOptions = {}
 ) {
+  if (options.wireframe) {
+    return (
+      <WireframeElement
+        element={element}
+        options={options}
+        selected={selected}
+      />
+    );
+  }
+
   const commonProps = getPrimaryBaseShapeProps(element);
   const edgeRadius =
     (element.edgeStyle ?? SVG_LINECAP_ROUND) === SVG_LINECAP_ROUND

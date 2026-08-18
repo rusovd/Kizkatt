@@ -42,7 +42,8 @@ function isSameRenderOptions(
     first.showLinearBendHandles === second.showLinearBendHandles &&
     first.showRotateHoverIcon === second.showRotateHoverIcon &&
     first.showRotateHandle === second.showRotateHandle &&
-    first.showSelectionBounds === second.showSelectionBounds
+    first.showSelectionBounds === second.showSelectionBounds &&
+    first.wireframe === second.wireframe
   );
 }
 

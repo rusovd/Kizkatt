@@ -84,6 +84,8 @@
 
 .kizkatt-main-menu-anchor {
   position: absolute;
+  display: flex;
+  gap: 6px;
   top: 12px;
   right: 12px;
   z-index: 6;
@@ -173,7 +175,8 @@
 .kizkatt-main-menu button,
 .kizkatt-swatches button,
 .kizkatt-segmented button,
-.kizkatt-menu-button {
+.kizkatt-menu-button,
+.kizkatt-display-mode-shortcut {
   box-sizing: border-box;
   border: 0;
   color: inherit;
@@ -333,7 +336,8 @@
   font-size: 10px;
 }
 
-.kizkatt-menu-button {
+.kizkatt-menu-button,
+.kizkatt-display-mode-shortcut {
   display: grid;
   width: 38px;
   height: 38px;
@@ -346,8 +350,14 @@
   cursor: pointer;
 }
 
-.kizkatt-menu-button:hover {
+.kizkatt-menu-button:hover,
+.kizkatt-display-mode-shortcut:hover,
+.kizkatt-display-mode-shortcut[aria-pressed="true"] {
   background: var(--kizkatt-control-bg-hover);
+}
+
+.kizkatt-display-mode-shortcut[aria-pressed="true"] {
+  color: var(--kizkatt-accent);
 }
 
 .kizkatt-tool-icon {

@@ -10,4 +10,5 @@ export type RenderElementOptions = {
   showRotateHoverIcon?: boolean;
   showRotateHandle?: boolean;
   showSelectionBounds?: boolean;
+  wireframe?: boolean;
 };

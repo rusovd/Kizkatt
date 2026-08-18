@@ -62,7 +62,6 @@ type CanvasContextMenuProps = {
   setSnapToObjects: (updater: (value: boolean) => boolean) => void;
   snapToMidpoints: boolean;
   snapToObjects: boolean;
-  viewMode: boolean;
 };
 
 type MenuRole = "menuitem" | "menuitemcheckbox" | "menuitemradio";
@@ -269,8 +268,7 @@ export function CanvasContextMenu({
   setSnapToMidpoints,
   setSnapToObjects,
   snapToMidpoints,
-  snapToObjects,
-  viewMode
+  snapToObjects
 }: CanvasContextMenuProps) {
   const [openSubmenu, setOpenSubmenu] = useState<SubmenuId | null>(null);
   const [menuDefaults, setMenuDefaults] = useState(
@@ -439,33 +437,29 @@ export function CanvasContextMenu({
         {strings.contextMenu.refreshPage}
       </MenuButton>
       <div className="kizkatt-context-divider" />
-      {!viewMode && (
-        <>
-          <SubmenuMenuItem
-            openSubmenu={openSubmenu}
-            primaryAction={pastePrimaryAction}
-            setOpenSubmenu={setOpenSubmenu}
-            submenuId="paste"
-            onPrimaryClick={() => onCloseAndRun(pastePrimaryAction.run)}
+      <SubmenuMenuItem
+        openSubmenu={openSubmenu}
+        primaryAction={pastePrimaryAction}
+        setOpenSubmenu={setOpenSubmenu}
+        submenuId="paste"
+        onPrimaryClick={() => onCloseAndRun(pastePrimaryAction.run)}
+      >
+        {pasteActions.map((action) => (
+          <MenuButton
+            icon={action.icon}
+            key={action.id}
+            shortcut={action.shortcut}
+            title={action.title}
+            onClick={() => {
+              setMenuDefault("paste", action.id);
+              onCloseAndRun(action.run);
+            }}
           >
-            {pasteActions.map((action) => (
-              <MenuButton
-                icon={action.icon}
-                key={action.id}
-                shortcut={action.shortcut}
-                title={action.title}
-                onClick={() => {
-                  setMenuDefault("paste", action.id);
-                  onCloseAndRun(action.run);
-                }}
-              >
-                {action.label}
-              </MenuButton>
-            ))}
-          </SubmenuMenuItem>
-          <div className="kizkatt-context-divider" />
-        </>
-      )}
+            {action.label}
+          </MenuButton>
+        ))}
+      </SubmenuMenuItem>
+      <div className="kizkatt-context-divider" />
       <SubmenuMenuItem
         openSubmenu={openSubmenu}
         primaryAction={copyPrimaryAction}
@@ -521,7 +515,7 @@ export function CanvasContextMenu({
           </MenuButton>
         ))}
       </SubmenuMenuItem>
-      {!viewMode && (canGroup || canUngroup || canBreakApart) && (
+      {(canGroup || canUngroup || canBreakApart) && (
         <>
           <div className="kizkatt-context-divider" />
           {canBreakApart && (
@@ -553,7 +547,7 @@ export function CanvasContextMenu({
           )}
         </>
       )}
-      {!viewMode && (canUpdateObjectBase || canRevertObjectBase) && (
+      {(canUpdateObjectBase || canRevertObjectBase) && (
         <>
           <div className="kizkatt-context-divider" />
           <MenuButton

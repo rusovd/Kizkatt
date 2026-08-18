@@ -65,3 +65,17 @@
 .kizkatt-inline-svg-object.is-style-editing.is-fill-editing :not([fill]) {
   fill: var(--kizkatt-inline-svg-fill);
 }
+
+.kizkatt-inline-svg-object.is-wireframe :is(path, rect, circle, ellipse, polygon, polyline, line) {
+  fill: none !important;
+  filter: none !important;
+  stroke: var(--kizkatt-wireframe-stroke) !important;
+  stroke-dasharray: none !important;
+  stroke-width: 1 !important;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-inline-svg-object.is-wireframe text {
+  fill: var(--kizkatt-wireframe-stroke) !important;
+  stroke: none !important;
+}
