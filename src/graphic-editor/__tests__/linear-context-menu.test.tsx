@@ -46,8 +46,8 @@ function openGridSettings() {
   openEditorSettingsSubmenu("Grid");
 }
 
-function openViewSettings() {
-  openEditorSettingsSubmenu("View mode");
+function openDisplaySettings() {
+  openEditorSettingsSubmenu("Display");
 }
 
 function getPrimaryCheckbox(name: RegExp) {
@@ -123,7 +123,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     );
     expect(bendPreviewLine).toBeInTheDocument();
     expect(bendPreviewLine?.getAttribute("d")).not.toContain("Z");
-    expect(bendPreviewBounds?.getAttribute("d")).toContain("Z");
+    expect(bendPreviewBounds).not.toBeInTheDocument();
 
     firePointerEvent(canvas, "pointerup");
 
@@ -218,10 +218,8 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     );
     expect(canvas.querySelector(".kizkatt-transform-preview-line"))
       .toHaveAttribute("d", "M 20 30 L 120 100 L 180 140");
-    expect(
-      canvas.querySelector(".kizkatt-transform-preview-bounds")
-        ?.getAttribute("d")
-    ).toContain("Z");
+    expect(canvas.querySelector(".kizkatt-transform-preview-bounds"))
+      .not.toBeInTheDocument();
     expect(canvas).toHaveStyle({ cursor: "move" });
 
     firePointerEvent(canvas, "pointerup", { clientX: 20, clientY: 30 });
@@ -314,8 +312,6 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
       .not.toBeInTheDocument();
     expect(screen.queryByRole("menuitemcheckbox", { name: /Snap to grid/ }))
       .not.toBeInTheDocument();
-    expect(screen.queryByRole("menuitemcheckbox", { name: /View mode/ }))
-      .not.toBeInTheDocument();
     expect(screen.getAllByRole("menuitem")[0]).toHaveAccessibleName(
       /Refresh page/
     );
@@ -388,31 +384,87 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(rectangle).toHaveAttribute("height", "70");
   });
 
-  it("uses view mode as a read-only canvas mode", () => {
+  it("renders wireframes while keeping the canvas editable", () => {
     render(<KizkattGraphicEditor />);
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
 
-    openViewSettings();
-    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /View mode/ }));
-
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    expect(screen.getByRole("button", { name: "Select" })).toHaveClass(
-      "is-active"
-    );
-
     firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
     firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
     firePointerEvent(canvas, "pointerup");
 
-    expect(canvas.querySelector("[data-element-id]")).not.toBeInTheDocument();
+    openDisplaySettings();
+    fireEvent.click(
+      screen.getByRole("menuitemcheckbox", { name: "Wireframe" })
+    );
 
-    fireEvent.contextMenu(canvas, { clientX: 80, clientY: 90 });
-    expect(screen.queryByRole("menuitem", { name: /Paste/ })).not
-      .toBeInTheDocument();
+    const wireframeShape = canvas.querySelector(
+      "[data-wireframe-element='true'] > rect"
+    );
+
+    expect(wireframeShape).toHaveAttribute("fill", "none");
+    expect(wireframeShape).toHaveAttribute(
+      "stroke",
+      "var(--kizkatt-wireframe-stroke)"
+    );
+    expect(wireframeShape).toHaveAttribute("stroke-width", "1");
+    expect(canvas).toHaveStyle({
+      backgroundColor: "var(--kizkatt-wireframe-canvas)"
+    });
+    expect(screen.getByRole("button", { name: "Wireframe" }))
+      .toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    firePointerEvent(canvas, "pointerdown", { clientX: 220, clientY: 80 });
+    firePointerEvent(canvas, "pointermove", { clientX: 300, clientY: 150 });
+    firePointerEvent(canvas, "pointerup");
+    expect(canvas.querySelectorAll("[data-wireframe-element='true']"))
+      .toHaveLength(2);
   });
 
-  it("hides editing panels in zen mode while keeping zoom controls available", () => {
+  it("replaces bitmap content with a crossed wireframe placeholder", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "#ff00aa",
+          height: 80,
+          id: "bitmap",
+          opacity: 45,
+          src: "data:image/png;base64,kizkatt",
+          strokeColor: "#f08c00",
+          strokeStyle: "dashed",
+          strokeWidth: 12,
+          type: "image",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: []
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    expect(canvas.querySelector("[data-element-id='bitmap'] image"))
+      .toBeInTheDocument();
+
+    openDisplaySettings();
+    fireEvent.click(
+      screen.getByRole("menuitemcheckbox", { name: "Wireframe" })
+    );
+
+    const wireframe = canvas.querySelector(
+      "[data-element-id='bitmap'] [data-wireframe-element='true']"
+    );
+    expect(canvas.querySelector("[data-element-id='bitmap'] image"))
+      .not.toBeInTheDocument();
+    expect(wireframe?.querySelectorAll("rect")).toHaveLength(1);
+    expect(wireframe?.querySelectorAll("line")).toHaveLength(2);
+  });
+
+  it("makes preview and wireframe mutually exclusive and reuses the last mode shortcut", () => {
     render(<KizkattGraphicEditor />);
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
@@ -420,13 +472,157 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(screen.getByRole("button", { name: "Rectangle" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
 
-    openViewSettings();
-    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Zen mode/ }));
+    openDisplaySettings();
+    fireEvent.click(
+      screen.getByRole("menuitemcheckbox", { name: "Wireframe" })
+    );
+    expect(screen.getByRole("menuitemcheckbox", { name: "Wireframe" }))
+      .toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Info mode" }));
+    expect(screen.getByRole("menuitemcheckbox", { name: "Info mode" }))
+      .toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Preview" }));
 
     expect(screen.queryByRole("button", { name: "Rectangle" })).not
       .toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Main menu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview" }))
+      .toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("menuitemcheckbox", { name: "Info mode" }))
+      .toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("menuitemcheckbox", { name: "Wireframe" }))
+      .toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(screen.getByRole("button", { name: "Rectangle" })).toBeInTheDocument();
+  });
+
+  it("shows horizontal callouts with full object names and one-based layer numbers", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: Math.PI / 4,
+          backgroundColor: "#cc3344",
+          height: 80,
+          id: "first-layer",
+          name: "Rectangle 12",
+          opacity: 100,
+          strokeColor: "#111111",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          type: "rectangle",
+          width: 160,
+          x: 40,
+          y: 50
+        },
+        {
+          angle: 0,
+          backgroundColor: "#3366cc",
+          height: 90,
+          id: "second-layer",
+          name: "Ellipse 27",
+          opacity: 100,
+          strokeColor: "#111111",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          type: "ellipse",
+          width: 180,
+          x: 260,
+          y: 100
+        }
+      ],
+      selectedIds: []
+    });
+    render(<KizkattGraphicEditor />);
+
+    openDisplaySettings();
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Info mode" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const firstLabel = canvas.querySelector(
+      "[data-info-element-id='first-layer']"
+    );
+    const secondLabel = canvas.querySelector(
+      "[data-info-element-id='second-layer']"
+    );
+
+    expect(firstLabel).toHaveAttribute("data-layer-start", "1");
+    expect(firstLabel).not.toHaveAttribute("transform");
+    expect(firstLabel?.querySelector(".kizkatt-info-leader"))
+      .toBeInTheDocument();
+    expect(firstLabel?.querySelector(".kizkatt-info-anchor"))
+      .toBeInTheDocument();
+    expect(firstLabel?.querySelector("text")).toHaveTextContent(
+      "Rectangle 12 · Layer 1"
+    );
+    expect(secondLabel).toHaveAttribute("data-layer-start", "2");
+    expect(secondLabel?.querySelector("text")).toHaveTextContent(
+      "Ellipse 27 · Layer 2"
+    );
+  });
+
+  it("collapses grouped elements into one group callout with a layer range", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          groupId: "tools-group",
+          groupName: "Tools 4",
+          height: 40,
+          id: "group-line",
+          name: "Line 8",
+          opacity: 100,
+          strokeColor: "#111111",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          type: "line",
+          width: 100,
+          x: 40,
+          y: 80
+        },
+        {
+          angle: Math.PI / 8,
+          backgroundColor: "#3366cc",
+          groupId: "tools-group",
+          groupName: "Tools 4",
+          height: 80,
+          id: "group-shape",
+          name: "Rectangle 9",
+          opacity: 100,
+          strokeColor: "#111111",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          type: "rectangle",
+          width: 120,
+          x: 120,
+          y: 100
+        }
+      ],
+      selectedIds: []
+    });
+    render(<KizkattGraphicEditor />);
+
+    openDisplaySettings();
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Info mode" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const groupLabel = canvas.querySelector(
+      "[data-info-group-id='tools-group']"
+    );
+
+    expect(groupLabel).toHaveAttribute("data-info-kind", "group");
+    expect(groupLabel).toHaveAttribute("data-layer-start", "1");
+    expect(groupLabel).toHaveAttribute("data-layer-end", "2");
+    expect(groupLabel?.querySelector("text")).toHaveTextContent(
+      "Tools 4 · Layers 1–2"
+    );
+    expect(canvas.querySelector("[data-info-element-id='group-line']"))
+      .not.toBeInTheDocument();
+    expect(canvas.querySelector("[data-info-element-id='group-shape']"))
+      .not.toBeInTheDocument();
   });
 
   it("snaps new shapes to nearby object points when snap to objects is enabled", () => {

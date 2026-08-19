@@ -111,6 +111,13 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     if (!canvas) {
       throw new Error("Drawing canvas was not rendered");
     }
+    const editorOverlay = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    editorOverlay.setAttribute("data-export-ignore", "true");
+    editorOverlay.textContent = "Editor-only info";
+    canvas.append(editorOverlay);
     const exportOptions = {
       bounds: { height: 90, width: 140, x: 30, y: 40 },
       elementIds: ["selected-rectangle"],
@@ -134,6 +141,7 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     expect(markup).not.toContain("unselected-rectangle");
     expect(markup).not.toContain("kizkatt-grid");
     expect(markup).not.toContain("vector-effect");
+    expect(markup).not.toContain("Editor-only info");
     expect(markup).toContain("background: transparent");
   });
 
@@ -242,6 +250,107 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     await waitFor(() => {
       expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(2);
     });
+  });
+
+  it("restores canvas focus and losslessly pastes grouped draw SVG exports", async () => {
+    let copiedSvg = "";
+    const writeText = vi.fn(async (value: string) => {
+      copiedSvg = value;
+    });
+    const readText = vi.fn(async () => copiedSvg);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { readText, writeText }
+    });
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "#653b00",
+          closed: true,
+          fillStyle: "solid",
+          groupId: "shovel-group",
+          groupName: "Shovel",
+          height: 40,
+          id: "shovel-head",
+          opacity: 100,
+          pathData: "M 0 0 L 40 0 L 20 40 Z",
+          sloppiness: "architect",
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          type: "draw",
+          width: 40,
+          x: 200,
+          y: 300
+        },
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          groupId: "shovel-group",
+          groupName: "Shovel",
+          height: 20,
+          id: "shovel-handle",
+          opacity: 100,
+          pathData: "M 0 0 L 50 20",
+          sloppiness: "architect",
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          type: "draw",
+          width: 50,
+          x: 220,
+          y: 340
+        }
+      ],
+      selectedIds: ["shovel-head", "shovel-handle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const board = screen.getByLabelText("Kizkatt diagram canvas");
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.contextMenu(canvas, { clientX: 230, clientY: 330 });
+    hoverContextSubmenuItem(screen.getByRole("menuitem", { name: /Copy/ }));
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Copy as SVG code" })
+    );
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(document.activeElement).toBe(board);
+
+    fireEvent.keyDown(document.activeElement as Element, { key: "Delete" });
+    expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(0);
+
+    fireEvent.contextMenu(canvas, { clientX: 700, clientY: 700 });
+    hoverContextSubmenuItem(screen.getByRole("menuitem", { name: /Paste/ }));
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Paste SVG code as object" })
+    );
+
+    await waitFor(() => expect(readText).toHaveBeenCalledOnce());
+    expect(copiedSvg).toContain('data-element-type="draw"');
+
+    await waitFor(() => {
+      expect(canvas.querySelectorAll("[data-element-type='draw']"))
+        .toHaveLength(2);
+    });
+
+    const pastedGroups = Array.from(
+      canvas.querySelectorAll("[data-element-type='draw']")
+    );
+    const pastedGroupId = pastedGroups[0].getAttribute("data-group-id");
+
+    expect(pastedGroupId).toBeTruthy();
+    expect(pastedGroups[1]).toHaveAttribute("data-group-id", pastedGroupId);
+    expect(pastedGroups[0]).toHaveAttribute("data-group-name", "Shovel");
+    expect(pastedGroups[1]).toHaveAttribute("data-group-name", "Shovel");
+    expect(
+      pastedGroups[0].querySelector(":scope > path")?.getAttribute("d")
+    ).toContain("200 300");
+    expect(
+      pastedGroups[1].querySelector(":scope > path")?.getAttribute("d")
+    ).toContain("220 340");
   });
 
   it("pastes SVG code from the context menu as an editable inline SVG object", async () => {
@@ -624,10 +733,8 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
 
     expect(canvas.querySelector(".kizkatt-transform-preview-line"))
       .toHaveAttribute("d", "M 20 30 L 160 120");
-    expect(
-      canvas.querySelector(".kizkatt-transform-preview-bounds")
-        ?.getAttribute("d")
-    ).toContain("Z");
+    expect(canvas.querySelector(".kizkatt-transform-preview-bounds"))
+      .not.toBeInTheDocument();
 
     firePointerEvent(canvas, "pointerup", { clientX: 20, clientY: 30 });
 
@@ -700,7 +807,7 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     );
     expect(rotatePreviewLine).toBeInTheDocument();
     expect(rotatePreviewLine?.getAttribute("d")).not.toContain("Z");
-    expect(rotatePreviewBounds?.getAttribute("d")).toContain("Z");
+    expect(rotatePreviewBounds).not.toBeInTheDocument();
 
     firePointerEvent(canvas, "pointerup");
 

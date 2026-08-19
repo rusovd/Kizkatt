@@ -470,6 +470,15 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
 
     expect(canvas.querySelector(".kizkatt-transform-preview"))
       .toBeInTheDocument();
+    expect(canvas.querySelectorAll(".kizkatt-transform-preview-contour"))
+      .toHaveLength(2);
+    expect(
+      Array.from(
+        canvas.querySelectorAll(".kizkatt-transform-preview-contour")
+      ).every((element) => element.tagName.toLowerCase() === "rect")
+    ).toBe(true);
+    expect(canvas.querySelector(".kizkatt-transform-preview-bounds"))
+      .not.toBeInTheDocument();
   });
 
   it("groups selected elements from the context menu", async () => {
@@ -1441,6 +1450,9 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     ]);
     const lineWidth = screen.getByLabelText("Line width");
     const lineWidthPreset = screen.getByLabelText("Line width preset");
+    expect(strokeStyle.closest(".kizkatt-object-panel-stack")).toBe(
+      lineWidth.closest(".kizkatt-object-panel-stack")
+    );
     expect(lineWidth).toHaveValue(10);
     expect(
       lineWidthPreset.parentElement?.querySelector(

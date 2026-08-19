@@ -48,8 +48,8 @@ function openGridSettings() {
   openEditorSettingsSubmenu("Grid");
 }
 
-function openViewSettings() {
-  openEditorSettingsSubmenu("View mode");
+function openDisplaySettings() {
+  openEditorSettingsSubmenu("Display");
 }
 
 describe("KizkattGraphicEditor shell", () => {
@@ -701,7 +701,7 @@ describe("KizkattGraphicEditor shell", () => {
     );
   });
 
-  it("exposes UI scale, grid controls, and zen mode from editor settings", () => {
+  it("exposes UI scale, grid controls, and preview mode from editor settings", () => {
     render(<KizkattGraphicEditor />);
 
     const board = screen.getByLabelText("Kizkatt diagram canvas");
@@ -732,12 +732,17 @@ describe("KizkattGraphicEditor shell", () => {
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Toggle grid/ }));
     expect(canvas.querySelector(".kizkatt-grid")).not.toBeInTheDocument();
 
-    openViewSettings();
-    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Zen mode/ }));
+    openDisplaySettings();
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Preview" }));
 
     expect(screen.queryByRole("button", { name: "Rectangle" })).not
       .toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview" }))
+      .toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(screen.getByRole("button", { name: "Rectangle" })).toBeInTheDocument();
   });
 
   it("quick saves and quick loads the canvas from the main menu", () => {
