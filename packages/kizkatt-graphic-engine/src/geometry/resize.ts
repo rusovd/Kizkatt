@@ -55,6 +55,20 @@ function scaleLocalPoint(point: Point, scaleX: number, scaleY: number) {
   };
 }
 
+function getScaledStrokeWidth(
+  element: KizkattElement,
+  scaleX: number,
+  scaleY: number
+) {
+  if (!element.scaleStrokeWithObject) {
+    return element.strokeWidth;
+  }
+
+  const scale = Math.sqrt(Math.abs(scaleX * scaleY));
+
+  return element.strokeWidth * scale;
+}
+
 function scalePathData(
   pathData: string | undefined,
   scaleX: number,
@@ -81,7 +95,11 @@ function getElementCornerPoint(
   sy: -1 | 0 | 1
 ) {
   const center = getElementCenter(element);
-  const { xAxis, yAxis } = getElementAxes(element.angle);
+  const { xAxis, yAxis } = getElementAxes(
+    element.angle,
+    element.flipX,
+    element.flipY
+  );
 
   return {
     x:
@@ -95,9 +113,16 @@ function getElementCornerPoint(
   };
 }
 
-export function getResizeCursor(angle: number, handle: ResizeHandle) {
+export function getResizeCursor(
+  angle: number,
+  handle: ResizeHandle,
+  flipX = false,
+  flipY = false
+) {
   const { sx, sy } = getResizeHandle(handle);
-  const localAngle = (Math.atan2(sy, sx) * 180) / Math.PI;
+  const localAngle =
+    (Math.atan2(sy * (flipY ? -1 : 1), sx * (flipX ? -1 : 1)) * 180) /
+    Math.PI;
   const normalizedAngle = normalizeDegrees(localAngle + (angle * 180) / Math.PI);
 
   return CURSOR_STOPS.reduce((nearest, current) => {
@@ -124,7 +149,11 @@ export function resizeElementFromHandle(
 ): KizkattElement {
   const { sx, sy } = getResizeHandle(handle);
   const anchor = getResizeAnchorPoint(element, handle);
-  const { xAxis, yAxis } = getElementAxes(element.angle);
+  const { xAxis, yAxis } = getElementAxes(
+    element.angle,
+    element.flipX,
+    element.flipY
+  );
   const dx = point.x - anchor.x;
   const dy = point.y - anchor.y;
   const nextWidth =
@@ -172,6 +201,7 @@ export function resizeElementFromHandle(
     height: nextHeight,
     pathData: scalePathData(element.pathData, scaleX, scaleY, scaleElementLocalPoint),
     points: element.points?.map(scaleElementLocalPoint),
+    strokeWidth: getScaledStrokeWidth(element, scaleX, scaleY),
     width: nextWidth,
     x: center.x - nextWidth / 2,
     y: center.y - nextHeight / 2
@@ -253,6 +283,7 @@ export function resizeElementsFromSelectionHandle(
       points: element.points?.map((localPoint) =>
         scaleLocalPoint(localPoint, scaleX, scaleY)
       ),
+      strokeWidth: getScaledStrokeWidth(element, scaleX, scaleY),
       width: Math.max(MIN_ELEMENT_SIZE, element.width * scaleX),
       x: nextBounds.x + (element.x - originalBounds.x) * scaleX,
       y: nextBounds.y + (element.y - originalBounds.y) * scaleY

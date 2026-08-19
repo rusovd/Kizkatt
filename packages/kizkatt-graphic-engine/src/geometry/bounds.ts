@@ -13,7 +13,8 @@ import { getElementBends, getLinearElementPoints } from "./linearElements";
 import {
   getBoundsFromPointList,
   getBoundsFromPoints,
-  getElementEnd
+  getElementEnd,
+  transformElementPoint
 } from "./primitives";
 
 export function getElementBounds(element: KizkattElement) {
@@ -109,31 +110,14 @@ export function getElementTransformedCorners(
   if (
     element.angle === NO_ROTATION_ANGLE &&
     (element.skewX ?? 0) === 0 &&
-    (element.skewY ?? 0) === 0
+    (element.skewY ?? 0) === 0 &&
+    !element.flipX &&
+    !element.flipY
   ) {
     return corners;
   }
 
-  const center = {
-    x: element.x + element.width / 2,
-    y: element.y + element.height / 2
-  };
-  const skewX = Math.tan(element.skewX ?? 0);
-  const skewY = Math.tan(element.skewY ?? 0);
-  const cos = Math.cos(element.angle);
-  const sin = Math.sin(element.angle);
-
-  return corners.map((point) => {
-    const localX = point.x - center.x;
-    const localY = point.y - center.y;
-    const skewedY = localY + localX * skewY;
-    const skewedX = localX + skewedY * skewX;
-
-    return {
-      x: center.x + skewedX * cos - skewedY * sin,
-      y: center.y + skewedX * sin + skewedY * cos
-    };
-  });
+  return corners.map((point) => transformElementPoint(element, point));
 }
 
 export function selectionBounds(

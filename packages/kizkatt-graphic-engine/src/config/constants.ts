@@ -389,11 +389,18 @@ export const LIGHT_THEME_BACKGROUND_COLORS = [
 ];
 
 const DEFAULT_STYLE_BASE = {
+  arrowheadScale: 1,
+  calligraphy: false,
+  calligraphyStretch: 1,
   edgeStyle: DEFAULT_EDGE_STYLE,
+  endArrowhead: "none",
   fillStyle: DEFAULT_FILL_STYLE,
   fillWeight: DEFAULT_FILL_WEIGHT,
   sloppiness: DEFAULT_SLOPPINESS,
   sloppinessGap: DEFAULT_SLOPPINESS_GAP,
+  scaleStrokeWithObject: false,
+  startArrowhead: "none",
+  strokeBehindFill: false,
   strokeWidth: DEFAULT_STROKE_WIDTH,
   strokeStyle: DEFAULT_STROKE_STYLE,
   opacity: DEFAULT_OPACITY

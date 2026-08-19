@@ -44,7 +44,11 @@ export function createElement(
     skewY: 0,
     text: type === "text" ? TEXT_ELEMENT_DEFAULT_CONTENT : undefined,
     points: type === "draw" ? [{ x: 0, y: 0 }] : undefined,
-    ...style
+    ...style,
+    endArrowhead:
+      type === "arrow" && style.endArrowhead === "none"
+        ? "triangle"
+        : style.endArrowhead
   };
 }
 

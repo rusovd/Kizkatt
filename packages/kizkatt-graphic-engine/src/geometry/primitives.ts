@@ -76,15 +76,22 @@ export function normalizeDegrees(value: number) {
   return ((value % 180) + 180) % 180;
 }
 
-export function getElementAxes(angle: number) {
+export function getElementAxes(
+  angle: number,
+  flipX = false,
+  flipY = false
+) {
+  const xDirection = flipX ? -1 : 1;
+  const yDirection = flipY ? -1 : 1;
+
   return {
     xAxis: {
-      x: Math.cos(angle),
-      y: Math.sin(angle)
+      x: Math.cos(angle) * xDirection,
+      y: Math.sin(angle) * xDirection
     },
     yAxis: {
-      x: -Math.sin(angle),
-      y: Math.cos(angle)
+      x: -Math.sin(angle) * yDirection,
+      y: Math.cos(angle) * yDirection
     }
   };
 }
@@ -96,8 +103,8 @@ export function transformElementPoint(
   const center = getElementCenter(element);
   const skewX = Math.tan(element.skewX ?? DEFAULT_SKEW_ANGLE);
   const skewY = Math.tan(element.skewY ?? DEFAULT_SKEW_ANGLE);
-  const localX = point.x - center.x;
-  const localY = point.y - center.y;
+  const localX = (point.x - center.x) * (element.flipX ? -1 : 1);
+  const localY = (point.y - center.y) * (element.flipY ? -1 : 1);
   const skewedY = localY + localX * skewY;
   const skewedX = localX + skewedY * skewX;
   const cos = Math.cos(element.angle);
@@ -123,8 +130,8 @@ export function getElementLocalPoint(element: KizkattElement, point: Point) {
   const localY = rotatedY - localX * skewY;
 
   return {
-    x: center.x + localX,
-    y: center.y + localY
+    x: center.x + localX * (element.flipX ? -1 : 1),
+    y: center.y + localY * (element.flipY ? -1 : 1)
   };
 }
 
@@ -138,8 +145,8 @@ export function getElementLocalVector(element: KizkattElement, vector: Point) {
   const localX = rotatedX - rotatedY * skewX;
 
   return {
-    x: localX,
-    y: rotatedY - localX * skewY
+    x: localX * (element.flipX ? -1 : 1),
+    y: (rotatedY - localX * skewY) * (element.flipY ? -1 : 1)
   };
 }
 

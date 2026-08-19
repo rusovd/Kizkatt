@@ -15,6 +15,7 @@ import {
 import { createElementName as buildElementName } from "../model/naming";
 import type { ElementNamingConfig } from "../model/naming";
 import type {
+  ArrowheadStyle,
   Bounds,
   KizkattElement,
   Point,
@@ -51,6 +52,13 @@ const SVG_IMPORT_ELEMENT_TYPES = new Set([
   "line",
   "rectangle",
   "text"
+]);
+const SVG_IMPORT_ARROWHEAD_STYLES = new Set<ArrowheadStyle>([
+  "none",
+  "triangle",
+  "open",
+  "circle",
+  "square"
 ]);
 const SVG_RADIANS_PER_DEGREE = Math.PI / 180;
 const SVG_TRANSFORM_FUNCTION_PATTERN = /([a-zA-Z]+)\(([^)]*)\)/g;
@@ -1217,6 +1225,74 @@ function getImportedGroup(
   };
 }
 
+type ImportedElementSettings = Partial<
+  StyleState & Pick<KizkattElement, "flipX" | "flipY">
+>;
+
+function getImportedOutlineSettings(group: Element): ImportedElementSettings {
+  const startArrowhead = group.getAttribute("data-kizkatt-start-arrowhead");
+  const endArrowhead = group.getAttribute("data-kizkatt-end-arrowhead");
+  const arrowheadScale = parseSvgNumber(
+    group.getAttribute("data-kizkatt-arrowhead-scale")
+  );
+  const calligraphyStretch = parseSvgNumber(
+    group.getAttribute("data-kizkatt-calligraphy-stretch")
+  );
+  const strokeWidth = parseSvgNumber(
+    group.getAttribute("data-kizkatt-stroke-width")
+  );
+
+  const calligraphy = group.getAttribute("data-kizkatt-calligraphy");
+  const scaleStrokeWithObject = group.getAttribute(
+    "data-kizkatt-scale-stroke-with-object"
+  );
+  const strokeBehindFill = group.getAttribute(
+    "data-kizkatt-stroke-behind-fill"
+  );
+  const flipX = group.getAttribute("data-kizkatt-flip-x");
+  const flipY = group.getAttribute("data-kizkatt-flip-y");
+  const settings: ImportedElementSettings = {};
+
+  if (arrowheadScale !== null) {
+    settings.arrowheadScale = arrowheadScale;
+  }
+  if (calligraphy !== null) {
+    settings.calligraphy = calligraphy === "true";
+  }
+  if (calligraphyStretch !== null) {
+    settings.calligraphyStretch = calligraphyStretch;
+  }
+  if (
+    endArrowhead &&
+    SVG_IMPORT_ARROWHEAD_STYLES.has(endArrowhead as ArrowheadStyle)
+  ) {
+    settings.endArrowhead = endArrowhead as ArrowheadStyle;
+  }
+  if (flipX !== null) {
+    settings.flipX = flipX === "true";
+  }
+  if (flipY !== null) {
+    settings.flipY = flipY === "true";
+  }
+  if (scaleStrokeWithObject !== null) {
+    settings.scaleStrokeWithObject = scaleStrokeWithObject === "true";
+  }
+  if (
+    startArrowhead &&
+    SVG_IMPORT_ARROWHEAD_STYLES.has(startArrowhead as ArrowheadStyle)
+  ) {
+    settings.startArrowhead = startArrowhead as ArrowheadStyle;
+  }
+  if (strokeBehindFill !== null) {
+    settings.strokeBehindFill = strokeBehindFill === "true";
+  }
+  if (strokeWidth !== null) {
+    settings.strokeWidth = strokeWidth;
+  }
+
+  return settings;
+}
+
 function createImportedElement(
   type: KizkattElement["type"],
   group: Element,
@@ -1238,6 +1314,7 @@ function createImportedElement(
       type === "rectangle" && (getSvgNumber(shape, "rx") ?? 0) <= 0
         ? "sharp"
         : "round",
+    ...getImportedOutlineSettings(group),
     id: createId(),
     name: getImportedElementName(type, existingElements, importedElements, naming),
     type
@@ -1367,6 +1444,7 @@ function createImportedLinearElement(
     ...getSvgElementStyle(group, line, fallbackStyle),
     ...getImportedGroup(group, groupIdMap, createId),
     edgeStyle: "round",
+    ...getImportedOutlineSettings(group),
     height: end.y - start.y,
     id: createId(),
     name: getImportedElementName(type, existingElements, importedElements, naming),
@@ -1409,8 +1487,9 @@ function createImportedDrawElement(
   );
 
   return importedElement
-    ? {
+      ? {
         ...importedElement,
+        ...getImportedOutlineSettings(group),
         ...getImportedGroup(group, groupIdMap, createId)
       }
     : null;
@@ -1454,6 +1533,7 @@ function createImportedImageElement(
       imageBorderEnabled && border && (getSvgNumber(border, "rx") ?? 0) <= 0
         ? "sharp"
         : "round",
+    ...getImportedOutlineSettings(group),
     id: createId(),
     imageBorderEnabled,
     name: getImportedElementName("image", existingElements, importedElements, naming),
@@ -1490,6 +1570,7 @@ function createImportedTextElement(
   return normalizeElement({
     ...getSvgElementStyle(group, text, fallbackStyle),
     ...getImportedGroup(group, groupIdMap, createId),
+    ...getImportedOutlineSettings(group),
     angle: sourceElement.angle,
     height: TEXT_ELEMENT_DEFAULT_HEIGHT,
     id: createId(),

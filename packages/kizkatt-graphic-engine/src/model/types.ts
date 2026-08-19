@@ -39,6 +39,13 @@ export type SelectionAreaMode = "intersect" | "contain";
 
 export type GridUnit = "px" | "mm";
 
+export type ArrowheadStyle =
+  | "none"
+  | "triangle"
+  | "open"
+  | "circle"
+  | "square";
+
 export type GridSettings = {
   unit: GridUnit;
   metricScale: number;
@@ -60,6 +67,8 @@ export type KizkattElement = {
   width: number;
   height: number;
   angle: number;
+  flipX?: boolean;
+  flipY?: boolean;
   skewX?: number;
   skewY?: number;
   strokeColor: string;
@@ -75,6 +84,13 @@ export type KizkattElement = {
     | "stitched"
     | "wavy"
     | "zigzag";
+  startArrowhead?: ArrowheadStyle;
+  endArrowhead?: ArrowheadStyle;
+  arrowheadScale?: number;
+  calligraphy?: boolean;
+  calligraphyStretch?: number;
+  strokeBehindFill?: boolean;
+  scaleStrokeWithObject?: boolean;
   edgeStyle?: "sharp" | "round";
   sloppiness?: "architect" | "artist" | "cartoonist" | "double";
   sloppinessGap?: number;
@@ -221,13 +237,20 @@ export type Bounds = {
 
 export type StyleState = Pick<
   KizkattElement,
+  | "arrowheadScale"
   | "backgroundColor"
+  | "calligraphy"
+  | "calligraphyStretch"
   | "edgeStyle"
+  | "endArrowhead"
   | "fillStyle"
   | "fillWeight"
   | "opacity"
   | "sloppiness"
   | "sloppinessGap"
+  | "scaleStrokeWithObject"
+  | "startArrowhead"
+  | "strokeBehindFill"
   | "strokeColor"
   | "strokeStyle"
   | "strokeWidth"

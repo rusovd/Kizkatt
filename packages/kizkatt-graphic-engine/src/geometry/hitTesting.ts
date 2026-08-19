@@ -62,7 +62,9 @@ function getElementHit(element: KizkattElement, point: Point) {
   const localPoint =
     element.angle === 0 &&
     (element.skewX ?? 0) === 0 &&
-    (element.skewY ?? 0) === 0
+    (element.skewY ?? 0) === 0 &&
+    !element.flipX &&
+    !element.flipY
       ? point
       : getElementLocalPoint(element, point);
   const tolerance = Math.max(8, element.strokeWidth + 6);
