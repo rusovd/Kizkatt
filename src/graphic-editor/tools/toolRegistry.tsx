@@ -62,7 +62,8 @@ export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
     labelKey: "draw",
     icon: FreedrawIcon,
     shortcut: "7",
-    showsStylePanel: true
+    showsStylePanel: true,
+    submenu: "line"
   },
   ellipse: {
     id: "ellipse",

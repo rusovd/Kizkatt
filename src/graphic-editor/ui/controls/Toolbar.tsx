@@ -37,7 +37,7 @@ const SHAPE_GROUP: ToolGroup = {
 };
 
 const LINE_GROUP: ToolGroup = {
-  defaultTool: "arrow",
+  defaultTool: "draw",
   id: "line",
   options: LINE_TOOL_GROUP.map((tool) => TOOL_REGISTRY_BY_ID[tool])
 };

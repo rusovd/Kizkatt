@@ -1,4 +1,9 @@
-import type { KizkattElement, Point } from "kizkatt-graphic-engine";
+import type {
+  ArrowheadStyle,
+  KizkattElement,
+  LinearEndpoint,
+  Point
+} from "kizkatt-graphic-engine";
 import {
   ARROW_MARKER_HEIGHT,
   ARROW_MARKER_REF_Y,
@@ -11,9 +16,11 @@ export type ArrowheadGeometry = {
   angle: number;
   base: Point;
   end: Point;
+  endpoint: LinearEndpoint;
   length: number;
   scaleX: number;
   scaleY: number;
+  style: Exclude<ArrowheadStyle, "none">;
 };
 
 function getLinePointsLength(linePoints: Point[]) {
@@ -27,26 +34,50 @@ function getLinePointsLength(linePoints: Point[]) {
   }, 0);
 }
 
+export function getElementArrowheadStyle(
+  element: KizkattElement,
+  endpoint: LinearEndpoint
+): ArrowheadStyle {
+  const configuredStyle = endpoint === "start"
+    ? element.startArrowhead
+    : element.endArrowhead;
+
+  if (configuredStyle) {
+    return configuredStyle;
+  }
+
+  return endpoint === "end" && element.type === "arrow"
+    ? "triangle"
+    : "none";
+}
+
 export function getArrowheadGeometry(
   element: KizkattElement,
-  linePoints: Point[]
+  linePoints: Point[],
+  endpoint: LinearEndpoint = "end"
 ): ArrowheadGeometry | null {
-  if (element.type !== "arrow" || element.strokeWidth <= 0) {
+  const style = getElementArrowheadStyle(element, endpoint);
+
+  if (style === "none" || element.strokeWidth <= 0) {
     return null;
   }
 
-  const end = linePoints[linePoints.length - 1];
+  const isStart = endpoint === "start";
+  const end = isStart ? linePoints[0] : linePoints[linePoints.length - 1];
 
   if (!end) {
     return null;
   }
 
   let tangentStart: Point | undefined;
+  const firstIndex = isStart ? 1 : linePoints.length - 2;
+  const lastIndex = isStart ? linePoints.length : -1;
+  const step = isStart ? 1 : -1;
 
-  for (let index = linePoints.length - 2; index >= 0; index -= 1) {
+  for (let index = firstIndex; index !== lastIndex; index += step) {
     const point = linePoints[index];
 
-    if (Math.hypot(end.x - point.x, end.y - point.y) > Number.EPSILON) {
+    if (point && Math.hypot(end.x - point.x, end.y - point.y) > Number.EPSILON) {
       tangentStart = point;
       break;
     }
@@ -61,15 +92,23 @@ export function getArrowheadGeometry(
   const tangentLength = Math.hypot(deltaX, deltaY);
   const strokeWidth = Math.max(
     MIN_RENDERED_STROKE_WIDTH,
-    element.strokeWidth
+    element.strokeWidth *
+      (element.calligraphy
+        ? Math.max(0.5, Math.min(3, element.calligraphyStretch ?? 1))
+        : 1)
   );
   const markerCoordinateSize = ARROW_MARKER_REF_Y * 2;
   const logarithmicSizeFactor = 1 + Math.log(strokeWidth);
-  const desiredLength = ARROW_MARKER_WIDTH * logarithmicSizeFactor;
+  const arrowheadScale = Math.max(
+    0.25,
+    Math.min(4, element.arrowheadScale ?? 1)
+  );
+  const desiredLength =
+    ARROW_MARKER_WIDTH * logarithmicSizeFactor * arrowheadScale;
   const lineLength = getLinePointsLength(linePoints);
   const length = Math.min(
     desiredLength,
-    lineLength * 0.75,
+    lineLength * 0.375,
     tangentLength
   );
   const scaleX = length / markerCoordinateSize;
@@ -85,9 +124,11 @@ export function getArrowheadGeometry(
       y: end.y - unitY * length
     },
     end,
+    endpoint,
     length,
     scaleX,
-    scaleY
+    scaleY,
+    style
   };
 }
 
@@ -119,4 +160,22 @@ export function shortenLinePoints(linePoints: Point[], length: number) {
   }
 
   return linePoints.slice(0, 1);
+}
+
+function shortenLinePointsAtStart(linePoints: Point[], length: number) {
+  return shortenLinePoints([...linePoints].reverse(), length).reverse();
+}
+
+export function shortenLinePointsForArrowheads(
+  linePoints: Point[],
+  startGeometry: ArrowheadGeometry | null,
+  endGeometry: ArrowheadGeometry | null
+) {
+  const shortenedAtEnd = endGeometry
+    ? shortenLinePoints(linePoints, endGeometry.length)
+    : linePoints;
+
+  return startGeometry
+    ? shortenLinePointsAtStart(shortenedAtEnd, startGeometry.length)
+    : shortenedAtEnd;
 }

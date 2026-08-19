@@ -5,8 +5,7 @@ import {
 } from "kizkatt-graphic-engine";
 import {
   getElementCenter,
-  selectionBounds,
-  transformSvgPathData
+  selectionBounds
 } from "kizkatt-graphic-engine";
 import { getObjectBase } from "kizkatt-graphic-engine";
 import type { Bounds, KizkattElement, Point } from "kizkatt-graphic-engine";
@@ -31,6 +30,8 @@ export function getElementFromBase(element: KizkattElement): KizkattElement {
     ...element,
     ...base,
     base: element.base,
+    flipX: element.flipX,
+    flipY: element.flipY,
     x: base.center.x - base.width / VIEWPORT_CENTER_DIVISOR,
     y: base.center.y - base.height / VIEWPORT_CENTER_DIVISOR
   };
@@ -84,23 +85,6 @@ export function translateElement(
   };
 }
 
-function transformElementLocalPoints(
-  element: KizkattElement,
-  transformPoint: (point: Point) => Point
-) {
-  return {
-    ...element,
-    bends: element.bends?.map(transformPoint),
-    curve: element.curve ? transformPoint(element.curve) : undefined,
-    pathData: element.pathData
-      ? transformSvgPathData(element.pathData, {
-          transformPoint
-        })?.pathData
-      : undefined,
-    points: element.points?.map(transformPoint)
-  };
-}
-
 export function mirrorElementAroundPoint(
   element: KizkattElement,
   center: Point,
@@ -111,27 +95,18 @@ export function mirrorElementAroundPoint(
     axis === "horizontal"
       ? { x: center.x * 2 - elementCenter.x, y: elementCenter.y }
       : { x: elementCenter.x, y: center.y * 2 - elementCenter.y };
-  const mirroredElement = transformElementLocalPoints(element, (point) =>
-    axis === "horizontal"
-      ? { x: element.width - point.x, y: point.y }
-      : { x: point.x, y: element.height - point.y }
-  );
+
+  const flipX = axis === "horizontal" ? !element.flipX : element.flipX;
+  const flipY = axis === "vertical" ? !element.flipY : element.flipY;
 
   return {
-    ...mirroredElement,
-    angle:
-      axis === "horizontal"
-        ? Math.PI - mirroredElement.angle
-        : -mirroredElement.angle,
-    skewX:
-      axis === "horizontal"
-        ? -(mirroredElement.skewX ?? 0)
-        : mirroredElement.skewX,
-    skewY:
-      axis === "vertical"
-        ? -(mirroredElement.skewY ?? 0)
-        : mirroredElement.skewY,
-    x: nextCenter.x - mirroredElement.width / VIEWPORT_CENTER_DIVISOR,
-    y: nextCenter.y - mirroredElement.height / VIEWPORT_CENTER_DIVISOR
+    ...element,
+    angle: -element.angle,
+    flipX,
+    flipY,
+    skewX: -(element.skewX ?? 0),
+    skewY: -(element.skewY ?? 0),
+    x: nextCenter.x - element.width / VIEWPORT_CENTER_DIVISOR,
+    y: nextCenter.y - element.height / VIEWPORT_CENTER_DIVISOR
   };
 }

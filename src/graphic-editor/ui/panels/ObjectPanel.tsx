@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
@@ -24,17 +24,11 @@ import {
   MirrorHorizontalIcon,
   MirrorVerticalIcon,
   PenNibIcon,
-  RotationAngleIcon,
-  StrokeStyleDashedIcon,
-  StrokeStyleDashDotIcon,
-  StrokeStyleDottedIcon,
-  StrokeStyleSolidIcon,
-  StrokeStyleStitchedIcon,
-  StrokeStyleWavyIcon,
-  StrokeStyleZigzagIcon
+  RotationAngleIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
 import { PanelDragHandle } from "../positioning/PanelDragHandle";
+import { LineSettingsPopover } from "./LineSettingsPopover";
 
 const HORIZONTAL_MIRROR_AXIS = "horizontal";
 const VERTICAL_MIRROR_AXIS = "vertical";
@@ -42,16 +36,6 @@ const VERTICAL_MIRROR_AXIS = "vertical";
 const EDGE_ICONS = {
   round: EdgeRoundIcon,
   sharp: EdgeSharpIcon
-} as const;
-
-const STROKE_STYLE_ICONS = {
-  dashed: StrokeStyleDashedIcon,
-  dashDot: StrokeStyleDashDotIcon,
-  dotted: StrokeStyleDottedIcon,
-  solid: StrokeStyleSolidIcon,
-  stitched: StrokeStyleStitchedIcon,
-  wavy: StrokeStyleWavyIcon,
-  zigzag: StrokeStyleZigzagIcon
 } as const;
 
 const STROKE_STYLE_LABEL_KEYS = {
@@ -192,7 +176,7 @@ function ObjectSelectField<TValue extends string>({
   value
 }: {
   className?: string;
-  icon: ReactNode;
+  icon?: ReactNode;
   label: string;
   onChange: (value: TValue) => void;
   options: ReadonlyArray<{ label: string; value: TValue }>;
@@ -202,11 +186,12 @@ function ObjectSelectField<TValue extends string>({
   return (
     <label
       className={["kizkatt-object-select-field", className]
+        .concat(icon ? "has-icon" : "has-no-icon")
         .filter(Boolean)
         .join(" ")}
       title={title}
     >
-      <span className="kizkatt-object-field-label">{icon}</span>
+      {icon && <span className="kizkatt-object-field-label">{icon}</span>}
       <select
         aria-label={label}
         value={value}
@@ -253,7 +238,6 @@ function StrokeWidthField({
       className="kizkatt-object-field kizkatt-object-field--stroke-width"
       title={title}
     >
-      <span className="kizkatt-object-field-label">{PenNibIcon}</span>
       <span className="kizkatt-object-field-control">
         <input
           aria-label={label}
@@ -304,6 +288,7 @@ export function ObjectPanel({
   onMirror,
   onStyleChange,
   onStyleChangeEnd,
+  selectedElements,
   style,
   theme
 }: ObjectPanelProps) {
@@ -313,6 +298,45 @@ export function ObjectPanel({
     useUnitConverters(gridSettings);
   const [aspectLocked, setAspectLocked] = useState(true);
   const [useCanvasCoordinates, setUseCanvasCoordinates] = useState(true);
+  const [lineSettingsOpen, setLineSettingsOpen] = useState(false);
+  const lineSettingsRef = useRef<HTMLDivElement | null>(null);
+  const canUseArrowheads = selectedElements.every(
+    (element) => element.type === "line" || element.type === "arrow"
+  );
+
+  useEffect(() => {
+    if (!lineSettingsOpen) {
+      return;
+    }
+
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        lineSettingsRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+
+      setLineSettingsOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setLineSettingsOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointerDown, true);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener(
+        "pointerdown",
+        closeOnOutsidePointerDown,
+        true
+      );
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [lineSettingsOpen]);
   const baseCenter = {
     x: geometry.baseBounds.x + geometry.baseBounds.width / 2,
     y: geometry.baseBounds.y + geometry.baseBounds.height / 2
@@ -559,7 +583,7 @@ export function ObjectPanel({
           onChange={updateAngle}
           onCommit={onGeometryChangeEnd}
         />
-        <div className="kizkatt-object-panel-group">
+        <div className="kizkatt-object-panel-group kizkatt-object-panel-stack">
           <IconButton
             title={strings.objectPanel.tooltips.mirrorHorizontal}
             onClick={() => onMirror(HORIZONTAL_MIRROR_AXIS)}
@@ -573,7 +597,7 @@ export function ObjectPanel({
             {MirrorVerticalIcon}
           </IconButton>
         </div>
-        <div className="kizkatt-object-panel-group">
+        <div className="kizkatt-object-panel-group kizkatt-object-panel-stack">
           {OBJECT_PANEL_UI_SETTINGS.edgeOptions.map((option) => (
             <IconButton
               key={option}
@@ -587,31 +611,61 @@ export function ObjectPanel({
             </IconButton>
           ))}
         </div>
-        <div className="kizkatt-object-panel-group kizkatt-object-panel-stack">
-          <ObjectSelectField
-            className="kizkatt-object-select-field--stroke-style"
-            icon={STROKE_STYLE_ICONS[strokeStyle]}
-            label={strings.objectPanel.strokeStyle}
-            title={strings.objectPanel.tooltips.strokeStyle}
-            value={strokeStyle}
-            options={strokeStyleOptions}
-            onChange={(value) => updateStyle({ strokeStyle: value })}
-          />
-          <StrokeWidthField
-            label={strings.objectPanel.strokeWidth}
-            title={strings.objectPanel.tooltips.strokeWidth}
-            step={OBJECT_PANEL_UI_SETTINGS.positionStep}
-            suffix={unit}
-            value={formatNumber(toDisplayUnit(strokeWidth), precision)}
-            presetLabel={strings.objectPanel.strokeWidthPresetSelect}
-            presetOptions={strokeWidthPresetOptions}
-            onChange={updateStrokeWidth}
-            onCommit={onStyleChangeEnd}
-            onPresetSelect={(value) => {
-              updateStrokeWidth(value);
-              onStyleChangeEnd();
-            }}
-          />
+        <div
+          ref={lineSettingsRef}
+          className="kizkatt-object-panel-group kizkatt-object-line-settings"
+        >
+          <IconButton
+            active={lineSettingsOpen}
+            title={strings.objectPanel.lineSettings.open}
+            onClick={() => setLineSettingsOpen((open) => !open)}
+          >
+            {PenNibIcon}
+          </IconButton>
+          <div className="kizkatt-object-panel-stack">
+            <ObjectSelectField
+              className="kizkatt-object-select-field--stroke-style"
+              label={strings.objectPanel.strokeStyle}
+              title={strings.objectPanel.tooltips.strokeStyle}
+              value={strokeStyle}
+              options={strokeStyleOptions}
+              onChange={(value) => updateStyle({ strokeStyle: value })}
+            />
+            <StrokeWidthField
+              label={strings.objectPanel.strokeWidth}
+              title={strings.objectPanel.tooltips.strokeWidth}
+              step={OBJECT_PANEL_UI_SETTINGS.positionStep}
+              suffix={unit}
+              value={formatNumber(toDisplayUnit(strokeWidth), precision)}
+              presetLabel={strings.objectPanel.strokeWidthPresetSelect}
+              presetOptions={strokeWidthPresetOptions}
+              onChange={updateStrokeWidth}
+              onCommit={onStyleChangeEnd}
+              onPresetSelect={(value) => {
+                updateStrokeWidth(value);
+                onStyleChangeEnd();
+              }}
+            />
+          </div>
+          {lineSettingsOpen && (
+            <LineSettingsPopover
+              canUseArrowheads={canUseArrowheads}
+              strokeStyleOptions={strokeStyleOptions}
+              strokeWidthValue={formatNumber(
+                toDisplayUnit(strokeWidth),
+                precision
+              )}
+              style={style}
+              unit={unit}
+              onClose={() => setLineSettingsOpen(false)}
+              onContinuousStyleChange={(patch) =>
+                onStyleChange(patch, { transient: true })
+              }
+              onStrokeWidthChange={updateStrokeWidth}
+              onStyleChange={updateStyle}
+              onStyleChangeEnd={onStyleChangeEnd}
+            />
+          )}
         </div>
       </div>
     </DraggablePanel>

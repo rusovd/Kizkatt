@@ -321,13 +321,23 @@ export function KizkattGraphicEditorController({
   );
   const panelStyle: StyleState = selectedElements[0]
     ? {
+        arrowheadScale: selectedElements[0].arrowheadScale ?? 1,
         backgroundColor: selectedElements[0].backgroundColor,
+        calligraphy: selectedElements[0].calligraphy ?? false,
+        calligraphyStretch: selectedElements[0].calligraphyStretch ?? 1,
         edgeStyle: selectedElements[0].edgeStyle ?? DEFAULT_EDGE_STYLE,
+        endArrowhead:
+          selectedElements[0].endArrowhead ??
+          (selectedElements[0].type === "arrow" ? "triangle" : "none"),
         fillStyle: selectedElements[0].fillStyle ?? DEFAULT_FILL_STYLE,
         fillWeight: selectedElements[0].fillWeight ?? DEFAULT_FILL_WEIGHT,
         opacity: selectedElements[0].opacity,
         sloppiness: selectedElements[0].sloppiness ?? DEFAULT_SELECTED_SLOPPINESS,
         sloppinessGap: selectedElements[0].sloppinessGap ?? style.sloppinessGap,
+        scaleStrokeWithObject:
+          selectedElements[0].scaleStrokeWithObject ?? false,
+        startArrowhead: selectedElements[0].startArrowhead ?? "none",
+        strokeBehindFill: selectedElements[0].strokeBehindFill ?? false,
         strokeColor: selectedElements[0].strokeColor,
         strokeStyle: selectedElements[0].strokeStyle,
         strokeWidth:
@@ -764,8 +774,21 @@ export function KizkattGraphicEditorController({
           return element;
         }
 
+        const updateBaseStyle = (nextElement: KizkattElement) =>
+          element.base
+            ? {
+                ...nextElement,
+                base: {
+                  ...element.base,
+                  ...patch,
+                  imageBorderEnabled: nextElement.imageBorderEnabled,
+                  strokeWidth: nextElement.strokeWidth
+                }
+              }
+            : nextElement;
+
         if (element.type !== "image" || !changesImageBorderStyle(patch)) {
-          return { ...element, ...patch };
+          return updateBaseStyle({ ...element, ...patch });
         }
 
         const explicitlyChangesWidth = hasOwnStyleProperty(
@@ -782,12 +805,12 @@ export function KizkattGraphicEditorController({
               : DEFAULT_STROKE_WIDTH
             : element.strokeWidth;
 
-        return {
+        return updateBaseStyle({
           ...element,
           strokeWidth: restoredStrokeWidth,
           ...patch,
           imageBorderEnabled
-        };
+        });
       })
     }, {
       replace: replaceHistoryEntry

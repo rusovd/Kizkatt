@@ -16,7 +16,7 @@ import {
 } from "../../config/constants";
 import {
   getArrowheadGeometry,
-  shortenLinePoints,
+  shortenLinePointsForArrowheads,
   type ArrowheadGeometry
 } from "./arrowheadGeometry";
 import { ElementGroup } from "./ElementGroup";
@@ -235,10 +235,52 @@ function Arrowhead({
   }
 
   const markerCoordinateSize = ARROW_MARKER_REF_Y * 2;
+  const transform = `translate(${geometry.end.x} ${geometry.end.y}) rotate(${geometry.angle}) scale(${geometry.scaleX} ${geometry.scaleY}) translate(${-markerCoordinateSize} ${-ARROW_MARKER_REF_Y})`;
+
+  if (geometry.style === "triangle") {
+    return (
+      <path
+        data-arrowhead="true"
+        data-arrowhead-endpoint={geometry.endpoint}
+        data-arrowhead-style={geometry.style}
+        data-arrowhead-angle={geometry.angle}
+        data-arrowhead-base-x={geometry.base.x}
+        data-arrowhead-base-y={geometry.base.y}
+        data-arrowhead-scale-x={geometry.scaleX}
+        data-arrowhead-scale-y={geometry.scaleY}
+        data-decorative-arrowhead={
+          isDecorativeStrokeStyle(element.strokeStyle) ? "true" : undefined
+        }
+        d={ARROW_MARKER_PATH}
+        fill={element.strokeColor}
+        opacity={element.opacity / PERCENT_MAX_VALUE}
+        pointerEvents={SVG_POINTER_EVENTS_NONE}
+        transform={transform}
+      />
+    );
+  }
+
+  const shape = geometry.style === "open" ? (
+    <path
+      d="M 0 0 L 10 5 L 0 10"
+      fill={SVG_FILL_NONE}
+      stroke={element.strokeColor}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.5"
+      vectorEffect="non-scaling-stroke"
+    />
+  ) : geometry.style === "circle" ? (
+    <circle cx="6" cy="5" r="4" fill={element.strokeColor} />
+  ) : (
+    <rect x="2" y="1" width="8" height="8" fill={element.strokeColor} />
+  );
 
   return (
-    <path
+    <g
       data-arrowhead="true"
+      data-arrowhead-endpoint={geometry.endpoint}
+      data-arrowhead-style={geometry.style}
       data-arrowhead-angle={geometry.angle}
       data-arrowhead-base-x={geometry.base.x}
       data-arrowhead-base-y={geometry.base.y}
@@ -247,12 +289,12 @@ function Arrowhead({
       data-decorative-arrowhead={
         isDecorativeStrokeStyle(element.strokeStyle) ? "true" : undefined
       }
-      d={ARROW_MARKER_PATH}
-      fill={element.strokeColor}
       opacity={element.opacity / PERCENT_MAX_VALUE}
       pointerEvents={SVG_POINTER_EVENTS_NONE}
-      transform={`translate(${geometry.end.x} ${geometry.end.y}) rotate(${geometry.angle}) scale(${geometry.scaleX} ${geometry.scaleY}) translate(${-markerCoordinateSize} ${-ARROW_MARKER_REF_Y})`}
-    />
+      transform={transform}
+    >
+      {shape}
+    </g>
   );
 }
 
@@ -818,17 +860,33 @@ function WireframeArrowhead({ geometry }: { geometry: ArrowheadGeometry | null }
 
   const markerCoordinateSize = ARROW_MARKER_REF_Y * 2;
 
-  return (
+  const shape = geometry.style === "circle" ? (
+    <circle cx="6" cy="5" r="4" />
+  ) : geometry.style === "square" ? (
+    <rect x="2" y="1" width="8" height="8" />
+  ) : (
     <path
+      d={
+        geometry.style === "triangle"
+          ? ARROW_MARKER_PATH
+          : "M 0 0 L 10 5 L 0 10"
+      }
+    />
+  );
+
+  return (
+    <g
       data-wireframe-arrowhead="true"
-      d={ARROW_MARKER_PATH}
+      data-arrowhead-endpoint={geometry.endpoint}
       fill={SVG_FILL_NONE}
       stroke={WIREFRAME_STROKE}
       strokeWidth={WIREFRAME_STROKE_WIDTH}
       vectorEffect="non-scaling-stroke"
       pointerEvents={SVG_POINTER_EVENTS_NONE}
       transform={`translate(${geometry.end.x} ${geometry.end.y}) rotate(${geometry.angle}) scale(${geometry.scaleX} ${geometry.scaleY}) translate(${-markerCoordinateSize} ${-ARROW_MARKER_REF_Y})`}
-    />
+    >
+      {shape}
+    </g>
   );
 }
 
@@ -912,13 +970,21 @@ function WireframeElement({
     );
   } else if (element.type === "line" || element.type === "arrow") {
     const linePoints = getLinearElementPoints(element, getElementBends(element));
-    const arrowheadGeometry = getArrowheadGeometry(
+    const startArrowheadGeometry = getArrowheadGeometry(
       { ...element, strokeWidth: WIREFRAME_STROKE_WIDTH },
-      linePoints
+      linePoints,
+      "start"
     );
-    const renderedLinePoints = arrowheadGeometry
-      ? shortenLinePoints(linePoints, arrowheadGeometry.length)
-      : linePoints;
+    const endArrowheadGeometry = getArrowheadGeometry(
+      { ...element, strokeWidth: WIREFRAME_STROKE_WIDTH },
+      linePoints,
+      "end"
+    );
+    const renderedLinePoints = shortenLinePointsForArrowheads(
+      linePoints,
+      startArrowheadGeometry,
+      endArrowheadGeometry
+    );
     const canUseFill = canElementUseBackground(element);
     const pathData = getLinearElementPath(renderedLinePoints, element.edgeStyle);
 
@@ -928,7 +994,8 @@ function WireframeElement({
           d={`${pathData}${canUseFill ? SVG_PATH_CLOSE_COMMAND : ""}`}
           {...shapeProps}
         />
-        <WireframeArrowhead geometry={arrowheadGeometry} />
+        <WireframeArrowhead geometry={startArrowheadGeometry} />
+        <WireframeArrowhead geometry={endArrowheadGeometry} />
       </>
     );
   } else if (element.type === "draw") {
@@ -991,6 +1058,8 @@ export function renderElement(
           element={element}
           variant={CARTOONIST_FILTER_VARIANT}
         />
+        {element.strokeBehindFill && <DecorativeStroke element={element} />}
+        {element.strokeBehindFill && <SecondaryRectStroke element={element} />}
         <rect
           x={element.x}
           y={element.y}
@@ -1000,8 +1069,8 @@ export function renderElement(
           fill={getElementFill(element)}
           {...commonProps}
         />
-        <DecorativeStroke element={element} />
-        <SecondaryRectStroke element={element} />
+        {!element.strokeBehindFill && <DecorativeStroke element={element} />}
+        {!element.strokeBehindFill && <SecondaryRectStroke element={element} />}
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>
     );
@@ -1013,39 +1082,32 @@ export function renderElement(
       strokeWidth: element.imageBorderEnabled ? element.strokeWidth : 0
     };
     const borderProps = getPrimaryBaseShapeProps(borderElement);
-
-    return (
-      <ElementGroup key={element.id} element={element}>
-        <ElementFillPattern element={element} />
-        <ElementSloppyFilter element={borderElement} />
-        <ElementSloppyFilter
-          element={borderElement}
-          variant={CARTOONIST_FILTER_VARIANT}
-        />
-        {element.svgContent ? (
-          <InlineSvgObject element={element} />
-        ) : element.src ? (
-          <image
-            href={element.src}
-            x={element.x}
-            y={element.y}
-            width={element.width}
-            height={element.height}
-            preserveAspectRatio="xMidYMid meet"
-            opacity={element.opacity / PERCENT_MAX_VALUE}
-          />
-        ) : (
-          <rect
-            x={element.x}
-            y={element.y}
-            width={element.width}
-            height={element.height}
-            rx={edgeRadius}
-            fill={getElementFill(element)}
-            stroke={SVG_FILL_NONE}
-            opacity={element.opacity / PERCENT_MAX_VALUE}
-          />
-        )}
+    const imageContent = element.svgContent ? (
+      <InlineSvgObject element={element} />
+    ) : element.src ? (
+      <image
+        href={element.src}
+        x={element.x}
+        y={element.y}
+        width={element.width}
+        height={element.height}
+        preserveAspectRatio="xMidYMid meet"
+        opacity={element.opacity / PERCENT_MAX_VALUE}
+      />
+    ) : (
+      <rect
+        x={element.x}
+        y={element.y}
+        width={element.width}
+        height={element.height}
+        rx={edgeRadius}
+        fill={getElementFill(element)}
+        stroke={SVG_FILL_NONE}
+        opacity={element.opacity / PERCENT_MAX_VALUE}
+      />
+    );
+    const imageBorder = (
+      <>
         <rect
           data-image-border="true"
           x={element.x}
@@ -1058,6 +1120,20 @@ export function renderElement(
         />
         <DecorativeStroke element={borderElement} />
         <SecondaryRectStroke element={borderElement} />
+      </>
+    );
+
+    return (
+      <ElementGroup key={element.id} element={element}>
+        <ElementFillPattern element={element} />
+        <ElementSloppyFilter element={borderElement} />
+        <ElementSloppyFilter
+          element={borderElement}
+          variant={CARTOONIST_FILTER_VARIANT}
+        />
+        {element.strokeBehindFill && imageBorder}
+        {imageContent}
+        {!element.strokeBehindFill && imageBorder}
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>
     );
@@ -1080,9 +1156,15 @@ export function renderElement(
           element={element}
           variant={CARTOONIST_FILTER_VARIANT}
         />
+        {element.strokeBehindFill && <DecorativeStroke element={element} />}
+        {element.strokeBehindFill && (
+          <SecondaryDiamondStroke element={element} />
+        )}
         <polygon points={points} fill={getElementFill(element)} {...commonProps} />
-        <DecorativeStroke element={element} />
-        <SecondaryDiamondStroke element={element} />
+        {!element.strokeBehindFill && <DecorativeStroke element={element} />}
+        {!element.strokeBehindFill && (
+          <SecondaryDiamondStroke element={element} />
+        )}
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>
     );
@@ -1097,6 +1179,8 @@ export function renderElement(
           element={element}
           variant={CARTOONIST_FILTER_VARIANT}
         />
+        {element.strokeBehindFill && <DecorativeStroke element={element} />}
+        {element.strokeBehindFill && <SecondaryEllipseStroke element={element} />}
         <ellipse
           cx={element.x + element.width / HALF_DIVISOR}
           cy={element.y + element.height / HALF_DIVISOR}
@@ -1105,8 +1189,10 @@ export function renderElement(
           fill={getElementFill(element)}
           {...commonProps}
         />
-        <DecorativeStroke element={element} />
-        <SecondaryEllipseStroke element={element} />
+        {!element.strokeBehindFill && <DecorativeStroke element={element} />}
+        {!element.strokeBehindFill && (
+          <SecondaryEllipseStroke element={element} />
+        )}
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>
     );
@@ -1115,10 +1201,21 @@ export function renderElement(
   if (element.type === "line" || element.type === "arrow") {
     const bends = getElementBends(element);
     const linePoints = getLinearElementPoints(element, bends);
-    const arrowheadGeometry = getArrowheadGeometry(element, linePoints);
-    const renderedLinePoints = arrowheadGeometry
-      ? shortenLinePoints(linePoints, arrowheadGeometry.length)
-      : linePoints;
+    const startArrowheadGeometry = getArrowheadGeometry(
+      element,
+      linePoints,
+      "start"
+    );
+    const endArrowheadGeometry = getArrowheadGeometry(
+      element,
+      linePoints,
+      "end"
+    );
+    const renderedLinePoints = shortenLinePointsForArrowheads(
+      linePoints,
+      startArrowheadGeometry,
+      endArrowheadGeometry
+    );
     const renderedStart = renderedLinePoints[0];
     const renderedEnd = renderedLinePoints[renderedLinePoints.length - 1];
     const hasBends = bends.length > ZERO_COORDINATE;
@@ -1138,6 +1235,18 @@ export function renderElement(
           element={element}
           variant={CARTOONIST_FILTER_VARIANT}
         />
+        {canUseFill && element.strokeBehindFill && (
+          <DecorativeStroke
+            element={element}
+            linePoints={renderedLinePoints}
+          />
+        )}
+        {canUseFill && element.strokeBehindFill && (
+          <SecondaryLineStroke
+            element={element}
+            linePoints={renderedLinePoints}
+          />
+        )}
         {hasBends || canUseFill ? (
           <path
             d={`${pathData}${canUseFill ? SVG_PATH_CLOSE_COMMAND : ""}`}
@@ -1154,18 +1263,26 @@ export function renderElement(
             {...commonProps}
           />
         )}
-        <DecorativeStroke
+        {(!canUseFill || !element.strokeBehindFill) && (
+          <DecorativeStroke
+            element={element}
+            linePoints={renderedLinePoints}
+          />
+        )}
+        <Arrowhead
           element={element}
-          linePoints={renderedLinePoints}
+          geometry={startArrowheadGeometry}
         />
         <Arrowhead
           element={element}
-          geometry={arrowheadGeometry}
+          geometry={endArrowheadGeometry}
         />
-        <SecondaryLineStroke
-          element={element}
-          linePoints={renderedLinePoints}
-        />
+        {(!canUseFill || !element.strokeBehindFill) && (
+          <SecondaryLineStroke
+            element={element}
+            linePoints={renderedLinePoints}
+          />
+        )}
         {selected && (
           <>
             {!isNodeEditMode && (hasBends || isSkewMode) ? (
@@ -1207,13 +1324,23 @@ export function renderElement(
           element={element}
           variant={CARTOONIST_FILTER_VARIANT}
         />
+        {canUseFill && element.strokeBehindFill && (
+          <DecorativeStroke element={element} />
+        )}
+        {canUseFill && element.strokeBehindFill && (
+          <SecondaryFreehandStroke element={element} />
+        )}
         <path
           d={`${freehandPath}${canUseFill ? SVG_PATH_CLOSE_COMMAND : ""}`}
           fill={canUseFill ? getElementFill(element) : SVG_FILL_NONE}
           {...commonProps}
         />
-        <DecorativeStroke element={element} />
-        <SecondaryFreehandStroke element={element} />
+        {(!canUseFill || !element.strokeBehindFill) && (
+          <DecorativeStroke element={element} />
+        )}
+        {(!canUseFill || !element.strokeBehindFill) && (
+          <SecondaryFreehandStroke element={element} />
+        )}
         {selected && <SelectedElementOverlay element={element} options={options} />}
       </ElementGroup>
     );

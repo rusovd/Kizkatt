@@ -17,12 +17,17 @@ export function getActiveInteractionCursor(interaction: Interaction | null) {
     const selectedOriginalElements = interaction.originalElements.filter(
       (element) => selectedIdSet.has(element.id)
     );
-    const angle =
+    const selectedElement =
       selectedOriginalElements.length === SINGLE_SELECTION_COUNT
-        ? selectedOriginalElements[0].angle
-        : 0;
+        ? selectedOriginalElements[0]
+        : null;
 
-    return getResizeCursor(angle, interaction.handle);
+    return getResizeCursor(
+      selectedElement?.angle ?? 0,
+      interaction.handle,
+      selectedElement?.flipX,
+      selectedElement?.flipY
+    );
   }
 
   if (

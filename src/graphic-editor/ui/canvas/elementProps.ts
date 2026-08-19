@@ -38,6 +38,14 @@ function formatDashValue(value: number) {
     : value.toFixed(DASH_VALUE_DECIMALS);
 }
 
+export function getRenderedStrokeWidth(element: KizkattElement) {
+  const stretch = element.calligraphy
+    ? Math.max(0.5, Math.min(3, element.calligraphyStretch ?? 1))
+    : 1;
+
+  return element.strokeWidth * stretch;
+}
+
 function hasRoundedStrokeEdges(element: KizkattElement) {
   return (element.edgeStyle ?? SVG_LINECAP_ROUND) === SVG_LINECAP_ROUND;
 }
@@ -125,19 +133,33 @@ export function getElementTransform(element: KizkattElement) {
   const rotate = element.angle * SVG_DEGREES_PER_RADIAN;
   const skewX = (element.skewX ?? 0) * SVG_DEGREES_PER_RADIAN;
   const skewY = (element.skewY ?? 0) * SVG_DEGREES_PER_RADIAN;
+  const flip =
+    element.flipX || element.flipY
+      ? `scale(${element.flipX ? -1 : 1} ${element.flipY ? -1 : 1})`
+      : null;
 
   return [
     `translate(${center.x} ${center.y})`,
     `rotate(${rotate})`,
     `skewX(${skewX})`,
     `skewY(${skewY})`,
+    flip,
     `translate(${-center.x} ${-center.y})`
-  ].join(" ");
+  ]
+    .filter((transform): transform is string => transform !== null)
+    .join(" ");
 }
 
 export function getElementShapeProps(element: KizkattElement) {
+  const calligraphy = element.calligraphy === true;
+  const strokeLinejoin: "miter" | "round" =
+    element.edgeStyle === "sharp" || calligraphy
+      ? "miter"
+      : SVG_LINEJOIN_ROUND;
   const strokeLinecap: "butt" | "round" =
-    usesGeometricDotPattern(element)
+    calligraphy
+      ? SVG_LINECAP_BUTT
+      : usesGeometricDotPattern(element)
       ? hasRoundedStrokeEdges(element)
         ? SVG_LINECAP_ROUND
         : SVG_LINECAP_BUTT
@@ -147,11 +169,12 @@ export function getElementShapeProps(element: KizkattElement) {
 
   return {
     stroke: element.strokeColor,
-    strokeWidth: element.strokeWidth,
+    strokeWidth: getRenderedStrokeWidth(element),
     strokeDasharray: getStrokeDasharray(element),
     opacity: element.opacity / PERCENT_MAX_VALUE,
+    paintOrder: element.strokeBehindFill ? "stroke fill markers" : undefined,
     strokeLinecap,
-    strokeLinejoin: SVG_LINEJOIN_ROUND,
+    strokeLinejoin,
     vectorEffect: VECTOR_EFFECT_NON_SCALING_STROKE
   };
 }

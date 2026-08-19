@@ -483,7 +483,14 @@ export function WorldResizeOverlay({
             className="kizkatt-resize-handle"
             data-handle="resize"
             data-resize-handle={id}
-            style={{ cursor: getResizeCursor(element.angle, id) }}
+            style={{
+              cursor: getResizeCursor(
+                element.angle,
+                id,
+                element.flipX,
+                element.flipY
+              )
+            }}
             x={point.x - HALF_HANDLE_SIZE}
             y={point.y - HALF_HANDLE_SIZE}
             width={SELECTION_HANDLE_SIZE}
@@ -563,7 +570,14 @@ export function ElementOverlay({
                 className="kizkatt-resize-handle"
                 data-handle="resize"
                 data-resize-handle={id}
-                style={{ cursor: getResizeCursor(element.angle, id) }}
+                style={{
+                  cursor: getResizeCursor(
+                    element.angle,
+                    id,
+                    element.flipX,
+                    element.flipY
+                  )
+                }}
                 x={
                   bounds.x +
                   ((sx + SELECTION_HANDLE_ALIGNMENT_OFFSET) * bounds.width) /
