@@ -92,7 +92,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
   it("inserts bend points on straight lines from the midpoint handle", () => {
     render(<KizkattGraphicEditor />);
 
-    chooseGroupedTool("Arrow", "Line");
+    chooseGroupedTool("Draw", "Line");
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
     firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
@@ -137,7 +137,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
       .toBeInTheDocument();
     expect(canvas.querySelector(".kizkatt-bend-handle")).toBeInTheDocument();
 
-    chooseGroupedTool("Arrow", "Line");
+    chooseGroupedTool("Draw", "Line");
     fireEvent.click(screen.getByRole("button", { name: "Edges sharp" }));
     expect(curvePath?.getAttribute("d")).not.toContain(" C ");
     expect(curvePath?.getAttribute("d")).toContain(" L ");

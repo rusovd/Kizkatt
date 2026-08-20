@@ -78,7 +78,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
   it("does not create throwaway line elements from a click without dragging", () => {
     render(<KizkattGraphicEditor />);
 
-    chooseGroupedTool("Arrow", "Line");
+    chooseGroupedTool("Draw", "Line");
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
     firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
@@ -177,7 +177,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(canvas.querySelector(".kizkatt-rotate-handle")).not
       .toBeInTheDocument();
 
-    chooseGroupedTool("Arrow", "Line");
+    chooseGroupedTool("Draw", "Line");
     firePointerEvent(canvas, "pointerdown", { clientX: 220, clientY: 50 });
     firePointerEvent(canvas, "pointermove", { clientX: 320, clientY: 120 });
 
@@ -625,6 +625,91 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(enlargedScale).toBeGreaterThan(expectedDefaultScale);
     expect(enlargedScale / expectedDefaultScale).toBeLessThan(2);
     expect(enlargedScale).toBeCloseTo((8 * (1 + Math.log(50))) / 10);
+  });
+
+  it("creates arrows from lines through the fine outline settings", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          height: 60,
+          id: "line-with-heads",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 2,
+          type: "line",
+          width: 160,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["line-with-heads"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    expect(screen.queryByRole("button", { name: "Arrow" })).not
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Draw" })).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Fine line settings" })
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: "Outline pen" })
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Start"), {
+      target: { value: "circle" }
+    });
+    fireEvent.change(screen.getByLabelText("End"), {
+      target: { value: "triangle" }
+    });
+
+    expect(
+      canvas.querySelector("[data-arrowhead-endpoint='start']")
+    ).toHaveAttribute("data-arrowhead-style", "circle");
+    expect(
+      canvas.querySelector("[data-arrowhead-endpoint='end']")
+    ).toHaveAttribute("data-arrowhead-style", "triangle");
+
+    const initialEndScale = Number(
+      canvas
+        .querySelector("[data-arrowhead-endpoint='end']")
+        ?.getAttribute("data-arrowhead-scale-x")
+    );
+    fireEvent.change(screen.getByLabelText("Scaling"), {
+      target: { value: "200" }
+    });
+    expect(
+      Number(
+        canvas
+          .querySelector("[data-arrowhead-endpoint='end']")
+          ?.getAttribute("data-arrowhead-scale-x")
+      )
+    ).toBeGreaterThan(initialEndScale);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Calligraphy" }));
+    fireEvent.change(screen.getByLabelText("Stretch"), {
+      target: { value: "200" }
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Behind the fill" })
+    );
+
+    const renderedLine = canvas.querySelector(
+      "[data-element-id='line-with-heads'] > line"
+    );
+
+    expect(renderedLine).toHaveAttribute("stroke-width", "4");
+    expect(renderedLine).toHaveAttribute(
+      "paint-order",
+      "stroke fill markers"
+    );
   });
 
   it("enables fill colors after an open line is closed", () => {

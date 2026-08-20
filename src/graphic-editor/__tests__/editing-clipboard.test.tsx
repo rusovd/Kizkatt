@@ -394,9 +394,12 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
                 <rect x="10" y="20" width="80" height="40" rx="12" fill="#653b00" stroke="#f08c00" stroke-width="21" stroke-opacity="0" data-stroke-style="wavy" />
                 <path d="M 22 20 L 30 24 L 38 20" fill="none" stroke="#f08c00" stroke-width="21" data-decorative-stroke="wavy" />
               </g>
-              <g data-element-id="exported-image" data-element-type="image" data-image-border-enabled="true">
+              <g data-element-id="exported-image" data-element-type="image" data-image-border-enabled="true" data-kizkatt-flip-y="true">
                 <image href="data:image/svg+xml,%3Csvg%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%2F%3E%3C%2Fsvg%3E" x="120" y="20" width="50" height="40" />
                 <rect data-image-border="true" x="120" y="20" width="50" height="40" rx="0" fill="none" stroke="#1971c2" stroke-width="6" data-stroke-style="dashed" />
+              </g>
+              <g data-element-id="exported-line" data-element-type="line" data-kizkatt-start-arrowhead="circle" data-kizkatt-end-arrowhead="triangle" data-kizkatt-arrowhead-scale="2" data-kizkatt-calligraphy="true" data-kizkatt-calligraphy-stretch="1.5" data-kizkatt-stroke-behind-fill="true" data-kizkatt-scale-stroke-with-object="true" data-kizkatt-stroke-width="4">
+                <line x1="10" y1="100" x2="90" y2="100" fill="none" stroke="#2f9e44" stroke-width="6" />
               </g>
             </g>
           </svg>
@@ -414,16 +417,23 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     );
 
     await waitFor(() => {
-      expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(2);
+      expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(3);
     });
 
     const exportedRect = canvas.querySelector(
       "[data-element-type='rectangle'] > rect"
     );
     const image = canvas.querySelector("[data-element-type='image'] > image");
+    const importedImageGroup = canvas.querySelector(
+      "[data-element-type='image']"
+    );
     const imageBorder = canvas.querySelector(
       "[data-element-type='image'] > [data-image-border]"
     );
+    const importedLineGroup = canvas.querySelector(
+      "[data-element-type='line']"
+    );
+    const importedLine = importedLineGroup?.querySelector(":scope > line");
 
     expect(canvas.querySelector(".kizkatt-inline-svg-object")).not
       .toBeInTheDocument();
@@ -440,6 +450,25 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     expect(imageBorder).toHaveAttribute("stroke-width", "6");
     expect(imageBorder).toHaveAttribute("data-stroke-style", "dashed");
     expect(imageBorder).toHaveAttribute("rx", "0");
+    expect(importedImageGroup).toHaveAttribute("data-kizkatt-flip-y", "true");
+    expect(importedImageGroup?.getAttribute("transform")).toContain(
+      "scale(1 -1)"
+    );
+    expect(importedLine).toHaveAttribute("stroke-width", "6");
+    expect(importedLine).toHaveAttribute(
+      "paint-order",
+      "stroke fill markers"
+    );
+    expect(importedLineGroup).toHaveAttribute(
+      "data-kizkatt-scale-stroke-with-object",
+      "true"
+    );
+    expect(
+      importedLineGroup?.querySelector("[data-arrowhead-endpoint='start']")
+    ).toHaveAttribute("data-arrowhead-style", "circle");
+    expect(
+      importedLineGroup?.querySelector("[data-arrowhead-endpoint='end']")
+    ).toHaveAttribute("data-arrowhead-style", "triangle");
   });
 
   it("breaks apart Kizkatt SVG objects while keeping image children as images", async () => {
@@ -699,7 +728,7 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
   it("selects lines with endpoint handles instead of a rectangle frame", () => {
     render(<KizkattGraphicEditor />);
 
-    chooseGroupedTool("Arrow", "Line");
+    chooseGroupedTool("Draw", "Line");
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
     firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
@@ -714,7 +743,7 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
   it("resizes a selected line from either endpoint", () => {
     render(<KizkattGraphicEditor />);
 
-    chooseGroupedTool("Arrow", "Line");
+    chooseGroupedTool("Draw", "Line");
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
     firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
@@ -773,7 +802,7 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
   it("rotates selected lines through the rotate handle", () => {
     render(<KizkattGraphicEditor />);
 
-    chooseGroupedTool("Arrow", "Line");
+    chooseGroupedTool("Draw", "Line");
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
     firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });

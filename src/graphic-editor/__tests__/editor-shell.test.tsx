@@ -461,7 +461,7 @@ describe("KizkattGraphicEditor shell", () => {
       "is-active"
     );
 
-    chooseGroupedTool("Arrow", "Line");
+    chooseGroupedTool("Draw", "Line");
 
     expect(screen.getByRole("button", { name: "Line" })).toHaveClass(
       "is-active"
@@ -566,7 +566,7 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByRole("menuitem", { name: "Diamond" }))
       .toBeInTheDocument();
 
-    openSubmenu("Arrow");
+    openSubmenu("Draw");
     expect(screen.queryByRole("menuitem", { name: "Diamond" })).not
       .toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Line" })).toBeInTheDocument();

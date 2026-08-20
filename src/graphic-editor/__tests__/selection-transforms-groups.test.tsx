@@ -1453,6 +1453,14 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(strokeStyle.closest(".kizkatt-object-panel-stack")).toBe(
       lineWidth.closest(".kizkatt-object-panel-stack")
     );
+    expect(strokeStyle.closest(".kizkatt-object-select-field"))
+      .toHaveClass("has-no-icon");
+    expect(
+      screen.getByTitle("Flip selected objects left to right").parentElement
+    ).toHaveClass("kizkatt-object-panel-stack");
+    expect(
+      screen.getByTitle("Use rounded corners").parentElement
+    ).toHaveClass("kizkatt-object-panel-stack");
     expect(lineWidth).toHaveValue(10);
     expect(
       lineWidthPreset.parentElement?.querySelector(
@@ -1488,10 +1496,25 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     });
     expect(lineWidth).toHaveValue(12);
 
+    fireEvent.click(
+      screen.getByRole("button", { name: "Fine line settings" })
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Scale with object" })
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close line settings" })
+    );
+
     fireEvent.change(screen.getByLabelText("Width"), {
       target: { value: "200" }
     });
     fireEvent.blur(screen.getByLabelText("Width"));
+    expect(
+      screen
+        .getByRole("application", { name: "Drawing canvas" })
+        .querySelector("[data-element-id='rectangle'] rect")
+    ).toHaveAttribute("stroke-width", "24");
     fireEvent.change(strokeStyle, {
       target: { value: "dashed" }
     });
@@ -1581,6 +1604,163 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(Number(rect?.getAttribute("stroke-width"))).toBeCloseTo(
       fiftyMillimetersInPixels
     );
+  });
+
+  it("mirrors draw paths without rewriting their arcs", () => {
+    storeCanvasState({
+      elements: [
+        withUpdatedObjectBase({
+          angle: 0,
+          backgroundColor: "transparent",
+          closed: false,
+          height: 60,
+          id: "draw",
+          opacity: 100,
+          pathData: "M 0 0 A 50 40 30 0 0 100 60",
+          points: [
+            { x: 0, y: 0 },
+            { x: 100, y: 60 }
+          ],
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 8,
+          type: "draw",
+          width: 100,
+          x: 100,
+          y: 100
+        })
+      ],
+      selectedIds: ["draw"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const drawGroup = canvas.querySelector("[data-element-id='draw']");
+    const path = drawGroup?.querySelector(":scope > path");
+
+    fireEvent.click(screen.getByTitle("Flip selected objects left to right"));
+
+    expect(drawGroup?.getAttribute("transform")).toContain("rotate(0)");
+    expect(drawGroup?.getAttribute("transform")).toContain("scale(-1 1)");
+    expect(drawGroup).toHaveAttribute("data-kizkatt-flip-x", "true");
+    expect(path).toHaveAttribute(
+      "d",
+      "M 100 100 A 50 40 30 0 0 200 160"
+    );
+
+    fireEvent.click(screen.getByTitle("Flip selected objects left to right"));
+    fireEvent.click(screen.getByTitle("Flip selected objects top to bottom"));
+
+    expect(drawGroup?.getAttribute("transform")).toContain("rotate(0)");
+    expect(drawGroup?.getAttribute("transform")).toContain("scale(1 -1)");
+    expect(drawGroup).not.toHaveAttribute("data-kizkatt-flip-x");
+    expect(drawGroup).toHaveAttribute("data-kizkatt-flip-y", "true");
+    expect(path).toHaveAttribute(
+      "d",
+      "M 100 100 A 50 40 30 0 0 200 160"
+    );
+  });
+
+  it("mirrors both endpoints of linear objects", () => {
+    storeCanvasState({
+      elements: [
+        withUpdatedObjectBase({
+          angle: 0,
+          backgroundColor: "transparent",
+          height: 60,
+          id: "line",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 8,
+          type: "line",
+          width: 100,
+          x: 100,
+          y: 100
+        })
+      ],
+      selectedIds: ["line"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const line = canvas.querySelector("[data-element-id='line'] line");
+
+    fireEvent.click(screen.getByTitle("Flip selected objects left to right"));
+
+    expect(line?.parentElement?.getAttribute("transform")).toContain(
+      "scale(-1 1)"
+    );
+    expect(line?.parentElement).toHaveAttribute("data-kizkatt-flip-x", "true");
+    expect(line).toHaveAttribute("x1", "100");
+    expect(line).toHaveAttribute("y1", "100");
+    expect(line).toHaveAttribute("x2", "200");
+    expect(line).toHaveAttribute("y2", "160");
+
+    fireEvent.click(screen.getByTitle("Flip selected objects left to right"));
+    fireEvent.click(screen.getByTitle("Flip selected objects top to bottom"));
+
+    expect(line?.parentElement?.getAttribute("transform")).toContain(
+      "scale(1 -1)"
+    );
+    expect(line?.parentElement).not.toHaveAttribute("data-kizkatt-flip-x");
+    expect(line?.parentElement).toHaveAttribute("data-kizkatt-flip-y", "true");
+    expect(line).toHaveAttribute("x1", "100");
+    expect(line).toHaveAttribute("y1", "100");
+    expect(line).toHaveAttribute("x2", "200");
+    expect(line).toHaveAttribute("y2", "160");
+  });
+
+  it("mirrors bitmap images vertically and horizontally", () => {
+    storeCanvasState({
+      elements: [
+        withUpdatedObjectBase({
+          angle: 0,
+          backgroundColor: "transparent",
+          height: 80,
+          id: "image",
+          opacity: 100,
+          src: "data:image/png;base64,kizkatt",
+          strokeColor: "#1971c2",
+          strokeStyle: "solid",
+          strokeWidth: 0,
+          type: "image",
+          width: 120,
+          x: 100,
+          y: 80
+        })
+      ],
+      selectedIds: ["image"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const imageGroup = canvas.querySelector("[data-element-id='image']");
+
+    expect(imageGroup?.getAttribute("transform")).not.toContain("scale(");
+
+    fireEvent.click(screen.getByTitle("Flip selected objects top to bottom"));
+
+    expect(imageGroup).toHaveAttribute("data-kizkatt-flip-y", "true");
+    expect(imageGroup?.getAttribute("transform")).toContain("scale(1 -1)");
+
+    fireEvent.change(screen.getByLabelText("Width"), {
+      target: { value: "150" }
+    });
+    fireEvent.blur(screen.getByLabelText("Width"));
+
+    expect(imageGroup).toHaveAttribute("data-kizkatt-flip-y", "true");
+    expect(imageGroup?.getAttribute("transform")).toContain("scale(1 -1)");
+
+    fireEvent.click(screen.getByTitle("Flip selected objects top to bottom"));
+
+    expect(imageGroup).not.toHaveAttribute("data-kizkatt-flip-y");
+    expect(imageGroup?.getAttribute("transform")).not.toContain("scale(");
+
+    fireEvent.click(screen.getByTitle("Flip selected objects left to right"));
+
+    expect(imageGroup).toHaveAttribute("data-kizkatt-flip-x", "true");
+    expect(imageGroup?.getAttribute("transform")).toContain("scale(-1 1)");
   });
 
 });

@@ -3,9 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   findElementAtPoint,
   getElementIndicesInBounds,
+  getElementLocalPoint,
+  getResizeAnchorPoint,
+  resizeElementFromHandle,
   observeHitTesting,
   simplifyPolyline,
   snapPointToElements,
+  transformElementPoint,
   type HitTestProfileSample,
   type KizkattElement,
   type Point
@@ -91,5 +95,58 @@ describe("engine scale safeguards", () => {
 
     expect(visibleIndices).toHaveLength(26);
     expect(visibleIndices.at(-1)).toBe(9_999);
+  });
+
+  it("scales stroke width only when scale with object is enabled", () => {
+    const rectangle = createRectangle(0);
+    const point = {
+      x: rectangle.x + rectangle.width * 2,
+      y: rectangle.y + rectangle.height * 2
+    };
+
+    expect(
+      resizeElementFromHandle(rectangle, "se", point).strokeWidth
+    ).toBe(rectangle.strokeWidth);
+    expect(
+      resizeElementFromHandle(
+        { ...rectangle, scaleStrokeWithObject: true },
+        "se",
+        point
+      ).strokeWidth
+    ).toBe(rectangle.strokeWidth * 2);
+  });
+
+  it("keeps mirrored element geometry interactive", () => {
+    const rectangle = { ...createRectangle(0), flipX: true };
+    const localCorner = { x: rectangle.x, y: rectangle.y };
+    const mirroredCorner = {
+      x: rectangle.x + rectangle.width,
+      y: rectangle.y
+    };
+
+    expect(transformElementPoint(rectangle, localCorner)).toEqual(
+      mirroredCorner
+    );
+    expect(getElementLocalPoint(rectangle, mirroredCorner)).toEqual(
+      localCorner
+    );
+    expect(getResizeAnchorPoint(rectangle, "nw")).toEqual({ x: 0, y: 32 });
+
+    const resized = resizeElementFromHandle(rectangle, "nw", {
+      x: 64,
+      y: -32
+    });
+
+    expect(resized).toMatchObject({
+      flipX: true,
+      height: 64,
+      width: 64,
+      x: 0,
+      y: -32
+    });
+    expect(transformElementPoint(resized, { x: 0, y: -32 })).toEqual({
+      x: 64,
+      y: -32
+    });
   });
 });
