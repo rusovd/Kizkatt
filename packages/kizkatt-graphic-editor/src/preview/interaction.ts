@@ -1,7 +1,51 @@
-import { SINGLE_SELECTION_COUNT } from "kizkatt-graphic-engine";
+import {
+  MIN_ELEMENT_SIZE,
+  SINGLE_SELECTION_COUNT
+} from "kizkatt-graphic-engine";
 import { getResizeCursor } from "kizkatt-graphic-engine";
 import { getElementMap, getIdSet } from "kizkatt-graphic-engine";
-import type { Interaction, KizkattElement } from "kizkatt-graphic-engine";
+import type {
+  Bounds,
+  Interaction,
+  KizkattElement,
+  Point,
+  Size
+} from "kizkatt-graphic-engine";
+
+export function getImagePlacementBounds(
+  interaction: Interaction | null,
+  previewPoint: Point | null,
+  intrinsicSize: Size
+): Bounds | null {
+  if (interaction?.type === "imageCreate") {
+    if (!interaction.hasMoved) {
+      return {
+        ...interaction.origin,
+        ...intrinsicSize
+      };
+    }
+
+    return {
+      height: Math.max(
+        MIN_ELEMENT_SIZE,
+        Math.abs(interaction.current.y - interaction.origin.y)
+      ),
+      width: Math.max(
+        MIN_ELEMENT_SIZE,
+        Math.abs(interaction.current.x - interaction.origin.x)
+      ),
+      x: Math.min(interaction.origin.x, interaction.current.x),
+      y: Math.min(interaction.origin.y, interaction.current.y)
+    };
+  }
+
+  return previewPoint
+    ? {
+        ...previewPoint,
+        ...intrinsicSize
+      }
+    : null;
+}
 
 export function getActiveInteractionCursor(interaction: Interaction | null) {
   if (!interaction) {

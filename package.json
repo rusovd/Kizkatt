@@ -15,6 +15,7 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "kizkatt-graphic-editor": "file:packages/kizkatt-graphic-editor",
     "kizkatt-graphic-engine": "file:packages/kizkatt-graphic-engine",
     "react": "19.0.0",
     "react-dom": "19.0.0"

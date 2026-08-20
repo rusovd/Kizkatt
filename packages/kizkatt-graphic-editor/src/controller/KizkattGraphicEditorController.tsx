@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import type {
   ChangeEvent,
   ClipboardEvent,
@@ -10,13 +9,6 @@ import type {
 
 import {
   DEFAULT_ELEMENT_STYLE_BY_THEME,
-  ARROW_MARKER_HEIGHT,
-  ARROW_MARKER_ORIENT,
-  ARROW_MARKER_PATH,
-  ARROW_MARKER_REF_X,
-  ARROW_MARKER_REF_Y,
-  ARROW_MARKER_VIEW_BOX,
-  ARROW_MARKER_WIDTH,
   DEFAULT_ARROW_MARKER_ID,
   DEFAULT_CANVAS_ARIA_LABEL,
   DEFAULT_EDGE_STYLE,
@@ -125,12 +117,8 @@ import {
   type Size
 } from "kizkatt-graphic-engine";
 import {
-  getImagePlacementBounds,
-  ImagePlacementPreview,
-  TransformPreview
-} from "../preview/PreviewOverlays";
-import {
   getActiveInteractionCursor,
+  getImagePlacementBounds,
   getPreviewDisplayElements,
   isPreviewTransformInteraction
 } from "../preview/interaction";
@@ -161,7 +149,6 @@ import {
   SELECTION_SCALE_HANDLE,
   translateElement
 } from "./objectCommands";
-import { SceneElement } from "./SceneElement";
 import {
   breakApartCanvasSelection,
   cloneElementsIntoCanvas,
@@ -183,16 +170,13 @@ export function KizkattGraphicEditorController({
   canvasAriaLabel = DEFAULT_CANVAS_ARIA_LABEL,
   canvasClassName = "kizkatt-canvas",
   children,
-  components,
   defaultElementStyleByTheme = DEFAULT_ELEMENT_STYLE_BY_THEME,
   getCanvasCursor,
   getToolForSelectedElement,
   naming,
-  renderElement,
-  renderElementOverlay,
+  renderCanvas,
   serializeSvg
 }: KizkattGraphicEditorControllerProps) {
-  const { CanvasGrid, InfoOverlay, SelectedBounds, SelectionArea } = components;
   const svgRef = useRef<SVGSVGElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const clipboardRef = useRef<KizkattElement[]>([]);
@@ -1519,7 +1503,6 @@ export function KizkattGraphicEditorController({
           pendingImageSize ?? DEFAULT_IMAGE_SIZE
         )
       : null;
-  const renderInlineSelection = !renderElementOverlay;
   const getElementSelectionRenderState = (element: KizkattElement) => {
     const isSelected = selectedIdSet.has(element.id);
     const showPrimaryOverlay =
@@ -1565,111 +1548,37 @@ export function KizkattGraphicEditorController({
     };
   };
 
-  const canvas = (
-  <svg
-    ref={svgRef}
-    className={canvasClassName}
-    role="application"
-    aria-label={canvasAriaLabel}
-    style={
-      {
-        "--kizkatt-canvas-grid": gridColor,
-        backgroundColor:
-          activeDisplayMode === "wireframe"
-            ? "var(--kizkatt-wireframe-canvas)"
-            : canvasBackgroundColor,
-        cursor: canvasCursor
-      } as CSSProperties
-    }
-    onPointerDown={onPointerDown}
-    onPointerLeave={onPointerLeave}
-    onPointerMove={onPointerMove}
-    onPointerUp={onPointerUp}
-    onContextMenu={onCanvasContextMenu}
-  >
-    <CanvasGrid
-      gridSettings={gridSettings}
-      pan={pan}
-      visible={showGrid && gridHasVisibleLayer}
-      zoom={zoom}
-    />
-    <defs>
-      <marker
-        id={arrowMarkerId}
-        viewBox={ARROW_MARKER_VIEW_BOX}
-        refX={ARROW_MARKER_REF_X}
-        refY={ARROW_MARKER_REF_Y}
-        markerWidth={ARROW_MARKER_WIDTH}
-        markerHeight={ARROW_MARKER_HEIGHT}
-        orient={ARROW_MARKER_ORIENT}
-      >
-        <path d={ARROW_MARKER_PATH} />
-      </marker>
-    </defs>
-    <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
-      {displayElements.map((element) => {
-        const { options, showPrimaryOverlay } =
-          getElementSelectionRenderState(element);
-
-        return (
-          <SceneElement
-            key={element.id}
-            element={element}
-            options={options}
-            renderElement={renderElement}
-            selected={renderInlineSelection && showPrimaryOverlay}
-          />
-        );
-      })}
-      {renderElementOverlay &&
-        !previewTransformInteraction &&
-        selectedElements.map((element) => {
-          const { options, showInternalOverlay, showPrimaryOverlay } =
-            getElementSelectionRenderState(element);
-
-          if (showPrimaryOverlay) {
-            return renderElementOverlay(element, {
-              ...options,
-              overlayVariant: "primary"
-            });
-          }
-
-          if (showInternalOverlay) {
-            return renderElementOverlay(element, {
-              ...options,
-              overlayVariant: "internal"
-            });
-          }
-
-          return null;
-        })}
-      {imagePlacementBounds && (
-        <ImagePlacementPreview bounds={imagePlacementBounds} />
-      )}
-      <SelectionArea interaction={interaction} />
-      {previewTransformInteraction && (
-        <TransformPreview
-          elements={canvasState.elements}
-          selectedIds={previewTransformInteraction.selectedIds}
-          wireframe={activeDisplayMode === "wireframe"}
-        />
-      )}
-      {infoMode && InfoOverlay && (
-        <InfoOverlay items={infoOverlayItems} zoom={zoom} />
-      )}
-      {!previewTransformInteraction && (
-        <SelectedBounds
-          elements={selectedElements}
-          interaction={interaction}
-          selectionTransformCenter={selectionTransformCenter}
-          selectionTransformMode={selectionTransformMode}
-          showRotateHandle={DEFAULT_SHOW_ROTATE_HANDLE}
-          showRotateHoverIcon={interaction?.type !== "rotate"}
-        />
-      )}
-    </g>
-  </svg>
-  );
+  const canvas = renderCanvas({
+    activeDisplayMode,
+    arrowMarkerId,
+    canvasAriaLabel,
+    canvasBackgroundColor,
+    canvasClassName,
+    canvasCursor,
+    canvasState,
+    displayElements,
+    getElementSelectionRenderState,
+    gridColor,
+    gridSettings,
+    imagePlacementBounds,
+    infoMode,
+    infoOverlayItems,
+    interaction,
+    onContextMenu: onCanvasContextMenu,
+    onPointerDown,
+    onPointerLeave,
+    onPointerMove,
+    onPointerUp,
+    pan,
+    previewTransformInteraction,
+    selectedElements,
+    selectionTransformCenter,
+    selectionTransformMode,
+    showGrid: showGrid && gridHasVisibleLayer,
+    showRotateHandle: DEFAULT_SHOW_ROTATE_HANDLE,
+    svgRef,
+    zoom
+  });
 
   return children({
     boardBindings: {
