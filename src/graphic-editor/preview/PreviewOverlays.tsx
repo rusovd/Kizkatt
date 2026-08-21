@@ -1,4 +1,4 @@
-import { EMPTY_COLLECTION_LENGTH, MIN_ELEMENT_SIZE } from "kizkatt-graphic-engine";
+import { EMPTY_COLLECTION_LENGTH } from "kizkatt-graphic-engine";
 import {
   getElementCenter,
   getLinearElementPath,
@@ -8,11 +8,8 @@ import {
 } from "kizkatt-graphic-engine";
 import type {
   Bounds,
-  Interaction,
-  KizkattElement,
-  Point
+  KizkattElement
 } from "kizkatt-graphic-engine";
-import type { Size } from "kizkatt-graphic-engine";
 import {
   ARROW_MARKER_PATH,
   ARROW_MARKER_REF_Y,
@@ -195,41 +192,6 @@ export function TransformPreview({
       ))}
     </g>
   );
-}
-
-export function getImagePlacementBounds(
-  interaction: Interaction | null,
-  previewPoint: Point | null,
-  intrinsicSize: Size
-): Bounds | null {
-  if (interaction?.type === "imageCreate") {
-    if (!interaction.hasMoved) {
-      return {
-        ...interaction.origin,
-        ...intrinsicSize
-      };
-    }
-
-    return {
-      height: Math.max(
-        MIN_ELEMENT_SIZE,
-        Math.abs(interaction.current.y - interaction.origin.y)
-      ),
-      width: Math.max(
-        MIN_ELEMENT_SIZE,
-        Math.abs(interaction.current.x - interaction.origin.x)
-      ),
-      x: Math.min(interaction.origin.x, interaction.current.x),
-      y: Math.min(interaction.origin.y, interaction.current.y)
-    };
-  }
-
-  return previewPoint
-    ? {
-        ...previewPoint,
-        ...intrinsicSize
-      }
-    : null;
 }
 
 export function ImagePlacementPreview({ bounds }: { bounds: Bounds }) {

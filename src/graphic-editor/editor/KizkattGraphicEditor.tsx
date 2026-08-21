@@ -1,6 +1,13 @@
 import type { CSSProperties } from "react";
 
 import {
+  ARROW_MARKER_HEIGHT,
+  ARROW_MARKER_ORIENT,
+  ARROW_MARKER_PATH,
+  ARROW_MARKER_REF_X,
+  ARROW_MARKER_REF_Y,
+  ARROW_MARKER_VIEW_BOX,
+  ARROW_MARKER_WIDTH,
   CANVAS_TAB_INDEX,
   DEFAULT_CANVAS_BACKGROUND,
   DEFAULT_CANVAS_BACKGROUND_BY_THEME,
@@ -22,11 +29,12 @@ import {
 } from "kizkatt-graphic-engine";
 import {
   KizkattGraphicEditorController,
+  type KizkattGraphicEditorCanvasViewModel,
   type KizkattGraphicEditorViewModel,
   type ObjectPanelProps,
   type StylePanelProps,
   type TextEditorProps
-} from "../controller/KizkattGraphicEditorController";
+} from "kizkatt-graphic-editor";
 import {
   getStoredCanvasBackgroundColor,
   getStoredCustomCanvasBackgroundColor,
@@ -71,6 +79,11 @@ import { Toolbar } from "../ui/controls/Toolbar";
 import { I18nProvider, useI18n } from "../i18n";
 import { GraphicEditorSettingsProvider } from "../ui/settings/GraphicEditorSettings";
 import { EditorLoader } from "../ui/feedback/EditorLoader";
+import { SceneElement } from "../controller/SceneElement";
+import {
+  ImagePlacementPreview,
+  TransformPreview
+} from "../preview/PreviewOverlays";
 
 export {
   DEFAULT_CANVAS_BACKGROUND,
@@ -142,12 +155,149 @@ function AppObjectPanel(props: ObjectPanelProps) {
   return <ObjectPanel {...props} />;
 }
 
-const canvasComponents = {
-  CanvasGrid,
-  InfoOverlay,
-  SelectedBounds,
-  SelectionArea
-};
+function AppCanvas({
+  viewModel
+}: {
+  viewModel: KizkattGraphicEditorCanvasViewModel;
+}) {
+  const {
+    activeDisplayMode,
+    arrowMarkerId,
+    canvasAriaLabel,
+    canvasBackgroundColor,
+    canvasClassName,
+    canvasCursor,
+    canvasState,
+    displayElements,
+    getElementSelectionRenderState,
+    gridColor,
+    gridSettings,
+    imagePlacementBounds,
+    infoMode,
+    infoOverlayItems,
+    interaction,
+    onContextMenu,
+    onPointerDown,
+    onPointerLeave,
+    onPointerMove,
+    onPointerUp,
+    pan,
+    previewTransformInteraction,
+    selectedElements,
+    selectionTransformCenter,
+    selectionTransformMode,
+    showGrid,
+    showRotateHandle,
+    svgRef,
+    zoom
+  } = viewModel;
+
+  return (
+    <svg
+      ref={svgRef}
+      className={canvasClassName}
+      role="application"
+      aria-label={canvasAriaLabel}
+      style={
+        {
+          "--kizkatt-canvas-grid": gridColor,
+          backgroundColor:
+            activeDisplayMode === "wireframe"
+              ? "var(--kizkatt-wireframe-canvas)"
+              : canvasBackgroundColor,
+          cursor: canvasCursor
+        } as CSSProperties
+      }
+      onPointerDown={onPointerDown}
+      onPointerLeave={onPointerLeave}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onContextMenu={onContextMenu}
+    >
+      <CanvasGrid
+        gridSettings={gridSettings}
+        pan={pan}
+        visible={showGrid}
+        zoom={zoom}
+      />
+      <defs>
+        <marker
+          id={arrowMarkerId}
+          viewBox={ARROW_MARKER_VIEW_BOX}
+          refX={ARROW_MARKER_REF_X}
+          refY={ARROW_MARKER_REF_Y}
+          markerWidth={ARROW_MARKER_WIDTH}
+          markerHeight={ARROW_MARKER_HEIGHT}
+          orient={ARROW_MARKER_ORIENT}
+        >
+          <path d={ARROW_MARKER_PATH} />
+        </marker>
+      </defs>
+      <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
+        {displayElements.map((element) => {
+          const { options } = getElementSelectionRenderState(element);
+
+          return (
+            <SceneElement
+              key={element.id}
+              element={element}
+              options={options}
+              renderElement={renderElement}
+              selected={false}
+            />
+          );
+        })}
+        {!previewTransformInteraction &&
+          selectedElements.map((element) => {
+            const { options, showInternalOverlay, showPrimaryOverlay } =
+              getElementSelectionRenderState(element);
+
+            if (showPrimaryOverlay) {
+              return renderElementOverlay(element, {
+                ...options,
+                overlayVariant: "primary"
+              });
+            }
+
+            if (showInternalOverlay) {
+              return renderElementOverlay(element, {
+                ...options,
+                overlayVariant: "internal"
+              });
+            }
+
+            return null;
+          })}
+        {imagePlacementBounds && (
+          <ImagePlacementPreview bounds={imagePlacementBounds} />
+        )}
+        <SelectionArea interaction={interaction} />
+        {previewTransformInteraction && (
+          <TransformPreview
+            elements={canvasState.elements}
+            selectedIds={previewTransformInteraction.selectedIds}
+            wireframe={activeDisplayMode === "wireframe"}
+          />
+        )}
+        {infoMode && <InfoOverlay items={infoOverlayItems} zoom={zoom} />}
+        {!previewTransformInteraction && (
+          <SelectedBounds
+            elements={selectedElements}
+            interaction={interaction}
+            selectionTransformCenter={selectionTransformCenter}
+            selectionTransformMode={selectionTransformMode}
+            showRotateHandle={showRotateHandle}
+            showRotateHoverIcon={interaction?.type !== "rotate"}
+          />
+        )}
+      </g>
+    </svg>
+  );
+}
+
+function renderAppCanvas(viewModel: KizkattGraphicEditorCanvasViewModel) {
+  return <AppCanvas viewModel={viewModel} />;
+}
 
 function KizkattGraphicEditorView({
   viewModel
@@ -231,15 +381,13 @@ function KizkattGraphicEditorContent() {
   return (
     <KizkattGraphicEditorController
       canvasAriaLabel={strings.canvas.canvasAriaLabel}
-      components={canvasComponents}
       defaultElementStyleByTheme={DEFAULT_ELEMENT_STYLE_BY_THEME}
       naming={ELEMENT_NAMING}
       getToolForSelectedElement={(element) =>
         ELEMENT_TOOL_BY_TYPE[element.type]
       }
       getCanvasCursor={getCanvasCursor}
-      renderElement={renderElement}
-      renderElementOverlay={renderElementOverlay}
+      renderCanvas={renderAppCanvas}
       serializeSvg={serializeSvg}
     >
       {(viewModel) => (

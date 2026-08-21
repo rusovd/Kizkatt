@@ -1,15 +1,19 @@
 import { memo } from "react";
+import type { ReactNode } from "react";
 
 import type { KizkattElement, Point } from "kizkatt-graphic-engine";
 import type {
-  KizkattGraphicEditorProps,
   KizkattRenderElementOptions
 } from "./types";
 
 type SceneElementProps = {
   element: KizkattElement;
   options: KizkattRenderElementOptions;
-  renderElement: KizkattGraphicEditorProps["renderElement"];
+  renderElement: (
+    element: KizkattElement,
+    selected: boolean,
+    options?: KizkattRenderElementOptions
+  ) => ReactNode;
   selected: boolean;
 };
 
