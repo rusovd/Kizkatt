@@ -28,10 +28,15 @@ export function getElementFromBase(element: KizkattElement): KizkattElement {
 
   return {
     ...element,
-    ...base,
-    base: element.base,
-    flipX: element.flipX,
-    flipY: element.flipY,
+    angle: base.angle,
+    bends: base.bends?.map((bend) => ({ ...bend })),
+    curve: base.curve ? { ...base.curve } : undefined,
+    height: base.height,
+    pathData: base.pathData,
+    points: base.points?.map((point) => ({ ...point })),
+    skewX: base.skewX,
+    skewY: base.skewY,
+    width: base.width,
     x: base.center.x - base.width / VIEWPORT_CENTER_DIVISOR,
     y: base.center.y - base.height / VIEWPORT_CENTER_DIVISOR
   };

@@ -26,6 +26,10 @@ type ResizeHandleConfig = {
   sy: -1 | 0 | 1;
 };
 
+export type ResizeOptions = {
+  preserveAspectRatio?: boolean;
+};
+
 const DEFAULT_RESIZE_HANDLE = RESIZE_HANDLES[2];
 const RESIZE_HANDLE_BY_ID = RESIZE_HANDLES.reduce<
   Record<ResizeHandle, ResizeHandleConfig>
@@ -46,6 +50,56 @@ const CURSOR_STOPS = [
 
 function getResizeHandle(handle: ResizeHandle) {
   return RESIZE_HANDLE_BY_ID[handle] ?? DEFAULT_RESIZE_HANDLE;
+}
+
+function getProportionalScale(
+  width: number,
+  height: number,
+  sx: -1 | 0 | 1,
+  sy: -1 | 0 | 1,
+  dx: number,
+  dy: number
+) {
+  const rawScale =
+    sx === 0
+      ? (sy * dy) / height
+      : sy === 0
+      ? (sx * dx) / width
+      : (dx * sx * width + dy * sy * height) /
+        (width * width + height * height);
+  const minimumScale = Math.max(
+    MIN_ELEMENT_SIZE / width,
+    MIN_ELEMENT_SIZE / height
+  );
+
+  return Math.max(minimumScale, rawScale);
+}
+
+function getAnchoredBoundsCoordinate(
+  anchor: number,
+  size: number,
+  direction: -1 | 0 | 1
+) {
+  return direction === 1
+    ? anchor
+    : direction === -1
+    ? anchor - size
+    : anchor - size / 2;
+}
+
+function scaleAnchoredCoordinate(
+  coordinate: number,
+  originalSize: number,
+  nextSize: number,
+  direction: -1 | 0 | 1
+) {
+  const scale = nextSize / originalSize;
+
+  return direction === 1
+    ? coordinate * scale
+    : direction === -1
+    ? nextSize - (originalSize - coordinate) * scale
+    : nextSize / 2 + (coordinate - originalSize / 2) * scale;
 }
 
 function scaleLocalPoint(point: Point, scaleX: number, scaleY: number) {
@@ -145,7 +199,8 @@ export function getResizeAnchorPoint(
 export function resizeElementFromHandle(
   element: KizkattElement,
   handle: ResizeHandle,
-  point: Point
+  point: Point,
+  options: ResizeOptions = {}
 ): KizkattElement {
   const { sx, sy } = getResizeHandle(handle);
   const anchor = getResizeAnchorPoint(element, handle);
@@ -156,14 +211,32 @@ export function resizeElementFromHandle(
   );
   const dx = point.x - anchor.x;
   const dy = point.y - anchor.y;
+  const localDx = dx * xAxis.x + dy * xAxis.y;
+  const localDy = dx * yAxis.x + dy * yAxis.y;
+  const originalWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(element.width));
+  const originalHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(element.height));
+  const proportionalScale = options.preserveAspectRatio
+    ? getProportionalScale(
+        originalWidth,
+        originalHeight,
+        sx,
+        sy,
+        localDx,
+        localDy
+      )
+    : null;
   const nextWidth =
-    sx === 0
-      ? element.width
-      : Math.max(MIN_ELEMENT_SIZE, sx * (dx * xAxis.x + dy * xAxis.y));
+    proportionalScale === null
+      ? sx === 0
+        ? element.width
+        : Math.max(MIN_ELEMENT_SIZE, sx * localDx)
+      : originalWidth * proportionalScale;
   const nextHeight =
-    sy === 0
-      ? element.height
-      : Math.max(MIN_ELEMENT_SIZE, sy * (dx * yAxis.x + dy * yAxis.y));
+    proportionalScale === null
+      ? sy === 0
+        ? element.height
+        : Math.max(MIN_ELEMENT_SIZE, sy * localDy)
+      : originalHeight * proportionalScale;
   const center = {
     x:
       anchor.x +
@@ -174,21 +247,21 @@ export function resizeElementFromHandle(
       (sx * nextWidth * xAxis.y) / 2 +
       (sy * nextHeight * yAxis.y) / 2
   };
-  const scaleX = nextWidth / Math.max(MIN_ELEMENT_SIZE, Math.abs(element.width));
-  const scaleY = nextHeight / Math.max(MIN_ELEMENT_SIZE, Math.abs(element.height));
+  const scaleX = nextWidth / originalWidth;
+  const scaleY = nextHeight / originalHeight;
   const scaleElementLocalPoint = (localPoint: Point) => ({
-    x:
-      sx === 0
-        ? localPoint.x
-        : sx === 1
-        ? localPoint.x * scaleX
-        : nextWidth - (element.width - localPoint.x) * scaleX,
-    y:
-      sy === 0
-        ? localPoint.y
-        : sy === 1
-        ? localPoint.y * scaleY
-        : nextHeight - (element.height - localPoint.y) * scaleY
+    x: scaleAnchoredCoordinate(
+      localPoint.x,
+      originalWidth,
+      nextWidth,
+      sx
+    ),
+    y: scaleAnchoredCoordinate(
+      localPoint.y,
+      originalHeight,
+      nextHeight,
+      sy
+    )
   });
 
   return {
@@ -213,7 +286,8 @@ export function resizeElementsFromSelectionHandle(
   selectedIds: string[],
   originalBounds: Bounds,
   handle: ResizeHandle,
-  point: Point
+  point: Point,
+  options: ResizeOptions = {}
 ) {
   const selectedIdSet = getIdSet(selectedIds);
   const { sx, sy } = getResizeHandle(handle);
@@ -231,38 +305,44 @@ export function resizeElementsFromSelectionHandle(
         ? originalBounds.y
         : originalBounds.y + originalBounds.height
   };
+  const originalWidth = Math.max(MIN_ELEMENT_SIZE, originalBounds.width);
+  const originalHeight = Math.max(MIN_ELEMENT_SIZE, originalBounds.height);
+  const proportionalScale = options.preserveAspectRatio
+    ? getProportionalScale(
+        originalWidth,
+        originalHeight,
+        sx,
+        sy,
+        point.x - anchor.x,
+        point.y - anchor.y
+      )
+    : null;
   const nextWidth =
-    sx === 0
-      ? originalBounds.width
-      : Math.max(
-          MIN_ELEMENT_SIZE,
-          sx === 1 ? point.x - anchor.x : anchor.x - point.x
-        );
+    proportionalScale === null
+      ? sx === 0
+        ? originalBounds.width
+        : Math.max(
+            MIN_ELEMENT_SIZE,
+            sx === 1 ? point.x - anchor.x : anchor.x - point.x
+          )
+      : originalWidth * proportionalScale;
   const nextHeight =
-    sy === 0
-      ? originalBounds.height
-      : Math.max(
-          MIN_ELEMENT_SIZE,
-          sy === 1 ? point.y - anchor.y : anchor.y - point.y
-        );
+    proportionalScale === null
+      ? sy === 0
+        ? originalBounds.height
+        : Math.max(
+            MIN_ELEMENT_SIZE,
+            sy === 1 ? point.y - anchor.y : anchor.y - point.y
+          )
+      : originalHeight * proportionalScale;
   const nextBounds = {
     height: nextHeight,
     width: nextWidth,
-    x:
-      sx === 0
-        ? originalBounds.x
-        : sx === 1
-        ? anchor.x
-        : anchor.x - nextWidth,
-    y:
-      sy === 0
-        ? originalBounds.y
-        : sy === 1
-        ? anchor.y
-        : anchor.y - nextHeight
+    x: getAnchoredBoundsCoordinate(anchor.x, nextWidth, sx),
+    y: getAnchoredBoundsCoordinate(anchor.y, nextHeight, sy)
   };
-  const scaleX = nextWidth / Math.max(MIN_ELEMENT_SIZE, originalBounds.width);
-  const scaleY = nextHeight / Math.max(MIN_ELEMENT_SIZE, originalBounds.height);
+  const scaleX = nextWidth / originalWidth;
+  const scaleY = nextHeight / originalHeight;
 
   return elements.map((element) => {
     if (!selectedIdSet.has(element.id)) {

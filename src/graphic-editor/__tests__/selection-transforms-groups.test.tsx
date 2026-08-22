@@ -707,6 +707,50 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(resized[1].height).toBeCloseTo(86.67);
   });
 
+  it("preserves selected group proportions during constrained resize", () => {
+    const elements = [
+      {
+        angle: 0,
+        backgroundColor: "#ffec99",
+        height: 60,
+        id: "first",
+        opacity: 100,
+        strokeColor: "#d6d6d6",
+        strokeStyle: "solid" as const,
+        strokeWidth: 2,
+        type: "rectangle" as const,
+        width: 100,
+        x: 40,
+        y: 40
+      },
+      {
+        angle: 0,
+        backgroundColor: "#a5d8ff",
+        height: 60,
+        id: "second",
+        opacity: 100,
+        strokeColor: "#d6d6d6",
+        strokeStyle: "solid" as const,
+        strokeWidth: 2,
+        type: "rectangle" as const,
+        width: 80,
+        x: 200,
+        y: 160
+      }
+    ];
+    const resized = resizeElementsFromSelectionHandle(
+      elements,
+      ["first", "second"],
+      { height: 180, width: 240, x: 40, y: 40 },
+      "se",
+      { x: 400, y: 300 },
+      { preserveAspectRatio: true }
+    );
+    const bounds = selectionBounds(resized);
+
+    expect(bounds!.width / bounds!.height).toBeCloseTo(240 / 180);
+  });
+
   it("rotates all selected elements around the group center", () => {
     const elements = [
       {
@@ -1224,6 +1268,19 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(rectangle).toHaveAttribute("x", "110");
     expect(rectangle).toHaveAttribute("y", "100");
 
+    fireEvent.click(screen.getByRole("button", { name: "dashed" }));
+    const resizeHandle = canvas.querySelector("[data-resize-handle='se']");
+    firePointerEvent(resizeHandle as Element, "pointerdown", {
+      clientX: 230,
+      clientY: 170
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 270, clientY: 210 });
+    firePointerEvent(canvas, "pointerup");
+
+    expect(rectangle).toHaveAttribute("width", "160");
+    expect(rectangle).toHaveAttribute("height", "110");
+    expect(rectangle).toHaveAttribute("data-stroke-style", "dashed");
+
     fireEvent.contextMenu(canvas, { clientX: 120, clientY: 110 });
     fireEvent.click(screen.getByRole("menuitem", { name: "Revert object base" }));
     await waitFor(() => {
@@ -1233,6 +1290,9 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
 
     expect(rectangle).toHaveAttribute("x", "70");
     expect(rectangle).toHaveAttribute("y", "70");
+    expect(rectangle).toHaveAttribute("width", "120");
+    expect(rectangle).toHaveAttribute("height", "70");
+    expect(rectangle).toHaveAttribute("data-stroke-style", "solid");
     expect(
       canvas.querySelector(".kizkatt-transform-center-marker--cross")
     ).toHaveAttribute("transform", "translate(130 105)");
@@ -1305,6 +1365,7 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     );
     expect(image).toHaveAttribute("height", "1536");
     expect(image).toHaveAttribute("width", "2048");
+    expect(image).toHaveAttribute("preserveAspectRatio", "none");
     expect(
       canvas.querySelector("[data-element-type='image'] [data-image-border]")
     ).toHaveAttribute("stroke-width", "0");
@@ -1352,6 +1413,7 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(image).toHaveAttribute("y", "120");
     expect(image).toHaveAttribute("height", "150");
     expect(image).toHaveAttribute("width", "200");
+    expect(image).toHaveAttribute("preserveAspectRatio", "none");
     expect(canvas.querySelector("[data-image-placement-preview]")).not
       .toBeInTheDocument();
   });
@@ -1541,6 +1603,46 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
         .getByRole("application", { name: "Drawing canvas" })
         .querySelector("[data-decorative-stroke='wavy']")
     ).toBeInTheDocument();
+  });
+
+  it("changes a manually entered angle without resizing the object", () => {
+    storeCanvasState({
+      elements: [
+        withUpdatedObjectBase({
+          angle: 0,
+          backgroundColor: "#653b00",
+          height: 50,
+          id: "rectangle",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "rectangle",
+          width: 100,
+          x: 100,
+          y: 80
+        })
+      ],
+      selectedIds: ["rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const angleInput = screen.getByLabelText("Angle");
+    const rectangle = screen
+      .getByRole("application", { name: "Drawing canvas" })
+      .querySelector("[data-element-id='rectangle'] rect");
+
+    fireEvent.change(angleInput, { target: { value: "4" } });
+    fireEvent.change(angleInput, { target: { value: "45" } });
+    fireEvent.blur(angleInput);
+
+    expect(rectangle).toHaveAttribute("width", "100");
+    expect(rectangle).toHaveAttribute("height", "50");
+    expect(rectangle).toHaveAttribute("x", "100");
+    expect(rectangle).toHaveAttribute("y", "80");
+    expect(
+      rectangle?.closest("[data-element-id]")?.getAttribute("transform")
+    ).toContain("translate(150 105) rotate(45)");
   });
 
   it("converts millimeter line width presets to canvas pixels", () => {

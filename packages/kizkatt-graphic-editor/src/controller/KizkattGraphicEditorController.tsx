@@ -758,21 +758,8 @@ export function KizkattGraphicEditorController({
           return element;
         }
 
-        const updateBaseStyle = (nextElement: KizkattElement) =>
-          element.base
-            ? {
-                ...nextElement,
-                base: {
-                  ...element.base,
-                  ...patch,
-                  imageBorderEnabled: nextElement.imageBorderEnabled,
-                  strokeWidth: nextElement.strokeWidth
-                }
-              }
-            : nextElement;
-
         if (element.type !== "image" || !changesImageBorderStyle(patch)) {
-          return updateBaseStyle({ ...element, ...patch });
+          return { ...element, ...patch };
         }
 
         const explicitlyChangesWidth = hasOwnStyleProperty(
@@ -789,12 +776,12 @@ export function KizkattGraphicEditorController({
               : DEFAULT_STROKE_WIDTH
             : element.strokeWidth;
 
-        return updateBaseStyle({
+        return {
           ...element,
           strokeWidth: restoredStrokeWidth,
           ...patch,
           imageBorderEnabled
-        });
+        };
       })
     }, {
       replace: replaceHistoryEntry
@@ -816,6 +803,36 @@ export function KizkattGraphicEditorController({
       canvasState.selectedIds.length === EMPTY_COLLECTION_LENGTH
     ) {
       mergingGeometryChangeRef.current = false;
+      return;
+    }
+
+    const replaceHistoryEntry =
+      Boolean(options.transient) && mergingGeometryChangeRef.current;
+    const changesOnlyAngle =
+      patch.angle !== undefined &&
+      patch.heightPercent === undefined &&
+      patch.offsetX === undefined &&
+      patch.offsetY === undefined &&
+      patch.widthPercent === undefined;
+
+    if (changesOnlyAngle) {
+      const angleDelta =
+        (patch.angle! - objectPanelGeometry.angle) * RADIANS_PER_DEGREE;
+      const center = getBoundsCenter(objectPanelGeometry.bounds);
+
+      commitState(
+        {
+          ...canvasState,
+          elements: rotateElementsAroundPoint(
+            canvasState.elements,
+            canvasState.selectedIds,
+            center,
+            angleDelta
+          )
+        },
+        { replace: replaceHistoryEntry }
+      );
+      mergingGeometryChangeRef.current = Boolean(options.transient);
       return;
     }
 
@@ -876,9 +893,6 @@ export function KizkattGraphicEditorController({
     const transformedElementById = new Map(
       transformedElements.map((element) => [element.id, element])
     );
-    const replaceHistoryEntry =
-      Boolean(options.transient) && mergingGeometryChangeRef.current;
-
     commitState(
       {
         ...canvasState,

@@ -45,6 +45,26 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(canvas.querySelector("[data-element-id]")).toBeInTheDocument();
   });
 
+  it("draws equal-sided shapes while Alt is held", () => {
+    render(<KizkattGraphicEditor />);
+
+    chooseGroupedTool("Rectangle", "Ellipse");
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", {
+      clientX: 160,
+      clientY: 100,
+      altKey: true
+    });
+    firePointerEvent(canvas, "pointerup", { altKey: true });
+
+    const ellipse = canvas.querySelector("[data-element-id] ellipse");
+
+    expect(ellipse).toHaveAttribute("rx", "60");
+    expect(ellipse).toHaveAttribute("ry", "60");
+  });
+
   it("names created elements and writes names into SVG metadata", () => {
     render(<KizkattGraphicEditor />);
 
@@ -228,6 +248,48 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(elementGroup?.getAttribute("transform")).not.toContain("rotate(0");
   });
 
+  it("snaps rotation to 15-degree steps while Alt is held", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+    firePointerEvent(canvas, "pointerdown", { clientX: 80, clientY: 80 });
+    firePointerEvent(canvas, "pointerup");
+
+    const rotateHandle = canvas.querySelector("[data-handle='rotate']");
+    const rotatePoint = getCirclePoint(rotateHandle);
+    const center = { x: 100, y: 85 };
+    const radius = Math.hypot(
+      rotatePoint.x - center.x,
+      rotatePoint.y - center.y
+    );
+    const targetAngle =
+      Math.atan2(rotatePoint.y - center.y, rotatePoint.x - center.x) +
+      (20 * Math.PI) / 180;
+
+    firePointerEvent(rotateHandle as Element, "pointerdown", {
+      clientX: rotatePoint.x,
+      clientY: rotatePoint.y
+    });
+    firePointerEvent(canvas, "pointermove", {
+      clientX: center.x + Math.cos(targetAngle) * radius,
+      clientY: center.y + Math.sin(targetAngle) * radius,
+      altKey: true
+    });
+    firePointerEvent(canvas, "pointerup", { altKey: true });
+
+    const transform = canvas
+      .querySelector("[data-element-id]")
+      ?.getAttribute("transform");
+    const angle = Number(/rotate\(([-\d.]+)/.exec(transform ?? "")?.[1]);
+
+    expect(angle).toBeCloseTo(15);
+  });
+
   it("shows resize handles on every selected rectangle corner and edge", () => {
     render(<KizkattGraphicEditor />);
 
@@ -279,6 +341,35 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
         canvas.querySelector(".kizkatt-transform-center-marker--cross")
       )
     ).toEqual({ x: 130, y: 115 });
+  });
+
+  it("preserves object proportions while resizing with Alt", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    const resizeHandle = canvas.querySelector("[data-resize-handle='se']");
+    firePointerEvent(resizeHandle as Element, "pointerdown", {
+      clientX: 160,
+      clientY: 120
+    });
+    firePointerEvent(canvas, "pointermove", {
+      clientX: 240,
+      clientY: 160,
+      altKey: true
+    });
+    firePointerEvent(canvas, "pointerup", { altKey: true });
+
+    const rectangle = canvas.querySelector("[data-element-id] rect");
+    const width = Number(rectangle?.getAttribute("width"));
+    const height = Number(rectangle?.getAttribute("height"));
+
+    expect(width / height).toBeCloseTo(120 / 70);
   });
 
   it("keeps active transform cursors after the pointer leaves a handle", () => {
@@ -982,10 +1073,12 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
     const elementGroup = canvas.querySelector("[data-element-id='image']");
+    const image = elementGroup?.querySelector("image");
     const imageBorder = elementGroup?.querySelector("[data-image-border]");
     const strokeWidthInput = screen.getByLabelText("Stroke width value");
 
     expect(imageBorder).toHaveAttribute("stroke-width", "0");
+    expect(image).toHaveAttribute("preserveAspectRatio", "none");
     expect(strokeWidthInput).toHaveValue(0);
     expect(elementGroup).not.toHaveAttribute("data-image-border-enabled");
 
@@ -996,6 +1089,21 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(imageBorder).toHaveAttribute("stroke-dasharray");
     expect(strokeWidthInput).toHaveValue(10);
     expect(elementGroup).toHaveAttribute("data-image-border-enabled", "true");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Unlock linked width and height"
+      })
+    );
+    fireEvent.change(screen.getByLabelText("Width"), {
+      target: { value: "200" }
+    });
+    fireEvent.blur(screen.getByLabelText("Width"));
+
+    expect(image).toHaveAttribute("width", "240");
+    expect(image).toHaveAttribute("height", "80");
+    expect(imageBorder).toHaveAttribute("width", "240");
+    expect(imageBorder).toHaveAttribute("height", "80");
 
     fireEvent.change(strokeWidthInput, { target: { value: "4" } });
     expect(imageBorder).toHaveAttribute("stroke-width", "4");

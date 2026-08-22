@@ -72,6 +72,38 @@ export function getDistance(start: Point, end: Point) {
   return Math.hypot(end.x - start.x, end.y - start.y);
 }
 
+export function constrainPointToAspectRatio(
+  origin: Point,
+  point: Point,
+  aspectRatio = 1
+) {
+  const safeAspectRatio =
+    Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
+  const dx = point.x - origin.x;
+  const dy = point.y - origin.y;
+  let width = Math.abs(dx);
+  let height = Math.abs(dy);
+
+  if (width / Math.max(height, Number.EPSILON) > safeAspectRatio) {
+    height = width / safeAspectRatio;
+  } else {
+    width = height * safeAspectRatio;
+  }
+
+  return {
+    x: origin.x + width * (dx < 0 ? -1 : 1),
+    y: origin.y + height * (dy < 0 ? -1 : 1)
+  };
+}
+
+export function snapAngleToIncrement(angle: number, increment: number) {
+  if (!Number.isFinite(increment) || increment <= 0) {
+    return angle;
+  }
+
+  return Math.round(angle / increment) * increment;
+}
+
 export function normalizeDegrees(value: number) {
   return ((value % 180) + 180) % 180;
 }

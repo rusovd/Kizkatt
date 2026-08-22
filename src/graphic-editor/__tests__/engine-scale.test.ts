@@ -116,6 +116,30 @@ describe("engine scale safeguards", () => {
     ).toBe(rectangle.strokeWidth * 2);
   });
 
+  it("preserves proportions from corner and edge resize handles", () => {
+    const rectangle = { ...createRectangle(0), height: 50, width: 100 };
+    const cornerResized = resizeElementFromHandle(
+      rectangle,
+      "se",
+      { x: 200, y: 70 },
+      { preserveAspectRatio: true }
+    );
+    const edgeResized = resizeElementFromHandle(
+      rectangle,
+      "e",
+      { x: 200, y: 25 },
+      { preserveAspectRatio: true }
+    );
+
+    expect(cornerResized.width / cornerResized.height).toBeCloseTo(2);
+    expect(edgeResized).toMatchObject({
+      height: 100,
+      width: 200,
+      x: 0,
+      y: -25
+    });
+  });
+
   it("keeps mirrored element geometry interactive", () => {
     const rectangle = { ...createRectangle(0), flipX: true };
     const localCorner = { x: rectangle.x, y: rectangle.y };

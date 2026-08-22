@@ -29,6 +29,7 @@ export {
 } from "./linearElements";
 export { getClientPoint, getWorldPoint } from "./pointerEvents";
 export {
+  constrainPointToAspectRatio,
   getBoundsFromPoints,
   getDistance,
   getElementCenter,
@@ -36,6 +37,7 @@ export {
   getElementLocalVector,
   transformElementPoint,
   rotatePointAroundPoint,
+  snapAngleToIncrement,
   getSegmentMidpoint
 } from "./primitives";
 export {
@@ -54,5 +56,6 @@ export {
   resizeElementFromHandle,
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,
-  skewElementsFromSelectionHandle
+  skewElementsFromSelectionHandle,
+  type ResizeOptions
 } from "./resize";

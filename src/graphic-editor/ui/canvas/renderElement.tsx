@@ -436,7 +436,7 @@ function InlineSvgObject({
       fill={wireframe ? SVG_FILL_NONE : fill}
       height={element.height}
       opacity={wireframe ? 1 : element.opacity / PERCENT_MAX_VALUE}
-      preserveAspectRatio="xMidYMid meet"
+      preserveAspectRatio="none"
       stroke={wireframe ? WIREFRAME_STROKE : element.strokeColor}
       strokeDasharray={wireframe ? undefined : shapeProps.strokeDasharray}
       strokeLinecap={shapeProps.strokeLinecap}
@@ -1091,7 +1091,7 @@ export function renderElement(
         y={element.y}
         width={element.width}
         height={element.height}
-        preserveAspectRatio="xMidYMid meet"
+        preserveAspectRatio="none"
         opacity={element.opacity / PERCENT_MAX_VALUE}
       />
     ) : (

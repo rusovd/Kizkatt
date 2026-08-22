@@ -1,6 +1,8 @@
 import type { PointerEvent } from "react";
 
 import {
+  constrainPointToAspectRatio,
+  DEFAULT_IMAGE_SIZE,
   getClientPoint,
   getDistance,
   getElementIdsInSelectionArea,
@@ -9,6 +11,8 @@ import {
   resizeElementFromHandle,
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,
+  ROTATION_SNAP_STEP_RADIANS,
+  snapAngleToIncrement,
   skewElementsFromSelectionHandle
 } from "kizkatt-graphic-engine";
 import {
@@ -16,9 +20,15 @@ import {
   MIN_SELECT_DRAG_DISTANCE,
   SINGLE_SELECTION_COUNT
 } from "kizkatt-graphic-engine";
-import type { Interaction } from "kizkatt-graphic-engine";
+import type { ElementType, Interaction } from "kizkatt-graphic-engine";
 import { getIdSet } from "kizkatt-graphic-engine";
 import type { PointerHandlerContext } from "./types";
+
+const PROPORTIONAL_CREATION_TYPES: ReadonlySet<ElementType> = new Set([
+  "diamond",
+  "ellipse",
+  "rectangle"
+]);
 
 export function updatePointerInteraction(
   event: PointerEvent<SVGSVGElement>,
@@ -101,9 +111,19 @@ export function updatePointerInteraction(
   }
 
   if (activeInteraction.type === "create") {
+    const activeElement = activeCanvasState.elements.find(
+      (element) => element.id === activeInteraction.elementId
+    );
+    const currentPoint =
+      event.altKey &&
+      activeElement &&
+      PROPORTIONAL_CREATION_TYPES.has(activeElement.type)
+        ? constrainPointToAspectRatio(activeInteraction.origin, worldPoint)
+        : worldPoint;
+
     updateInteraction({
       ...activeInteraction,
-      current: worldPoint,
+      current: currentPoint,
       hasMoved: true
     });
     replaceActiveState({
@@ -116,8 +136,8 @@ export function updatePointerInteraction(
         if (element.type === "draw") {
           const points = activeInteraction.freehandPoints ?? [{ x: 0, y: 0 }];
           const nextPoint = {
-            x: worldPoint.x - activeInteraction.origin.x,
-            y: worldPoint.y - activeInteraction.origin.y
+            x: currentPoint.x - activeInteraction.origin.x,
+            y: currentPoint.y - activeInteraction.origin.y
           };
           const previousPoint = points.at(-1);
 
@@ -131,16 +151,16 @@ export function updatePointerInteraction(
 
           return {
             ...element,
-            width: worldPoint.x - activeInteraction.origin.x,
-            height: worldPoint.y - activeInteraction.origin.y,
+            width: currentPoint.x - activeInteraction.origin.x,
+            height: currentPoint.y - activeInteraction.origin.y,
             points
           };
         }
 
         return {
           ...element,
-          width: worldPoint.x - activeInteraction.origin.x,
-          height: worldPoint.y - activeInteraction.origin.y
+          width: currentPoint.x - activeInteraction.origin.x,
+          height: currentPoint.y - activeInteraction.origin.y
         };
       })
     });
@@ -148,14 +168,22 @@ export function updatePointerInteraction(
   }
 
   if (activeInteraction.type === "imageCreate") {
+    const intrinsicSize = context.pendingImageSize ?? DEFAULT_IMAGE_SIZE;
+    const currentPoint = event.altKey
+      ? constrainPointToAspectRatio(
+          activeInteraction.origin,
+          worldPoint,
+          intrinsicSize.width / intrinsicSize.height
+        )
+      : worldPoint;
     const hasMoved =
       activeInteraction.hasMoved ||
-      getDistance(activeInteraction.origin, worldPoint) >=
+      getDistance(activeInteraction.origin, currentPoint) >=
         MIN_CREATE_DRAG_DISTANCE;
 
     updateInteraction({
       ...activeInteraction,
-      current: hasMoved ? worldPoint : activeInteraction.origin,
+      current: hasMoved ? currentPoint : activeInteraction.origin,
       hasMoved
     });
     return;
@@ -237,7 +265,9 @@ export function updatePointerInteraction(
 
       nextElements = activeInteraction.originalElements.map((element) =>
         selectedIdSet.has(element.id)
-          ? resizeElementFromHandle(element, handle, worldPoint)
+          ? resizeElementFromHandle(element, handle, worldPoint, {
+              preserveAspectRatio: event.altKey
+            })
           : element
       );
     } else if (activeInteraction.handle) {
@@ -246,7 +276,8 @@ export function updatePointerInteraction(
         activeInteraction.selectedIds,
         activeInteraction.originalBounds,
         activeInteraction.handle,
-        worldPoint
+        worldPoint,
+        { preserveAspectRatio: event.altKey }
       );
     } else {
       nextElements = activeInteraction.originalElements.map((element) =>
@@ -320,11 +351,19 @@ export function updatePointerInteraction(
       worldPoint.y - activeInteraction.center.y,
       worldPoint.x - activeInteraction.center.x
     );
-    const angleDelta = currentAngle - activeInteraction.startAngle;
+    const angleDifference = currentAngle - activeInteraction.startAngle;
+    const rawAngleDelta = Math.atan2(
+      Math.sin(angleDifference),
+      Math.cos(angleDifference)
+    );
+    const angleDelta = event.altKey
+      ? snapAngleToIncrement(rawAngleDelta, ROTATION_SNAP_STEP_RADIANS)
+      : rawAngleDelta;
+    const nextCurrentAngle = activeInteraction.startAngle + angleDelta;
 
     updateInteraction({
       ...activeInteraction,
-      currentAngle
+      currentAngle: nextCurrentAngle
     });
     replaceActiveState({
       ...activeCanvasState,
