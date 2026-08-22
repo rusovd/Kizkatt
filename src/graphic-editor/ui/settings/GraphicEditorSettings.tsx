@@ -1,25 +1,28 @@
 import type { ReactNode } from "react";
-import { createContext, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState
+} from "react";
 
 import { DEFAULT_GRAPHIC_EDITOR_SETTINGS } from "../../config/defaultSettings";
 
 type GraphicEditorSettings = {
   autohideToolbar: boolean;
-  dragEnabled: boolean;
-  toolbarOrientation: ToolbarOrientation;
+  allVisiblePanelsPinned: boolean;
+  isPanelPinned: (id: string) => boolean;
+  registerVisiblePanel: (id: string, pinnable: boolean) => () => void;
   setAutohideToolbar: (value: boolean) => void;
-  setDragEnabled: (value: boolean) => void;
-  setToolbarOrientation: (value: ToolbarOrientation) => void;
+  setPanelPinned: (id: string, pinned: boolean) => void;
+  toggleVisiblePanelsPinned: () => void;
 };
 
-export type ToolbarOrientation = "horizontal" | "vertical";
-
-const DRAG_ENABLED_STORAGE_KEY =
-  "kizkatt:graphic-editor:settings:drag-enabled";
 const AUTOHIDE_TOOLBAR_STORAGE_KEY =
   "kizkatt:graphic-editor:settings:autohide-toolbar";
-const TOOLBAR_ORIENTATION_STORAGE_KEY =
-  "kizkatt:graphic-editor:settings:toolbar-orientation";
+const PINNED_PANELS_STORAGE_KEY =
+  "kizkatt:graphic-editor:settings:pinned-panels";
 
 const GraphicEditorSettingsContext =
   createContext<GraphicEditorSettings | null>(null);
@@ -42,12 +45,31 @@ function storeBoolean(key: string, value: boolean) {
   window.localStorage.setItem(key, String(value));
 }
 
-function readStoredToolbarOrientation(): ToolbarOrientation {
-  const storedValue = window.localStorage.getItem(TOOLBAR_ORIENTATION_STORAGE_KEY);
+function readStoredPanelIds() {
+  const storedValue = window.localStorage.getItem(PINNED_PANELS_STORAGE_KEY);
 
-  return storedValue === "vertical"
-    ? "vertical"
-    : DEFAULT_GRAPHIC_EDITOR_SETTINGS.toolbarOrientation;
+  if (!storedValue) {
+    return new Set<string>();
+  }
+
+  try {
+    const panelIds = JSON.parse(storedValue);
+
+    return new Set(
+      Array.isArray(panelIds)
+        ? panelIds.filter((id): id is string => typeof id === "string")
+        : []
+    );
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function storePanelIds(panelIds: Set<string>) {
+  window.localStorage.setItem(
+    PINNED_PANELS_STORAGE_KEY,
+    JSON.stringify([...panelIds])
+  );
 }
 
 export function GraphicEditorSettingsProvider({
@@ -61,35 +83,91 @@ export function GraphicEditorSettingsProvider({
       DEFAULT_GRAPHIC_EDITOR_SETTINGS.autohideToolbar
     )
   );
-  const [dragEnabled, setDragEnabledState] = useState(() =>
-    readStoredBoolean(
-      DRAG_ENABLED_STORAGE_KEY,
-      DEFAULT_GRAPHIC_EDITOR_SETTINGS.dragEnabled
-    )
+  const [pinnedPanelIds, setPinnedPanelIds] = useState(readStoredPanelIds);
+  const [visiblePinnablePanelIds, setVisiblePinnablePanelIds] = useState(
+    () => new Set<string>()
   );
-  const [toolbarOrientation, setToolbarOrientationState] = useState(
-    readStoredToolbarOrientation
-  );
+
+  const setPanelPinned = useCallback((id: string, pinned: boolean) => {
+    setPinnedPanelIds((currentPanelIds) => {
+      const nextPanelIds = new Set(currentPanelIds);
+
+      if (pinned) {
+        nextPanelIds.add(id);
+      } else {
+        nextPanelIds.delete(id);
+      }
+
+      storePanelIds(nextPanelIds);
+      return nextPanelIds;
+    });
+  }, []);
+
+  const registerVisiblePanel = useCallback((id: string, pinnable: boolean) => {
+    if (!pinnable) {
+      return () => undefined;
+    }
+
+    setVisiblePinnablePanelIds((currentPanelIds) => {
+      const nextPanelIds = new Set(currentPanelIds);
+      nextPanelIds.add(id);
+      return nextPanelIds;
+    });
+
+    return () => {
+      setVisiblePinnablePanelIds((currentPanelIds) => {
+        const nextPanelIds = new Set(currentPanelIds);
+        nextPanelIds.delete(id);
+        return nextPanelIds;
+      });
+    };
+  }, []);
+
+  const allVisiblePanelsPinned =
+    visiblePinnablePanelIds.size > 0 &&
+    [...visiblePinnablePanelIds].every((id) => pinnedPanelIds.has(id));
+
+  const toggleVisiblePanelsPinned = useCallback(() => {
+    setPinnedPanelIds((currentPanelIds) => {
+      const nextPanelIds = new Set(currentPanelIds);
+      const shouldPin =
+        visiblePinnablePanelIds.size > 0 &&
+        [...visiblePinnablePanelIds].some((id) => !nextPanelIds.has(id));
+
+      visiblePinnablePanelIds.forEach((id) => {
+        if (shouldPin) {
+          nextPanelIds.add(id);
+        } else {
+          nextPanelIds.delete(id);
+        }
+      });
+
+      storePanelIds(nextPanelIds);
+      return nextPanelIds;
+    });
+  }, [visiblePinnablePanelIds]);
 
   const settings = useMemo<GraphicEditorSettings>(
     () => ({
       autohideToolbar,
-      dragEnabled,
-      toolbarOrientation,
+      allVisiblePanelsPinned,
+      isPanelPinned: (id) => pinnedPanelIds.has(id),
+      registerVisiblePanel,
       setAutohideToolbar: (value) => {
         setAutohideToolbarState(value);
         storeBoolean(AUTOHIDE_TOOLBAR_STORAGE_KEY, value);
       },
-      setDragEnabled: (value) => {
-        setDragEnabledState(value);
-        storeBoolean(DRAG_ENABLED_STORAGE_KEY, value);
-      },
-      setToolbarOrientation: (value) => {
-        setToolbarOrientationState(value);
-        window.localStorage.setItem(TOOLBAR_ORIENTATION_STORAGE_KEY, value);
-      }
+      setPanelPinned,
+      toggleVisiblePanelsPinned
     }),
-    [autohideToolbar, dragEnabled, toolbarOrientation]
+    [
+      allVisiblePanelsPinned,
+      autohideToolbar,
+      pinnedPanelIds,
+      registerVisiblePanel,
+      setPanelPinned,
+      toggleVisiblePanelsPinned
+    ]
   );
 
   return (

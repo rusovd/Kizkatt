@@ -3,7 +3,6 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 
 import type { Tool } from "../../model/types";
 import { DraggablePanel } from "../positioning/DraggablePanel";
-import { PanelDragHandle } from "../positioning/PanelDragHandle";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 import { TOOL_REGISTRY_BY_ID, type ToolDefinition } from "../../tools/toolRegistry";
 import { useI18n } from "../../i18n";
@@ -202,7 +201,7 @@ export function Toolbar({
   activeTool: Tool;
   onActivateTool: (tool: Tool) => void;
 }) {
-  const { autohideToolbar, toolbarOrientation } = useGraphicEditorSettings();
+  const { autohideToolbar } = useGraphicEditorSettings();
   const { strings } = useI18n();
   const [openSubmenu, setOpenSubmenu] = useState<ToolbarSubmenuId | null>(null);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
@@ -268,54 +267,55 @@ export function Toolbar({
     <DraggablePanel
       id="toolbar"
       className={openSubmenu ? "is-floating-panel-active" : undefined}
+      defaultOrientation="horizontal"
+      title={strings.toolbar.ariaLabel}
       topDock
     >
-      <div
-        ref={toolbarRef}
-        className={[
-          "kizkatt-toolbar",
-          `kizkatt-toolbar--${toolbarOrientation}`,
-          autohideToolbar ? "kizkatt-toolbar--autohide" : ""
-        ].join(" ")}
-        aria-label={strings.toolbar.ariaLabel}
-      >
-        <PanelDragHandle
-          placement={toolbarOrientation === "vertical" ? "top" : "left"}
-          title={strings.settings.tooltips.panelDragHandle}
-        />
-        {SINGLE_TOOL_ORDER.slice(0, 3).map((tool) => (
-          <ToolButton
-            key={tool}
-            active={activeTool === tool}
-            entry={TOOL_REGISTRY_BY_ID[tool]}
-            onAnyToolActivate={closeSubmenu}
+      {({ chrome, orientation }) => (
+        <div
+          ref={toolbarRef}
+          className={[
+            "kizkatt-toolbar",
+            `kizkatt-toolbar--${orientation}`,
+            autohideToolbar ? "kizkatt-toolbar--autohide" : ""
+          ].join(" ")}
+          aria-label={strings.toolbar.ariaLabel}
+        >
+          {chrome}
+          {SINGLE_TOOL_ORDER.slice(0, 3).map((tool) => (
+            <ToolButton
+              key={tool}
+              active={activeTool === tool}
+              entry={TOOL_REGISTRY_BY_ID[tool]}
+              onAnyToolActivate={closeSubmenu}
+              onActivateTool={onActivateTool}
+            />
+          ))}
+          <ToolGroupButton
+            activeTool={activeTool}
+            group={SHAPE_GROUP}
+            openSubmenu={openSubmenu}
+            onOpenSubmenuChange={openToolbarSubmenu}
             onActivateTool={onActivateTool}
           />
-        ))}
-        <ToolGroupButton
-          activeTool={activeTool}
-          group={SHAPE_GROUP}
-          openSubmenu={openSubmenu}
-          onOpenSubmenuChange={openToolbarSubmenu}
-          onActivateTool={onActivateTool}
-        />
-        <ToolGroupButton
-          activeTool={activeTool}
-          group={LINE_GROUP}
-          openSubmenu={openSubmenu}
-          onOpenSubmenuChange={openToolbarSubmenu}
-          onActivateTool={onActivateTool}
-        />
-        {SINGLE_TOOL_ORDER.slice(3).map((tool) => (
-          <ToolButton
-            key={tool}
-            active={activeTool === tool}
-            entry={TOOL_REGISTRY_BY_ID[tool]}
-            onAnyToolActivate={closeSubmenu}
+          <ToolGroupButton
+            activeTool={activeTool}
+            group={LINE_GROUP}
+            openSubmenu={openSubmenu}
+            onOpenSubmenuChange={openToolbarSubmenu}
             onActivateTool={onActivateTool}
           />
-        ))}
-      </div>
+          {SINGLE_TOOL_ORDER.slice(3).map((tool) => (
+            <ToolButton
+              key={tool}
+              active={activeTool === tool}
+              entry={TOOL_REGISTRY_BY_ID[tool]}
+              onAnyToolActivate={closeSubmenu}
+              onActivateTool={onActivateTool}
+            />
+          ))}
+        </div>
+      )}
     </DraggablePanel>
   );
 }

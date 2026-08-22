@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
+  DEFAULT_SELECTED_SLOPPINESS,
   DEFAULT_STROKE_STYLE,
   DEFAULT_STROKE_WIDTH,
   getCalibratedMillimetersWorldSize,
@@ -9,13 +10,15 @@ import {
 } from "kizkatt-graphic-engine";
 import type { ObjectPanelProps } from "../../controller/types";
 
-import { OBJECT_PANEL_UI_SETTINGS } from "../../config/defaultSettings";
+import {
+  OBJECT_PANEL_MIN_SIZE,
+  OBJECT_PANEL_UI_SETTINGS
+} from "../../config/defaultSettings";
 import { useI18n } from "../../i18n";
-import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 import {
   AspectLockIcon,
   AspectUnlockIcon,
-  ChevronDownIcon,
+  DiameterIcon,
   DimensionHeightIcon,
   DimensionWidthIcon,
   EdgeRoundIcon,
@@ -27,7 +30,7 @@ import {
   RotationAngleIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
-import { PanelDragHandle } from "../positioning/PanelDragHandle";
+import { FeatureGroup } from "./FeatureGroup";
 import { LineSettingsPopover } from "./LineSettingsPopover";
 
 const HORIZONTAL_MIRROR_AXIS = "horizontal";
@@ -46,6 +49,20 @@ const STROKE_STYLE_LABEL_KEYS = {
   stitched: "strokeStyleStitched",
   wavy: "strokeStyleWavy",
   zigzag: "strokeStyleZigzag"
+} as const;
+
+const SLOPPINESS_OPTIONS = [
+  "architect",
+  "artist",
+  "cartoonist",
+  "double"
+] as const;
+
+const SLOPPINESS_LABEL_KEYS = {
+  architect: "sloppinessArchitect",
+  artist: "sloppinessArtist",
+  cartoonist: "sloppinessCartoonist",
+  double: "sloppinessDouble"
 } as const;
 
 function clamp(value: number, min: number, max: number) {
@@ -272,7 +289,7 @@ function StrokeWidthField({
             aria-hidden="true"
             className="kizkatt-stroke-width-preset-chevron"
           >
-            {ChevronDownIcon}
+            {DiameterIcon}
           </span>
         </span>
       </span>
@@ -293,7 +310,6 @@ export function ObjectPanel({
   theme
 }: ObjectPanelProps) {
   const { strings } = useI18n();
-  const { toolbarOrientation } = useGraphicEditorSettings();
   const { fromDisplayUnit, precision, toDisplayUnit, unit } =
     useUnitConverters(gridSettings);
   const [aspectLocked, setAspectLocked] = useState(true);
@@ -354,8 +370,13 @@ export function ObjectPanel({
   const edgeStyle = style.edgeStyle ?? "round";
   const strokeStyle = style.strokeStyle ?? DEFAULT_STROKE_STYLE;
   const strokeWidth = style.strokeWidth ?? DEFAULT_STROKE_WIDTH;
+  const sloppiness = style.sloppiness ?? DEFAULT_SELECTED_SLOPPINESS;
   const strokeStyleOptions = OBJECT_PANEL_UI_SETTINGS.strokeStyleOptions.map((option) => ({
     label: strings.objectPanel[STROKE_STYLE_LABEL_KEYS[option]],
+    value: option
+  }));
+  const sloppinessOptions = SLOPPINESS_OPTIONS.map((option) => ({
+    label: strings.objectPanel[SLOPPINESS_LABEL_KEYS[option]],
     value: option
   }));
   const strokeWidthPresetOptions = [
@@ -467,207 +488,242 @@ export function ObjectPanel({
   return (
     <DraggablePanel
       id={OBJECT_PANEL_UI_SETTINGS.id}
+      closable
+      defaultOrientation="horizontal"
+      horizontalActionsLayout="column"
+      minSize={OBJECT_PANEL_MIN_SIZE}
+      pinnable
+      reopenKey={selectedElements.map((element) => element.id).join(":")}
+      resizable
+      title={strings.objectPanel.objectGeometry}
       topDock
-      className={[
-        "kizkatt-object-panel",
-        `kizkatt-object-panel--${toolbarOrientation}`,
-        `kizkatt-object-panel--${theme}`
-      ].join(" ")}
     >
-      <PanelDragHandle
-        placement={toolbarOrientation === "vertical" ? "top" : "left"}
-        title={strings.settings.tooltips.panelDragHandle}
-      />
-      <div className="kizkatt-object-panel-content">
-        <div className="kizkatt-object-panel-stack">
-          <ObjectNumberField
-            className="kizkatt-object-field--position"
-            label={strings.objectPanel.centerX}
-            title={
-              useCanvasCoordinates
-                ? strings.objectPanel.tooltips.centerXGlobal
-                : strings.objectPanel.tooltips.centerX
-            }
-            step={OBJECT_PANEL_UI_SETTINGS.positionStep}
-            suffix={unit}
-            value={formatNumber(
-              toDisplayUnit(
-                useCanvasCoordinates ? canvasCenter.x : geometry.offsetX
-              ),
-              precision
-            )}
-            onChange={(value) => updateOffset("offsetX", value)}
-            onCommit={onGeometryChangeEnd}
-          />
-          <ObjectNumberField
-            className="kizkatt-object-field--position"
-            label={strings.objectPanel.centerY}
-            title={
-              useCanvasCoordinates
-                ? strings.objectPanel.tooltips.centerYGlobal
-                : strings.objectPanel.tooltips.centerY
-            }
-            step={OBJECT_PANEL_UI_SETTINGS.positionStep}
-            suffix={unit}
-            value={formatNumber(
-              toDisplayUnit(
-                useCanvasCoordinates ? canvasCenter.y : geometry.offsetY
-              ),
-              precision
-            )}
-            onChange={(value) => updateOffset("offsetY", value)}
-            onCommit={onGeometryChangeEnd}
-          />
-        </div>
-        <IconButton
-          active={useCanvasCoordinates}
-          title={
-            useCanvasCoordinates
-              ? strings.objectPanel.coordinatesGlobal
-              : strings.objectPanel.coordinatesRelative
-          }
-          onClick={() => setUseCanvasCoordinates((value) => !value)}
-        >
-          {GlobeIcon}
-        </IconButton>
-        <div className="kizkatt-object-panel-group kizkatt-object-panel-stack">
-          <ObjectNumberField
-            icon={DimensionWidthIcon}
-            label={strings.objectPanel.width}
-            title={strings.objectPanel.tooltips.width}
-            step={OBJECT_PANEL_UI_SETTINGS.percentStep}
-            suffix="%"
-            value={formatNumber(
-              geometry.widthPercent,
-              OBJECT_PANEL_UI_SETTINGS.percentPrecision
-            )}
-            onChange={(value) => updateScale("widthPercent", value)}
-            onCommit={onGeometryChangeEnd}
-          />
-          <ObjectNumberField
-            icon={DimensionHeightIcon}
-            label={strings.objectPanel.height}
-            title={strings.objectPanel.tooltips.height}
-            step={OBJECT_PANEL_UI_SETTINGS.percentStep}
-            suffix="%"
-            value={formatNumber(
-              geometry.heightPercent,
-              OBJECT_PANEL_UI_SETTINGS.percentPrecision
-            )}
-            onChange={(value) => updateScale("heightPercent", value)}
-            onCommit={onGeometryChangeEnd}
-          />
-        </div>
-        <IconButton
-          active={aspectLocked}
-          title={
-            aspectLocked
-              ? strings.objectPanel.aspectLocked
-              : strings.objectPanel.aspectUnlocked
-          }
-          onClick={() => setAspectLocked((value) => !value)}
-        >
-          {aspectLocked ? AspectLockIcon : AspectUnlockIcon}
-        </IconButton>
-        <ObjectNumberField
-          className="kizkatt-object-field--angle"
-          icon={RotationAngleIcon}
-          label={strings.objectPanel.angle}
-          title={strings.objectPanel.tooltips.angle}
-          step={OBJECT_PANEL_UI_SETTINGS.angleStep}
-          suffix={OBJECT_PANEL_UI_SETTINGS.degreeSymbol}
-          value={formatNumber(
-            geometry.angle,
-            OBJECT_PANEL_UI_SETTINGS.anglePrecision
-          )}
-          onChange={updateAngle}
-          onCommit={onGeometryChangeEnd}
-        />
-        <div className="kizkatt-object-panel-group kizkatt-object-panel-stack">
-          <IconButton
-            title={strings.objectPanel.tooltips.mirrorHorizontal}
-            onClick={() => onMirror(HORIZONTAL_MIRROR_AXIS)}
-          >
-            {MirrorHorizontalIcon}
-          </IconButton>
-          <IconButton
-            title={strings.objectPanel.tooltips.mirrorVertical}
-            onClick={() => onMirror(VERTICAL_MIRROR_AXIS)}
-          >
-            {MirrorVerticalIcon}
-          </IconButton>
-        </div>
-        <div className="kizkatt-object-panel-group kizkatt-object-panel-stack">
-          {OBJECT_PANEL_UI_SETTINGS.edgeOptions.map((option) => (
-            <IconButton
-              key={option}
-              active={edgeStyle === option}
-              title={strings.objectPanel.tooltips[
-                option === "round" ? "edgeRound" : "edgeSharp"
-              ]}
-              onClick={() => updateStyle({ edgeStyle: option })}
-            >
-              {EDGE_ICONS[option]}
-            </IconButton>
-          ))}
-        </div>
+      {({ actions, chrome, orientation }) => (
         <div
-          ref={lineSettingsRef}
-          className="kizkatt-object-panel-group kizkatt-object-line-settings"
+          className={[
+            "kizkatt-object-panel",
+            `kizkatt-object-panel--${orientation}`,
+            `kizkatt-object-panel--${theme}`
+          ].join(" ")}
         >
-          <IconButton
-            active={lineSettingsOpen}
-            title={strings.objectPanel.lineSettings.open}
-            onClick={() => setLineSettingsOpen((open) => !open)}
-          >
-            {PenNibIcon}
-          </IconButton>
-          <div className="kizkatt-object-panel-stack">
-            <ObjectSelectField
-              className="kizkatt-object-select-field--stroke-style"
-              label={strings.objectPanel.strokeStyle}
-              title={strings.objectPanel.tooltips.strokeStyle}
-              value={strokeStyle}
-              options={strokeStyleOptions}
-              onChange={(value) => updateStyle({ strokeStyle: value })}
-            />
-            <StrokeWidthField
-              label={strings.objectPanel.strokeWidth}
-              title={strings.objectPanel.tooltips.strokeWidth}
-              step={OBJECT_PANEL_UI_SETTINGS.positionStep}
-              suffix={unit}
-              value={formatNumber(toDisplayUnit(strokeWidth), precision)}
-              presetLabel={strings.objectPanel.strokeWidthPresetSelect}
-              presetOptions={strokeWidthPresetOptions}
-              onChange={updateStrokeWidth}
-              onCommit={onStyleChangeEnd}
-              onPresetSelect={(value) => {
-                updateStrokeWidth(value);
-                onStyleChangeEnd();
-              }}
-            />
+          {chrome}
+          <div className="kizkatt-object-panel-content">
+            <FeatureGroup className="kizkatt-object-feature--position">
+              <div className="kizkatt-object-panel-stack">
+                <ObjectNumberField
+                  className="kizkatt-object-field--position"
+                  label={strings.objectPanel.centerX}
+                  title={
+                    useCanvasCoordinates
+                      ? strings.objectPanel.tooltips.centerXGlobal
+                      : strings.objectPanel.tooltips.centerX
+                  }
+                  step={OBJECT_PANEL_UI_SETTINGS.positionStep}
+                  suffix={unit}
+                  value={formatNumber(
+                    toDisplayUnit(
+                      useCanvasCoordinates
+                        ? canvasCenter.x
+                        : geometry.offsetX
+                    ),
+                    precision
+                  )}
+                  onChange={(value) => updateOffset("offsetX", value)}
+                  onCommit={onGeometryChangeEnd}
+                />
+                <ObjectNumberField
+                  className="kizkatt-object-field--position"
+                  label={strings.objectPanel.centerY}
+                  title={
+                    useCanvasCoordinates
+                      ? strings.objectPanel.tooltips.centerYGlobal
+                      : strings.objectPanel.tooltips.centerY
+                  }
+                  step={OBJECT_PANEL_UI_SETTINGS.positionStep}
+                  suffix={unit}
+                  value={formatNumber(
+                    toDisplayUnit(
+                      useCanvasCoordinates
+                        ? canvasCenter.y
+                        : geometry.offsetY
+                    ),
+                    precision
+                  )}
+                  onChange={(value) => updateOffset("offsetY", value)}
+                  onCommit={onGeometryChangeEnd}
+                />
+              </div>
+              <IconButton
+                active={useCanvasCoordinates}
+                title={
+                  useCanvasCoordinates
+                    ? strings.objectPanel.coordinatesGlobal
+                    : strings.objectPanel.coordinatesRelative
+                }
+                onClick={() => setUseCanvasCoordinates((value) => !value)}
+              >
+                {GlobeIcon}
+              </IconButton>
+            </FeatureGroup>
+            <FeatureGroup className="kizkatt-object-feature--scale">
+              <div className="kizkatt-object-panel-stack">
+                <ObjectNumberField
+                  icon={DimensionWidthIcon}
+                  label={strings.objectPanel.width}
+                  title={strings.objectPanel.tooltips.width}
+                  step={OBJECT_PANEL_UI_SETTINGS.percentStep}
+                  suffix="%"
+                  value={formatNumber(
+                    geometry.widthPercent,
+                    OBJECT_PANEL_UI_SETTINGS.percentPrecision
+                  )}
+                  onChange={(value) => updateScale("widthPercent", value)}
+                  onCommit={onGeometryChangeEnd}
+                />
+                <ObjectNumberField
+                  icon={DimensionHeightIcon}
+                  label={strings.objectPanel.height}
+                  title={strings.objectPanel.tooltips.height}
+                  step={OBJECT_PANEL_UI_SETTINGS.percentStep}
+                  suffix="%"
+                  value={formatNumber(
+                    geometry.heightPercent,
+                    OBJECT_PANEL_UI_SETTINGS.percentPrecision
+                  )}
+                  onChange={(value) => updateScale("heightPercent", value)}
+                  onCommit={onGeometryChangeEnd}
+                />
+              </div>
+              <IconButton
+                active={aspectLocked}
+                title={
+                  aspectLocked
+                    ? strings.objectPanel.aspectLocked
+                    : strings.objectPanel.aspectUnlocked
+                }
+                onClick={() => setAspectLocked((value) => !value)}
+              >
+                {aspectLocked ? AspectLockIcon : AspectUnlockIcon}
+              </IconButton>
+            </FeatureGroup>
+            <FeatureGroup className="kizkatt-object-feature--angle">
+              <ObjectNumberField
+                className="kizkatt-object-field--angle"
+                icon={RotationAngleIcon}
+                label={strings.objectPanel.angle}
+                title={strings.objectPanel.tooltips.angle}
+                step={OBJECT_PANEL_UI_SETTINGS.angleStep}
+                suffix={OBJECT_PANEL_UI_SETTINGS.degreeSymbol}
+                value={formatNumber(
+                  geometry.angle,
+                  OBJECT_PANEL_UI_SETTINGS.anglePrecision
+                )}
+                onChange={updateAngle}
+                onCommit={onGeometryChangeEnd}
+              />
+            </FeatureGroup>
+            <FeatureGroup className="kizkatt-object-feature--mirror">
+              <IconButton
+                title={strings.objectPanel.tooltips.mirrorHorizontal}
+                onClick={() => onMirror(HORIZONTAL_MIRROR_AXIS)}
+              >
+                {MirrorHorizontalIcon}
+              </IconButton>
+              <IconButton
+                title={strings.objectPanel.tooltips.mirrorVertical}
+                onClick={() => onMirror(VERTICAL_MIRROR_AXIS)}
+              >
+                {MirrorVerticalIcon}
+              </IconButton>
+            </FeatureGroup>
+            <FeatureGroup className="kizkatt-object-feature--edges">
+              {OBJECT_PANEL_UI_SETTINGS.edgeOptions.map((option) => (
+                <IconButton
+                  key={option}
+                  active={edgeStyle === option}
+                  title={
+                    strings.objectPanel.tooltips[
+                      option === "round" ? "edgeRound" : "edgeSharp"
+                    ]
+                  }
+                  onClick={() => updateStyle({ edgeStyle: option })}
+                >
+                  {EDGE_ICONS[option]}
+                </IconButton>
+              ))}
+            </FeatureGroup>
+            <FeatureGroup className="kizkatt-object-feature--line">
+              <div
+                ref={lineSettingsRef}
+                className="kizkatt-object-line-settings"
+              >
+                <IconButton
+                  active={lineSettingsOpen}
+                  title={strings.objectPanel.lineSettings.open}
+                  onClick={() => setLineSettingsOpen((open) => !open)}
+                >
+                  {PenNibIcon}
+                </IconButton>
+                <div className="kizkatt-object-panel-stack">
+                  <ObjectSelectField
+                    className="kizkatt-object-select-field--stroke-style"
+                    label={strings.objectPanel.strokeStyle}
+                    title={strings.objectPanel.tooltips.strokeStyle}
+                    value={strokeStyle}
+                    options={strokeStyleOptions}
+                    onChange={(value) => updateStyle({ strokeStyle: value })}
+                  />
+                  <StrokeWidthField
+                    label={strings.objectPanel.strokeWidth}
+                    title={strings.objectPanel.tooltips.strokeWidth}
+                    step={OBJECT_PANEL_UI_SETTINGS.positionStep}
+                    suffix={unit}
+                    value={formatNumber(toDisplayUnit(strokeWidth), precision)}
+                    presetLabel={strings.objectPanel.strokeWidthPresetSelect}
+                    presetOptions={strokeWidthPresetOptions}
+                    onChange={updateStrokeWidth}
+                    onCommit={onStyleChangeEnd}
+                    onPresetSelect={(value) => {
+                      updateStrokeWidth(value);
+                      onStyleChangeEnd();
+                    }}
+                  />
+                </div>
+                {lineSettingsOpen && (
+                  <LineSettingsPopover
+                    canUseArrowheads={canUseArrowheads}
+                    strokeStyleOptions={strokeStyleOptions}
+                    strokeWidthValue={formatNumber(
+                      toDisplayUnit(strokeWidth),
+                      precision
+                    )}
+                    style={style}
+                    unit={unit}
+                    onClose={() => setLineSettingsOpen(false)}
+                    onContinuousStyleChange={(patch) =>
+                      onStyleChange(patch, { transient: true })
+                    }
+                    onStrokeWidthChange={updateStrokeWidth}
+                    onStyleChange={updateStyle}
+                    onStyleChangeEnd={onStyleChangeEnd}
+                  />
+                )}
+              </div>
+            </FeatureGroup>
+            <FeatureGroup className="kizkatt-object-feature--sloppiness">
+              <ObjectSelectField
+                className="kizkatt-object-select-field--sloppiness"
+                label={strings.objectPanel.sloppiness}
+                title={strings.objectPanel.tooltips.sloppiness}
+                value={sloppiness}
+                options={sloppinessOptions}
+                onChange={(value) => updateStyle({ sloppiness: value })}
+              />
+            </FeatureGroup>
           </div>
-          {lineSettingsOpen && (
-            <LineSettingsPopover
-              canUseArrowheads={canUseArrowheads}
-              strokeStyleOptions={strokeStyleOptions}
-              strokeWidthValue={formatNumber(
-                toDisplayUnit(strokeWidth),
-                precision
-              )}
-              style={style}
-              unit={unit}
-              onClose={() => setLineSettingsOpen(false)}
-              onContinuousStyleChange={(patch) =>
-                onStyleChange(patch, { transient: true })
-              }
-              onStrokeWidthChange={updateStrokeWidth}
-              onStyleChange={updateStyle}
-              onStyleChangeEnd={onStyleChangeEnd}
-            />
-          )}
+          {actions}
         </div>
-      </div>
+      )}
     </DraggablePanel>
   );
 }

@@ -9,16 +9,13 @@ import {
   DEFAULT_FILL_STYLE,
   DEFAULT_FILL_WEIGHT,
   DEFAULT_OPACITY,
-  DEFAULT_SELECTED_SLOPPINESS,
-  DEFAULT_SLOPPINESS_GAP,
-  DEFAULT_STROKE_STYLE,
-  DEFAULT_STROKE_WIDTH,
   EMPTY_COLLECTION_LENGTH,
   FIRST_ARRAY_INDEX,
   LIGHT_THEME_BACKGROUND_COLORS,
   LIGHT_THEME_STROKE_COLORS,
   TRANSPARENT_COLOR
 } from "../../config/constants";
+import { STYLE_PANEL_MIN_SIZE } from "../../config/defaultSettings";
 import { isHexColor } from "../../geometry";
 import { canElementUseBackground } from "../../model/element";
 import { useI18n } from "../../i18n";
@@ -27,31 +24,21 @@ import {
   BringToFrontIcon,
   ClosedPathIcon,
   DuplicateIcon,
-  EdgeRoundIcon,
-  EdgeSharpIcon,
   EyedropperIcon,
   FillCrossHatchIcon,
   FillHachureIcon,
   FillSolidIcon,
   LinkIcon,
+  OpacityIcon,
   PaletteIcon,
   SendBackwardIcon,
   SendToBackIcon,
-  SloppinessArchitectIcon,
-  SloppinessArtistIcon,
-  SloppinessCartoonistIcon,
-  SloppinessDoubleIcon,
-  StrokeStyleDashedIcon,
-  StrokeStyleDashDotIcon,
-  StrokeStyleDottedIcon,
   StrokeStyleSolidIcon,
-  StrokeStyleStitchedIcon,
-  StrokeStyleWavyIcon,
-  StrokeStyleZigzagIcon,
   TrashIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
-import { PanelDragHandle } from "../positioning/PanelDragHandle";
+import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
+import { FeatureGroup } from "./FeatureGroup";
 import {
   closeOtherFloatingPanels,
   useActiveFloatingPanel,
@@ -89,8 +76,12 @@ type StylePanelProps = {
   theme: KizkattTheme;
 };
 
-const QUICK_SWATCH_COUNT = 5;
+const COMPACT_QUICK_SWATCH_COUNT = 5;
+const BASE_QUICK_SWATCH_COUNT = DARK_THEME_BACKGROUND_COLORS.length;
 const QUICK_CUSTOM_FALLBACK_OFFSET = 1;
+const QUICK_SWATCH_SIZE = 20;
+const QUICK_SWATCH_GAP = 5;
+const ADAPTIVE_SHADE_INDICES = [0, 3, 6, 10, 13] as const;
 const COLOR_CHANNEL_RADIX = 16;
 const HEX_BYTE_LENGTH = 2;
 const HEX_FULL_LENGTH = 6;
@@ -126,66 +117,15 @@ const DEFAULT_POPOVER_PALETTE =
   COLOR_PALETTES.find((palette) => palette.id === DEFAULT_POPOVER_PALETTE_ID) ??
   COLOR_PALETTES[DEFAULT_POPOVER_PALETTE_INDEX];
 const FILL_STYLE_OPTIONS = ["solid", "hachure", "crossHatch"] as const;
-const STROKE_STYLE_OPTIONS = [
-  "solid",
-  "dashed",
-  "stitched",
-  "dotted",
-  "dashDot",
-  "wavy",
-  "zigzag"
-] as const;
-const SLOPPINESS_OPTIONS = [
-  "architect",
-  "artist",
-  "cartoonist",
-  "double"
-] as const;
-const EDGE_STYLE_OPTIONS = ["sharp", "round"] as const;
-const SHARP_EDGE_OPTION = EDGE_STYLE_OPTIONS[0];
-const STROKE_STYLE_ICONS = {
-  dashed: StrokeStyleDashedIcon,
-  dashDot: StrokeStyleDashDotIcon,
-  dotted: StrokeStyleDottedIcon,
-  solid: StrokeStyleSolidIcon,
-  stitched: StrokeStyleStitchedIcon,
-  wavy: StrokeStyleWavyIcon,
-  zigzag: StrokeStyleZigzagIcon
-} as const;
 const FILL_STYLE_ICONS = {
   crossHatch: FillCrossHatchIcon,
   hachure: FillHachureIcon,
   solid: FillSolidIcon
 } as const;
-const EDGE_STYLE_ICONS = {
-  round: EdgeRoundIcon,
-  sharp: EdgeSharpIcon
-} as const;
-const SLOPPINESS_ICONS = {
-  architect: SloppinessArchitectIcon,
-  artist: SloppinessArtistIcon,
-  cartoonist: SloppinessCartoonistIcon,
-  double: SloppinessDoubleIcon
-} as const;
 const FILL_STYLE_LABEL_KEYS = {
   crossHatch: "fillCrossHatch",
   hachure: "fillHachure",
   solid: "fillSolid"
-} as const;
-const STROKE_STYLE_LABEL_KEYS = {
-  dashed: "strokeStyleDashed",
-  dashDot: "strokeStyleDashDot",
-  dotted: "strokeStyleDotted",
-  solid: "strokeStyleSolid",
-  stitched: "strokeStyleStitched",
-  wavy: "strokeStyleWavy",
-  zigzag: "strokeStyleZigzag"
-} as const;
-const SLOPPINESS_LABEL_KEYS = {
-  architect: "sloppinessArchitect",
-  artist: "sloppinessArtist",
-  cartoonist: "sloppinessCartoonist",
-  double: "sloppinessDouble"
 } as const;
 const LAYER_ACTIONS = [
   { action: "back", labelKey: "sendToBack", icon: SendToBackIcon },
@@ -198,13 +138,9 @@ const ELEMENT_ACTIONS = [
   { action: "delete", labelKey: "delete", icon: TrashIcon },
   { action: "link", labelKey: "link", icon: LinkIcon }
 ] as const;
-const MIN_STROKE_WIDTH = 0;
-const MAX_STROKE_WIDTH = 50;
 const MIN_FILL_WEIGHT = 0.25;
 const MAX_FILL_WEIGHT = 6;
 const FILL_WEIGHT_STEP = 0.25;
-const MIN_SLOPPINESS_GAP = 0;
-const MAX_SLOPPINESS_GAP = 80;
 const MIN_OPACITY = 0;
 const MAX_OPACITY = DEFAULT_OPACITY;
 const DARK_THEME_STROKE_SOURCE_BY_PALETTE_ID: Record<string, string> = {
@@ -270,6 +206,21 @@ function getQuickColors(target: ColorTarget, theme: KizkattTheme) {
   }
 
   return LIGHT_THEME_STROKE_COLORS;
+}
+
+function getAdaptiveQuickColors(target: ColorTarget, theme: KizkattTheme) {
+  const adaptiveShades = COLOR_PALETTES.filter(
+    (palette) => palette.id !== TRANSPARENT_COLOR
+  ).flatMap((palette) => {
+    const paletteColor = getPaletteColorForTarget(palette, target, theme);
+    const shades = buildShadesFromColor(paletteColor);
+
+    return ADAPTIVE_SHADE_INDICES.map(
+      (shadeIndex) => shades[shadeIndex] ?? paletteColor
+    );
+  });
+
+  return [...getQuickColors(target, theme), ...adaptiveShades];
 }
 
 function rgbToHex({ b, g, r }: { b: number; g: number; r: number }) {
@@ -388,19 +339,6 @@ function getSwatchClassName({
     .join(" ");
 }
 
-function normalizeStrokeWidth(value: string) {
-  const numericValue = Number(value);
-
-  if (!Number.isFinite(numericValue)) {
-    return MIN_STROKE_WIDTH;
-  }
-
-  return Math.min(
-    MAX_STROKE_WIDTH,
-    Math.max(MIN_STROKE_WIDTH, numericValue)
-  );
-}
-
 function normalizeFillWeight(value: string) {
   const numericValue = Number(value);
 
@@ -409,19 +347,6 @@ function normalizeFillWeight(value: string) {
   }
 
   return Math.min(MAX_FILL_WEIGHT, Math.max(MIN_FILL_WEIGHT, numericValue));
-}
-
-function normalizeSloppinessGap(value: string) {
-  const numericValue = Number(value);
-
-  if (!Number.isFinite(numericValue)) {
-    return MIN_SLOPPINESS_GAP;
-  }
-
-  return Math.min(
-    MAX_SLOPPINESS_GAP,
-    Math.max(MIN_SLOPPINESS_GAP, numericValue)
-  );
 }
 
 function normalizeOpacity(value: string) {
@@ -465,6 +390,7 @@ export function StylePanel({
   theme
 }: StylePanelProps) {
   const { strings } = useI18n();
+  const { isPanelPinned } = useGraphicEditorSettings();
   const tooltips = strings.stylePanel.tooltips;
   const [colorPopover, setColorPopover] = useState<ColorPopoverState | null>(
     null
@@ -572,17 +498,8 @@ export function StylePanel({
     const result = await new EyeDropper().open();
     applyCustomColor(target, result.sRGBHex);
   };
-  const updateStrokeWidth = (value: string) => {
-    onStyleChange({ strokeWidth: normalizeStrokeWidth(value) });
-  };
-  const updateStrokeWidthContinuously = (value: string) => {
-    applyContinuousStyleChange({ strokeWidth: normalizeStrokeWidth(value) });
-  };
   const updateFillWeight = (value: string) => {
     onStyleChange({ fillWeight: normalizeFillWeight(value) });
-  };
-  const updateSloppinessGap = (value: string) => {
-    onStyleChange({ sloppinessGap: normalizeSloppinessGap(value) });
   };
   const updateOpacity = (value: string) => {
     onStyleChange({ opacity: normalizeOpacity(value) });
@@ -595,278 +512,235 @@ export function StylePanel({
     selectedElements
   );
 
-  if (activeFloatingPanel === "toolbar") {
+  if (
+    activeFloatingPanel === "toolbar" &&
+    !isPanelPinned(STYLE_PANEL_FLOATING_PANEL_SOURCE)
+  ) {
     return null;
   }
 
   return (
-    <DraggablePanel id="style-panel">
-      <aside
-        className="kizkatt-style-panel"
-        aria-label={strings.stylePanel.elementStyle}
-      >
-        <PanelDragHandle
-          placement="top"
-          title={strings.settings.tooltips.panelDragHandle}
-        />
-        <label>{strings.stylePanel.background}</label>
-        <ColorSwatches
-          activeColor={style.backgroundColor}
-          colors={getQuickColors("backgroundColor", theme)}
-          disabled={backgroundControlDisabled}
-          label={strings.stylePanel.background}
-          onNativeColorSelect={(color) =>
-            applyCustomColor("backgroundColor", color)
-          }
-          onColorSelect={(color) => {
-            applyColor("backgroundColor", color);
-            setColorPopover(null);
-          }}
-          onCustomColorOpen={(color) =>
-            openColorPopover("backgroundColor", color)
-          }
-        />
-        <label>{strings.stylePanel.stroke}</label>
-        <ColorSwatches
-          activeColor={style.strokeColor}
-          colors={getQuickColors("strokeColor", theme)}
-          label={strings.stylePanel.stroke}
-          onNativeColorSelect={(color) => applyCustomColor("strokeColor", color)}
-          onColorSelect={(color) => {
-            applyColor("strokeColor", color);
-            setColorPopover(null);
-          }}
-          onCustomColorOpen={(color) => openColorPopover("strokeColor", color)}
-        />
-        {colorPopover &&
-          !(
-            colorPopover.target === "backgroundColor" &&
-            backgroundControlDisabled
-          ) && (
-            <ColorPopover
-              activeColor={style[colorPopover.target]}
-              activePaletteId={colorPopover.paletteId}
-              colorColumnCount={colorColumnCount}
-              shadeBaseColor={colorPopover.shadeBaseColor}
-              target={colorPopover.target}
-              theme={theme}
-              onColorSelect={(target, color) => {
-                applyColor(target, color);
-              }}
-              onPaletteColorSelect={(target, color, paletteId) => {
-                applyColor(target, color);
-                setColorPopover({ paletteId, shadeBaseColor: color, target });
-              }}
-              onHexColorChange={updateHexColor}
-              onPickColorFromScreen={pickColorFromScreen}
-            />
-          )}
-      <label>{strings.stylePanel.fill}</label>
-      <div
-        className={[
-          "kizkatt-fill-control",
-          canToggleClosedPath ? "kizkatt-fill-control--with-path" : ""
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        <div className="kizkatt-segmented kizkatt-icon-segmented">
-          {FILL_STYLE_OPTIONS.map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-label={strings.stylePanel[FILL_STYLE_LABEL_KEYS[value]]}
-              title={tooltips[FILL_STYLE_LABEL_KEYS[value]]}
-              className={
-                (style.fillStyle ?? DEFAULT_FILL_STYLE) === value
-                  ? "is-active"
-                  : undefined
+    <DraggablePanel
+      id="style-panel"
+      closable
+      defaultOrientation="vertical"
+      hideLabels={{ horizontal: true }}
+      horizontalActionsLayout="column"
+      maxCols={1}
+      maxRows={2}
+      minSize={STYLE_PANEL_MIN_SIZE}
+      pinnable
+      reopenKey={`${activeTool}:${selectedElements
+        .map((element) => element.id)
+        .join(":")}`}
+      resizable
+      title={strings.stylePanel.elementStyle}
+    >
+      {({ actions, chrome, orientation }) => (
+        <aside
+          className={`kizkatt-style-panel kizkatt-style-panel--${orientation}`}
+          aria-label={strings.stylePanel.elementStyle}
+        >
+          {chrome}
+          <FeatureGroup
+            className="kizkatt-style-feature--background"
+            icon={PaletteIcon}
+            label={strings.stylePanel.background}
+          >
+            <ColorSwatches
+              activeColor={style.backgroundColor}
+              colors={getAdaptiveQuickColors("backgroundColor", theme)}
+              disabled={backgroundControlDisabled}
+              label={strings.stylePanel.background}
+              onNativeColorSelect={(color) =>
+                applyCustomColor("backgroundColor", color)
               }
-              onClick={() => onStyleChange({ fillStyle: value })}
+              onColorSelect={(color) => {
+                applyColor("backgroundColor", color);
+                setColorPopover(null);
+              }}
+              onCustomColorOpen={(color) =>
+                openColorPopover("backgroundColor", color)
+              }
+            />
+          </FeatureGroup>
+          <FeatureGroup
+            className="kizkatt-style-feature--stroke"
+            icon={StrokeStyleSolidIcon}
+            label={strings.stylePanel.stroke}
+          >
+            <ColorSwatches
+              activeColor={style.strokeColor}
+              colors={getAdaptiveQuickColors("strokeColor", theme)}
+              label={strings.stylePanel.stroke}
+              onNativeColorSelect={(color) =>
+                applyCustomColor("strokeColor", color)
+              }
+              onColorSelect={(color) => {
+                applyColor("strokeColor", color);
+                setColorPopover(null);
+              }}
+              onCustomColorOpen={(color) =>
+                openColorPopover("strokeColor", color)
+              }
+            />
+          </FeatureGroup>
+          {colorPopover &&
+            !(
+              colorPopover.target === "backgroundColor" &&
+              backgroundControlDisabled
+            ) && (
+              <ColorPopover
+                activeColor={style[colorPopover.target]}
+                activePaletteId={colorPopover.paletteId}
+                colorColumnCount={colorColumnCount}
+                shadeBaseColor={colorPopover.shadeBaseColor}
+                target={colorPopover.target}
+                theme={theme}
+                onColorSelect={(target, color) => {
+                  applyColor(target, color);
+                }}
+                onPaletteColorSelect={(target, color, paletteId) => {
+                  applyColor(target, color);
+                  setColorPopover({ paletteId, shadeBaseColor: color, target });
+                }}
+                onHexColorChange={updateHexColor}
+                onPickColorFromScreen={pickColorFromScreen}
+              />
+            )}
+          <FeatureGroup
+            className="kizkatt-style-feature--fill"
+            icon={FillSolidIcon}
+            label={strings.stylePanel.fill}
+          >
+            <div
+              className={[
+                "kizkatt-fill-control",
+                canToggleClosedPath ? "kizkatt-fill-control--with-path" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
-              {FILL_STYLE_ICONS[value]}
-            </button>
-          ))}
-        </div>
-        {canToggleClosedPath && (
-          <button
-            type="button"
-            className={closedPath ? "is-active" : undefined}
-            aria-label={strings.stylePanel.closePath}
-            title={tooltips.closePath}
-            onClick={() => onClosedPathChange(!closedPath)}
+              <div className="kizkatt-segmented kizkatt-icon-segmented">
+                {FILL_STYLE_OPTIONS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-label={
+                      strings.stylePanel[FILL_STYLE_LABEL_KEYS[value]]
+                    }
+                    title={tooltips[FILL_STYLE_LABEL_KEYS[value]]}
+                    className={
+                      (style.fillStyle ?? DEFAULT_FILL_STYLE) === value
+                        ? "is-active"
+                        : undefined
+                    }
+                    onClick={() => onStyleChange({ fillStyle: value })}
+                  >
+                    {FILL_STYLE_ICONS[value]}
+                  </button>
+                ))}
+              </div>
+              {canToggleClosedPath && (
+                <button
+                  type="button"
+                  className={closedPath ? "is-active" : undefined}
+                  aria-label={strings.stylePanel.closePath}
+                  title={tooltips.closePath}
+                  onClick={() => onClosedPathChange(!closedPath)}
+                >
+                  {ClosedPathIcon}
+                </button>
+              )}
+              <input
+                aria-label={strings.stylePanel.fillWeight}
+                title={tooltips.fillWeight}
+                type="number"
+                min={MIN_FILL_WEIGHT}
+                max={MAX_FILL_WEIGHT}
+                step={FILL_WEIGHT_STEP}
+                value={style.fillWeight ?? DEFAULT_FILL_WEIGHT}
+                onChange={(event) => updateFillWeight(event.target.value)}
+              />
+            </div>
+          </FeatureGroup>
+          <FeatureGroup
+            className="kizkatt-style-feature--opacity"
+            icon={OpacityIcon}
+            label={strings.stylePanel.opacity}
+            labelFor="opacity"
           >
-            {ClosedPathIcon}
-          </button>
-        )}
-        <input
-          aria-label={strings.stylePanel.fillWeight}
-          title={tooltips.fillWeight}
-          type="number"
-          min={MIN_FILL_WEIGHT}
-          max={MAX_FILL_WEIGHT}
-          step={FILL_WEIGHT_STEP}
-          value={style.fillWeight ?? DEFAULT_FILL_WEIGHT}
-          onChange={(event) => updateFillWeight(event.target.value)}
-        />
-      </div>
-      <label htmlFor="stroke-width">{strings.stylePanel.strokeWidth}</label>
-      <div className="kizkatt-numeric-slider-control">
-        <input
-          id="stroke-width"
-          type="range"
-          title={tooltips.strokeWidth}
-          min={MIN_STROKE_WIDTH}
-          max={MAX_STROKE_WIDTH}
-          value={style.strokeWidth ?? DEFAULT_STROKE_WIDTH}
-          onBlur={endContinuousStyleChange}
-          onChange={(event) => updateStrokeWidthContinuously(event.target.value)}
-          onKeyDown={beginContinuousStyleChange}
-          onKeyUp={endContinuousStyleChange}
-          onPointerCancel={endContinuousStyleChange}
-          onPointerDown={beginContinuousStyleChange}
-          onPointerUp={endContinuousStyleChange}
-        />
-        <input
-          aria-label={strings.stylePanel.strokeWidthValue}
-          title={tooltips.strokeWidthValue}
-          type="number"
-          min={MIN_STROKE_WIDTH}
-          max={MAX_STROKE_WIDTH}
-          value={style.strokeWidth ?? DEFAULT_STROKE_WIDTH}
-          onChange={(event) => updateStrokeWidth(event.target.value)}
-        />
-      </div>
-      <label>{strings.stylePanel.strokeStyle}</label>
-      <div className="kizkatt-segmented kizkatt-stroke-style-segmented kizkatt-icon-segmented">
-        {STROKE_STYLE_OPTIONS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-label={strings.stylePanel[STROKE_STYLE_LABEL_KEYS[value]]}
-            title={tooltips[STROKE_STYLE_LABEL_KEYS[value]]}
-            className={
-              (style.strokeStyle ?? DEFAULT_STROKE_STYLE) === value
-                ? "is-active"
-                : undefined
-            }
-            onClick={() => onStyleChange({ strokeStyle: value })}
-          >
-            {STROKE_STYLE_ICONS[value]}
-          </button>
-        ))}
-      </div>
-      <label>{strings.stylePanel.sloppiness}</label>
-      <div className="kizkatt-sloppiness-control">
-        <div className="kizkatt-segmented kizkatt-four-segmented kizkatt-icon-segmented">
-          {SLOPPINESS_OPTIONS.map(
-            (value) => (
-              <button
-                key={value}
-                type="button"
-                aria-label={strings.stylePanel[SLOPPINESS_LABEL_KEYS[value]]}
-                title={tooltips[SLOPPINESS_LABEL_KEYS[value]]}
-                className={
-                  (style.sloppiness ?? DEFAULT_SELECTED_SLOPPINESS) === value
-                    ? "is-active"
-                    : undefined
+            <div className="kizkatt-numeric-slider-control">
+              <input
+                id="opacity"
+                aria-label={strings.stylePanel.opacity}
+                type="range"
+                title={tooltips.opacity}
+                min={MIN_OPACITY}
+                max={MAX_OPACITY}
+                value={style.opacity ?? DEFAULT_OPACITY}
+                onBlur={endContinuousStyleChange}
+                onChange={(event) =>
+                  updateOpacityContinuously(event.target.value)
                 }
-                onClick={() => onStyleChange({ sloppiness: value })}
-              >
-                {SLOPPINESS_ICONS[value]}
-              </button>
-            )
-          )}
-        </div>
-        <input
-          aria-label={strings.stylePanel.sloppinessGap}
-          title={tooltips.sloppinessGap}
-          type="number"
-          min={MIN_SLOPPINESS_GAP}
-          max={MAX_SLOPPINESS_GAP}
-          value={style.sloppinessGap ?? DEFAULT_SLOPPINESS_GAP}
-          onChange={(event) => updateSloppinessGap(event.target.value)}
-        />
-      </div>
-      <label>{strings.stylePanel.edges}</label>
-      <div className="kizkatt-segmented kizkatt-two-segmented kizkatt-edge-segmented">
-        {EDGE_STYLE_OPTIONS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-label={
-              value === SHARP_EDGE_OPTION
-                ? strings.stylePanel.edgeSharp
-                : strings.stylePanel.edgeRound
-            }
-            title={
-              value === SHARP_EDGE_OPTION
-                ? tooltips.edgeSharp
-                : tooltips.edgeRound
-            }
-            className={style.edgeStyle === value ? "is-active" : undefined}
-            onClick={() => onStyleChange({ edgeStyle: value })}
+                onKeyDown={beginContinuousStyleChange}
+                onKeyUp={endContinuousStyleChange}
+                onPointerCancel={endContinuousStyleChange}
+                onPointerDown={beginContinuousStyleChange}
+                onPointerUp={endContinuousStyleChange}
+              />
+              <input
+                aria-label={strings.stylePanel.opacityValue}
+                title={tooltips.opacityValue}
+                type="number"
+                min={MIN_OPACITY}
+                max={MAX_OPACITY}
+                value={style.opacity ?? DEFAULT_OPACITY}
+                onChange={(event) => updateOpacity(event.target.value)}
+              />
+            </div>
+          </FeatureGroup>
+          <FeatureGroup
+            className="kizkatt-style-feature--layers"
+            icon={BringToFrontIcon}
+            label={strings.stylePanel.layers}
           >
-            {EDGE_STYLE_ICONS[value]}
-          </button>
-        ))}
-      </div>
-      <label htmlFor="opacity">{strings.stylePanel.opacity}</label>
-      <div className="kizkatt-numeric-slider-control">
-        <input
-          id="opacity"
-          type="range"
-          title={tooltips.opacity}
-          min={MIN_OPACITY}
-          max={MAX_OPACITY}
-          value={style.opacity ?? DEFAULT_OPACITY}
-          onBlur={endContinuousStyleChange}
-          onChange={(event) => updateOpacityContinuously(event.target.value)}
-          onKeyDown={beginContinuousStyleChange}
-          onKeyUp={endContinuousStyleChange}
-          onPointerCancel={endContinuousStyleChange}
-          onPointerDown={beginContinuousStyleChange}
-          onPointerUp={endContinuousStyleChange}
-        />
-        <input
-          aria-label={strings.stylePanel.opacityValue}
-          title={tooltips.opacityValue}
-          type="number"
-          min={MIN_OPACITY}
-          max={MAX_OPACITY}
-          value={style.opacity ?? DEFAULT_OPACITY}
-          onChange={(event) => updateOpacity(event.target.value)}
-        />
-      </div>
-      <label>{strings.stylePanel.layers}</label>
-      <div className="kizkatt-segmented kizkatt-icon-segmented kizkatt-layer-controls">
-        {LAYER_ACTIONS.map(({ action, labelKey, icon }) => (
-          <button
-            key={action}
-            type="button"
-            aria-label={strings.stylePanel[labelKey]}
-            title={tooltips[labelKey]}
-            onClick={() => onLayerAction(action)}
+            <div className="kizkatt-segmented kizkatt-icon-segmented kizkatt-layer-controls">
+              {LAYER_ACTIONS.map(({ action, labelKey, icon }) => (
+                <button
+                  key={action}
+                  type="button"
+                  aria-label={strings.stylePanel[labelKey]}
+                  title={tooltips[labelKey]}
+                  onClick={() => onLayerAction(action)}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          </FeatureGroup>
+          <FeatureGroup
+            className="kizkatt-style-feature--actions"
+            icon={DuplicateIcon}
+            label={strings.stylePanel.actions}
           >
-            {icon}
-          </button>
-        ))}
-      </div>
-      <label>{strings.stylePanel.actions}</label>
-      <div className="kizkatt-segmented kizkatt-icon-segmented kizkatt-action-controls">
-        {ELEMENT_ACTIONS.map(({ action, labelKey, icon }) => (
-          <button
-            key={action}
-            type="button"
-            aria-label={strings.stylePanel[labelKey]}
-            title={tooltips[labelKey]}
-            onClick={() => onAction(action)}
-          >
-            {icon}
-          </button>
-        ))}
-      </div>
-      </aside>
+            <div className="kizkatt-segmented kizkatt-icon-segmented kizkatt-action-controls">
+              {ELEMENT_ACTIONS.map(({ action, labelKey, icon }) => (
+                <button
+                  key={action}
+                  type="button"
+                  aria-label={strings.stylePanel[labelKey]}
+                  title={tooltips[labelKey]}
+                  onClick={() => onAction(action)}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          </FeatureGroup>
+          {actions}
+        </aside>
+      )}
     </DraggablePanel>
   );
 }
@@ -890,83 +764,143 @@ function ColorSwatches({
 }) {
   const { strings } = useI18n();
   const tooltips = strings.stylePanel.tooltips;
-  const quickColors = colors.slice(0, QUICK_SWATCH_COUNT);
+  const quickColors = colors;
+  const colorListRef = useRef<HTMLDivElement | null>(null);
+  const [visibleColorCount, setVisibleColorCount] = useState(
+    COMPACT_QUICK_SWATCH_COUNT
+  );
+  const visibleColors = quickColors.slice(
+    FIRST_ARRAY_INDEX,
+    visibleColorCount
+  );
   const fallbackCustomColor =
-    quickColors[QUICK_SWATCH_COUNT - QUICK_CUSTOM_FALLBACK_OFFSET] ??
+    quickColors[COMPACT_QUICK_SWATCH_COUNT - QUICK_CUSTOM_FALLBACK_OFFSET] ??
     quickColors[FIRST_ARRAY_INDEX];
   const customColor =
     activeColor === TRANSPARENT_COLOR ? fallbackCustomColor : activeColor;
-  const customAriaLabel = quickColors.includes(customColor)
+  const customAriaLabel = visibleColors.includes(customColor)
     ? `${label} custom ${customColor}`
     : `${label} ${customColor}`;
   const nativeColor = isHexColor(customColor) ? customColor : BLACK_HEX_COLOR;
 
+  useEffect(() => {
+    const colorList = colorListRef.current;
+
+    if (!colorList) {
+      return;
+    }
+
+    const updateVisibleColorCount = () => {
+      const availableWidth = colorList.clientWidth;
+
+      if (availableWidth <= 0) {
+        return;
+      }
+
+      const fittingColorCount = Math.floor(
+        (availableWidth + QUICK_SWATCH_GAP) /
+          (QUICK_SWATCH_SIZE + QUICK_SWATCH_GAP)
+      );
+
+      setVisibleColorCount(
+        Math.min(
+          quickColors.length,
+          Math.max(COMPACT_QUICK_SWATCH_COUNT, fittingColorCount)
+        )
+      );
+    };
+
+    updateVisibleColorCount();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateVisibleColorCount);
+
+      return () => {
+        window.removeEventListener("resize", updateVisibleColorCount);
+      };
+    }
+
+    const resizeObserver = new ResizeObserver(updateVisibleColorCount);
+    resizeObserver.observe(colorList);
+
+    return () => resizeObserver.disconnect();
+  }, [quickColors.length]);
+
   return (
     <div className="kizkatt-swatches kizkatt-quick-swatches">
-      {quickColors.map((color) => (
+      <div ref={colorListRef} className="kizkatt-quick-color-list">
+        {visibleColors.map((color, index) => (
+          <button
+            key={`${color}-${index}`}
+            type="button"
+            aria-label={
+              index < BASE_QUICK_SWATCH_COUNT
+                ? `${label} ${color}`
+                : `${label} ${color} shade ${index}`
+            }
+            title={`${
+              label === strings.stylePanel.stroke
+                ? tooltips.strokeColor
+                : tooltips.backgroundColor
+            } ${color}`}
+            disabled={disabled}
+            className={getSwatchClassName({
+              active: activeColor === color,
+              color
+            })}
+            style={{
+              backgroundColor:
+                color === TRANSPARENT_COLOR ? undefined : color
+            }}
+            onClick={() => {
+              if (!disabled) {
+                onColorSelect(color);
+              }
+            }}
+          />
+        ))}
+      </div>
+      <div className="kizkatt-special-color-swatches">
         <button
-          key={color}
           type="button"
-          aria-label={`${label} ${color}`}
-          title={`${
-            label === strings.stylePanel.stroke
-              ? tooltips.strokeColor
-              : tooltips.backgroundColor
-          } ${color}`}
+          aria-label={customAriaLabel}
+          title={`${tooltips.customColor} ${label}`}
           disabled={disabled}
           className={getSwatchClassName({
-            active: activeColor === color,
-            color
+            active: !visibleColors.includes(activeColor),
+            color: customColor,
+            isCustomSwatch: true
           })}
           style={{
-            backgroundColor: color === TRANSPARENT_COLOR ? undefined : color
+            backgroundColor:
+              customColor === TRANSPARENT_COLOR ? undefined : customColor
           }}
           onClick={() => {
             if (!disabled) {
-              onColorSelect(color);
+              onCustomColorOpen(customColor);
             }
           }}
         />
-      ))}
-      <button
-        type="button"
-        aria-label={customAriaLabel}
-        title={`${tooltips.customColor} ${label}`}
-        disabled={disabled}
-        className={getSwatchClassName({
-          active: !quickColors.includes(activeColor),
-          color: customColor,
-          isCustomSwatch: true
-        })}
-        style={{
-          backgroundColor:
-            customColor === TRANSPARENT_COLOR ? undefined : customColor
-        }}
-        onClick={() => {
-          if (!disabled) {
-            onCustomColorOpen(customColor);
-          }
-        }}
-      />
-      <label
-        className={[
-          "kizkatt-palette-swatch",
-          disabled ? "is-disabled" : ""
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        title={`${label} ${tooltips.nativeColorPicker}`}
-      >
-        {PaletteIcon}
-        <input
-          aria-label={`${label} ${strings.stylePanel.nativeColorPicker}`}
+        <label
+          className={[
+            "kizkatt-palette-swatch",
+            disabled ? "is-disabled" : ""
+          ]
+            .filter(Boolean)
+            .join(" ")}
           title={`${label} ${tooltips.nativeColorPicker}`}
-          disabled={disabled}
-          type="color"
-          value={nativeColor}
-          onChange={(event) => onNativeColorSelect(event.target.value)}
-        />
-      </label>
+        >
+          {PaletteIcon}
+          <input
+            aria-label={`${label} ${strings.stylePanel.nativeColorPicker}`}
+            title={`${label} ${tooltips.nativeColorPicker}`}
+            disabled={disabled}
+            type="color"
+            value={nativeColor}
+            onChange={(event) => onNativeColorSelect(event.target.value)}
+          />
+        </label>
+      </div>
     </div>
   );
 }

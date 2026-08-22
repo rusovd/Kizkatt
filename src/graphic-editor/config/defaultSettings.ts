@@ -1,9 +1,7 @@
 import { DEFAULT_STROKE_WIDTH } from "./constants";
 
 export const DEFAULT_GRAPHIC_EDITOR_SETTINGS = {
-  autohideToolbar: false,
-  dragEnabled: true,
-  toolbarOrientation: "horizontal"
+  autohideToolbar: false
 } as const;
 
 export const OBJECT_PANEL_UI_SETTINGS = {
@@ -38,4 +36,14 @@ export const OBJECT_PANEL_UI_SETTINGS = {
     px: [1, 2, 3, 4, 6, 8, 10, 12, 18, 24, 48, 96]
   },
   strokeWidthPresetContour: DEFAULT_STROKE_WIDTH
+} as const;
+
+export const OBJECT_PANEL_MIN_SIZE = {
+  height: 290,
+  width: 172
+} as const;
+
+export const STYLE_PANEL_MIN_SIZE = {
+  height: 390,
+  width: 198
 } as const;

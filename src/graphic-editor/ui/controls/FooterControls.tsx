@@ -33,8 +33,6 @@ import {
   EyeIcon,
   GridIcon,
   InfoIcon,
-  LayoutHorizontalIcon,
-  LayoutVerticalIcon,
   PinIcon,
   RedoIcon,
   SettingsIcon,
@@ -48,7 +46,6 @@ import {
   useCloseOtherFloatingPanels
 } from "../overlays/floatingPanels";
 import { DraggablePanel } from "../positioning/DraggablePanel";
-import { PanelDragHandle } from "../positioning/PanelDragHandle";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 
 const FOOTER_SETTINGS_PANEL_SOURCE = "footer-settings";
@@ -272,20 +269,16 @@ function EditorSettingsMenu({
   const [openSubmenu, setOpenSubmenu] =
     useState<"display" | "grid" | null>(null);
   const {
+    allVisiblePanelsPinned,
     autohideToolbar,
-    dragEnabled,
     setAutohideToolbar,
-    setDragEnabled,
-    setToolbarOrientation,
-    toolbarOrientation
+    toggleVisiblePanelsPinned
   } = useGraphicEditorSettings();
   const { strings } = useI18n();
   const gridColors = GRID_COLORS_BY_THEME[theme];
   const majorGridUnit = gridSettings.unit === "mm" ? "mm" : "px";
   const minorGridUnit = gridSettings.unit === "mm" ? "mm" : "px";
   const gridSizeStep = gridSettings.unit === "mm" ? 0.1 : 1;
-  const nextToolbarOrientation =
-    toolbarOrientation === "horizontal" ? "vertical" : "horizontal";
   const calibrationScalePercent = Math.round(
     gridSettings.metricScale * PERCENT_MAX_VALUE
   );
@@ -317,15 +310,15 @@ function EditorSettingsMenu({
   return (
     <div className="kizkatt-footer-settings-menu" role="menu">
       <SettingsCheckButton
-        checked={!dragEnabled}
+        checked={allVisiblePanelsPinned}
         icon={PinIcon}
         title={strings.settings.tooltips.panelStickiness}
         onRequestClose={onRequestClose}
-        onClick={() => setDragEnabled(!dragEnabled)}
+        onClick={toggleVisiblePanelsPinned}
       >
-        {dragEnabled
-          ? strings.settings.stickPanels
-          : strings.settings.unstickPanels}
+        {allVisiblePanelsPinned
+          ? strings.settings.unstickPanels
+          : strings.settings.stickPanels}
       </SettingsCheckButton>
       <SettingsCheckButton
         checked={autohideToolbar}
@@ -337,21 +330,6 @@ function EditorSettingsMenu({
         {autohideToolbar
           ? strings.settings.disableAutohide
           : strings.settings.enableAutohide}
-      </SettingsCheckButton>
-      <SettingsCheckButton
-        checked={toolbarOrientation === "vertical"}
-        icon={
-          toolbarOrientation === "horizontal"
-            ? LayoutVerticalIcon
-            : LayoutHorizontalIcon
-        }
-        title={strings.settings.tooltips.toolbarOrientation}
-        onRequestClose={onRequestClose}
-        onClick={() => setToolbarOrientation(nextToolbarOrientation)}
-      >
-        {toolbarOrientation === "horizontal"
-          ? strings.settings.verticalToolbar
-          : strings.settings.horizontalToolbar}
       </SettingsCheckButton>
       <div className="kizkatt-menu-divider" />
       <label
@@ -740,16 +718,14 @@ export function FooterControls({
   }, [settingsOpen]);
 
   return (
-    <DraggablePanel id="footer-controls" topDock>
-      <div
-        ref={controlsRef}
-        className="kizkatt-footer-controls"
-        aria-label={`${strings.footer.historyControls}. ${strings.footer.zoomControls}`}
-      >
-        <PanelDragHandle
-          placement="left"
-          title={strings.settings.tooltips.panelDragHandle}
-        />
+    <DraggablePanel id="footer-controls" defaultOrientation="horizontal" topDock>
+      {({ actions, chrome, orientation }) => (
+        <div
+          ref={controlsRef}
+          className={`kizkatt-footer-controls kizkatt-footer-controls--${orientation}`}
+          aria-label={`${strings.footer.historyControls}. ${strings.footer.zoomControls}`}
+        >
+          {chrome}
         <button
           type="button"
           className="kizkatt-footer-history-button"
@@ -831,7 +807,9 @@ export function FooterControls({
             uiScale={uiScale}
           />
         )}
-      </div>
+          {actions}
+        </div>
+      )}
     </DraggablePanel>
   );
 }

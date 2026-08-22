@@ -648,6 +648,21 @@ export const ChevronDownIcon = createIcon(
   { height: 20, width: 20 }
 );
 
+export const DiameterIcon = createIcon(
+  <g strokeWidth="1.7">
+    <circle cx="12" cy="12" r="5.5" />
+    <path d="M7 17 17 7" />
+  </g>,
+  { height: 20, width: 20 }
+);
+
+export const OpacityIcon = createIcon(
+  <g strokeWidth="1.5">
+    <circle cx="12" cy="12" r="7" />
+    <path d="M12 5a7 7 0 0 0 0 14Z" fill="currentColor" />
+  </g>
+);
+
 export const SettingsIcon = createIcon(
   <g strokeWidth="1.5">
     <path d="M9.8 4.2 10.4 2h3.2l.6 2.2 1.5.6 2-1.1 2.3 2.3-1.1 2 .6 1.5 2.2.6v3.2l-2.2.6-.6 1.5 1.1 2-2.3 2.3-2-1.1-1.5.6-.6 2.2h-3.2l-.6-2.2-1.5-.6-2 1.1-2.3-2.3 1.1-2-.6-1.5-2.2-.6v-3.2l2.2-.6.6-1.5-1.1-2 2.3-2.3 2 1.1 1.5-.6Z" />
@@ -660,6 +675,13 @@ export const PinIcon = createIcon(
     <path d="M9 4h6" />
     <path d="M10 4v5l-3 3v2h10v-2l-3-3V4" />
     <path d="M12 14v6" />
+  </g>
+);
+
+export const CloseIcon = createIcon(
+  <g strokeWidth="1.8">
+    <path d="M6 6l12 12" />
+    <path d="M18 6 6 18" />
   </g>
 );
 

@@ -4,23 +4,52 @@ import type {
   PointerEvent,
   ReactNode
 } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { useI18n } from "../../i18n";
+import { CloseIcon, PinIcon } from "../icons";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
+import { PanelDragHandle } from "./PanelDragHandle";
+
+export type PanelOrientation = "horizontal" | "vertical";
 
 type PanelPosition = {
   x: number;
   y: number;
 };
 
+type PanelSize = {
+  height: number;
+  width: number;
+};
+
+export type DraggablePanelRenderState = {
+  actions: ReactNode;
+  chrome: ReactNode;
+  labelsHidden: boolean;
+  orientation: PanelOrientation;
+  pinned: boolean;
+};
+
 const STORAGE_PREFIX = "kizkatt:graphic-editor:panel";
 const TOP_DOCK_Y = 16;
 const TOP_DOCK_THRESHOLD = 28;
 const DRAG_CLICK_THRESHOLD = 4;
+const MIN_RESIZABLE_PANEL_WIDTH = 160;
+const MIN_RESIZABLE_PANEL_HEIGHT = 80;
 const PANEL_DRAG_HANDLE_SELECTOR = "[data-panel-drag-handle]";
+const PANEL_RESIZE_HANDLE_SELECTOR = "[data-panel-resize-handle]";
 
 function getStorageKey(id: string) {
   return `${STORAGE_PREFIX}:${id}`;
+}
+
+function getOrientationStorageKey(id: string) {
+  return `${getStorageKey(id)}:orientation`;
+}
+
+function getSizeStorageKey(id: string) {
+  return `${getStorageKey(id)}:size:vertical`;
 }
 
 function readStoredPosition(id: string): PanelPosition | null {
@@ -41,14 +70,54 @@ function readStoredPosition(id: string): PanelPosition | null {
   }
 }
 
+function readStoredOrientation(
+  id: string,
+  defaultOrientation: PanelOrientation
+): PanelOrientation {
+  const orientation = window.localStorage.getItem(getOrientationStorageKey(id));
+
+  return orientation === "horizontal" || orientation === "vertical"
+    ? orientation
+    : defaultOrientation;
+}
+
+function readStoredSize(id: string): PanelSize | null {
+  const rawSize = window.localStorage.getItem(getSizeStorageKey(id));
+
+  if (!rawSize) {
+    return null;
+  }
+
+  try {
+    const size = JSON.parse(rawSize) as Partial<PanelSize>;
+
+    return typeof size.height === "number" && typeof size.width === "number"
+      ? { height: size.height, width: size.width }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function storePosition(id: string, position: PanelPosition) {
   window.localStorage.setItem(getStorageKey(id), JSON.stringify(position));
+}
+
+function storeSize(id: string, size: PanelSize) {
+  window.localStorage.setItem(getSizeStorageKey(id), JSON.stringify(size));
 }
 
 function isPanelDragHandle(target: EventTarget | null) {
   return (
     target instanceof Element &&
     Boolean(target.closest(PANEL_DRAG_HANDLE_SELECTOR))
+  );
+}
+
+function isPanelResizeHandle(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest(PANEL_RESIZE_HANDLE_SELECTOR))
   );
 }
 
@@ -59,6 +128,7 @@ function blocksPanelDrag(target: EventTarget | null) {
       target.closest(
         [
           "a",
+          "button",
           "input",
           "select",
           "textarea",
@@ -90,7 +160,7 @@ function getEventPoint(
   return { x, y };
 }
 
-function getDragPointerId(
+function getPointerId(
   event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>
 ) {
   const pointerId = (event as PointerEvent<HTMLDivElement>).pointerId;
@@ -101,15 +171,46 @@ function getDragPointerId(
 export function DraggablePanel({
   children,
   className,
+  closable = false,
+  defaultOrientation = "horizontal",
+  draggable = true,
+  hideLabels,
+  horizontalActionsLayout = "row",
   id,
+  maxCols = 1,
+  maxRows = 1,
+  minSize,
+  pinnable = false,
+  reopenKey,
+  resizable = false,
+  title,
   topDock = false
 }: {
-  children: ReactNode;
+  children:
+    | ReactNode
+    | ((state: DraggablePanelRenderState) => ReactNode);
   className?: string;
+  closable?: boolean;
+  defaultOrientation?: PanelOrientation;
+  draggable?: boolean;
+  hideLabels?: Partial<Record<PanelOrientation, boolean>>;
   id: string;
+  horizontalActionsLayout?: "column" | "row";
+  maxCols?: number;
+  maxRows?: number;
+  minSize?: Partial<PanelSize>;
+  pinnable?: boolean;
+  reopenKey?: string | number;
+  resizable?: boolean;
+  title?: string;
   topDock?: boolean;
 }) {
-  const { dragEnabled } = useGraphicEditorSettings();
+  const { strings } = useI18n();
+  const {
+    isPanelPinned,
+    registerVisiblePanel,
+    setPanelPinned
+  } = useGraphicEditorSettings();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     moved: boolean;
@@ -118,11 +219,49 @@ export function DraggablePanel({
     pointerId: number | "mouse";
     startedAt: PanelPosition;
   } | null>(null);
+  const resizeRef = useRef<{
+    pointerId: number | "mouse";
+    scaleX: number;
+    scaleY: number;
+    startedAt: PanelPosition;
+    startSize: PanelSize;
+  } | null>(null);
+  const previousReopenKeyRef = useRef(reopenKey);
   const suppressClickRef = useRef(false);
   const [position, setPosition] = useState<PanelPosition | null>(() =>
     readStoredPosition(id)
   );
+  const [orientation, setOrientation] = useState<PanelOrientation>(() =>
+    readStoredOrientation(id, defaultOrientation)
+  );
+  const [size, setSize] = useState<PanelSize | null>(() => readStoredSize(id));
   const [dragging, setDragging] = useState(false);
+  const [resizing, setResizing] = useState(false);
+  const [temporarilyClosed, setTemporarilyClosed] = useState(false);
+  const pinned = pinnable && isPanelPinned(id);
+  const canResize = resizable && orientation === "vertical";
+  const labelsHidden = hideLabels?.[orientation] ?? false;
+  const minimumSize = {
+    height: minSize?.height ?? MIN_RESIZABLE_PANEL_HEIGHT,
+    width: minSize?.width ?? MIN_RESIZABLE_PANEL_WIDTH
+  };
+
+  useEffect(() => {
+    if (previousReopenKeyRef.current === reopenKey) {
+      return;
+    }
+
+    previousReopenKeyRef.current = reopenKey;
+    setTemporarilyClosed(false);
+  }, [reopenKey]);
+
+  useEffect(() => {
+    if (temporarilyClosed) {
+      return;
+    }
+
+    return registerVisiblePanel(id, pinnable);
+  }, [id, pinnable, registerVisiblePanel, temporarilyClosed]);
 
   const setNextPosition = (
     nextPosition: PanelPosition,
@@ -152,8 +291,9 @@ export function DraggablePanel({
     pointerId: number | "mouse"
   ) => {
     if (
-      !dragEnabled ||
+      !draggable ||
       dragRef.current ||
+      resizeRef.current ||
       event.button > 0 ||
       !isPanelDragHandle(event.target) ||
       blocksPanelDrag(event.target)
@@ -180,14 +320,86 @@ export function DraggablePanel({
     return true;
   };
 
+  const startResize = (
+    event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>,
+    pointerId: number | "mouse"
+  ) => {
+    if (
+      !canResize ||
+      resizeRef.current ||
+      dragRef.current ||
+      event.button > 0 ||
+      !isPanelResizeHandle(event.target)
+    ) {
+      return false;
+    }
+
+    const panel = panelRef.current;
+
+    if (!panel) {
+      return false;
+    }
+
+    const rect = panel.getBoundingClientRect();
+    const unscaledWidth = panel.offsetWidth || rect.width;
+    const unscaledHeight = panel.offsetHeight || rect.height;
+    resizeRef.current = {
+      pointerId,
+      scaleX:
+        unscaledWidth > 0 && rect.width > 0 ? rect.width / unscaledWidth : 1,
+      scaleY:
+        unscaledHeight > 0 && rect.height > 0 ? rect.height / unscaledHeight : 1,
+      startedAt: getEventPoint(event),
+      startSize: {
+        height: Math.max(minimumSize.height, unscaledHeight),
+        width: Math.max(minimumSize.width, unscaledWidth)
+      }
+    };
+    setResizing(true);
+    return true;
+  };
+
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    startDrag(event, event.pointerId);
+    if (!startResize(event, event.pointerId)) {
+      startDrag(event, event.pointerId);
+    }
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
     const panel = panelRef.current;
-    const pointerId = getDragPointerId(event);
+    const pointerId = getPointerId(event);
+    const resize = resizeRef.current;
+
+    if (resize && resize.pointerId === pointerId && panel) {
+      const point = getEventPoint(event);
+      const nextSize = {
+        height: Math.min(
+          window.innerHeight / resize.scaleY,
+          Math.max(
+            minimumSize.height,
+            resize.startSize.height +
+              (point.y - resize.startedAt.y) / resize.scaleY
+          )
+        ),
+        width: Math.min(
+          window.innerWidth / resize.scaleX,
+          Math.max(
+            minimumSize.width,
+            resize.startSize.width +
+              (point.x - resize.startedAt.x) / resize.scaleX
+          )
+        )
+      };
+
+      setSize(nextSize);
+      suppressClickRef.current = true;
+      if (typeof pointerId === "number") {
+        panel.setPointerCapture?.(pointerId);
+      }
+      return;
+    }
+
+    const drag = dragRef.current;
 
     if (!drag || drag.pointerId !== pointerId || !panel) {
       return;
@@ -222,9 +434,23 @@ export function DraggablePanel({
   };
 
   const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
     const panel = panelRef.current;
-    const pointerId = getDragPointerId(event);
+    const pointerId = getPointerId(event);
+    const resize = resizeRef.current;
+
+    if (resize && resize.pointerId === pointerId && panel) {
+      resizeRef.current = null;
+      if (typeof pointerId === "number") {
+        panel.releasePointerCapture?.(pointerId);
+      }
+      setResizing(false);
+      if (size) {
+        storeSize(id, size);
+      }
+      return;
+    }
+
+    const drag = dragRef.current;
 
     if (!drag || drag.pointerId !== pointerId || !panel) {
       return;
@@ -252,13 +478,13 @@ export function DraggablePanel({
   };
 
   const onMouseDown = (event: MouseEvent<HTMLDivElement>) => {
-    startDrag(event, "mouse");
+    if (!startResize(event, "mouse")) {
+      startDrag(event, "mouse");
+    }
   };
 
   const onMouseMove = (event: MouseEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-
-    if (!drag || drag.pointerId !== "mouse") {
+    if (getPointerId(event) !== "mouse") {
       return;
     }
 
@@ -266,21 +492,105 @@ export function DraggablePanel({
   };
 
   const onMouseUp = (event: MouseEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-
-    if (!drag || drag.pointerId !== "mouse") {
+    if (getPointerId(event) !== "mouse") {
       return;
     }
 
     onPointerUp(event as unknown as PointerEvent<HTMLDivElement>);
   };
 
-  const style: CSSProperties | undefined = position
-    ? {
-        left: position.x,
-        top: position.y
-      }
-    : undefined;
+  const toggleOrientation = () => {
+    const nextOrientation =
+      orientation === "horizontal" ? "vertical" : "horizontal";
+
+    setOrientation(nextOrientation);
+    window.localStorage.setItem(getOrientationStorageKey(id), nextOrientation);
+  };
+
+  const style = {
+    ...(position ? { left: position.x, top: position.y } : {}),
+    ...(canResize && size ? { height: size.height, width: size.width } : {}),
+    ...(canResize
+      ? { minHeight: minimumSize.height, minWidth: minimumSize.width }
+      : {}),
+    "--kizkatt-panel-max-cols": Math.max(1, Math.floor(maxCols)),
+    "--kizkatt-panel-max-rows": Math.max(1, Math.floor(maxRows))
+  } as CSSProperties;
+  const panelActions = (pinnable || closable) && (
+    <span
+      className={[
+        "kizkatt-panel-actions",
+        orientation === "horizontal"
+          ? "kizkatt-panel-actions--horizontal"
+          : "kizkatt-panel-actions--vertical",
+        orientation === "horizontal"
+          ? `kizkatt-panel-actions--${horizontalActionsLayout}`
+          : ""
+      ].join(" ")}
+      data-no-panel-drag
+    >
+      {pinnable && (
+        <button
+          type="button"
+          className={pinned ? "is-active" : undefined}
+          data-no-panel-drag
+          aria-label={
+            pinned
+              ? strings.settings.unstickPanel
+              : strings.settings.stickPanel
+          }
+          aria-pressed={pinned}
+          title={
+            pinned
+              ? strings.settings.tooltips.unstickPanel
+              : strings.settings.tooltips.stickPanel
+          }
+          onClick={() => setPanelPinned(id, !pinned)}
+        >
+          {PinIcon}
+        </button>
+      )}
+      {closable && (
+        <button
+          type="button"
+          data-no-panel-drag
+          aria-label={strings.settings.closePanel}
+          title={strings.settings.tooltips.closePanel}
+          onClick={() => setTemporarilyClosed(true)}
+        >
+          {CloseIcon}
+        </button>
+      )}
+    </span>
+  );
+  const chrome = (
+    <div
+      className={`kizkatt-panel-chrome kizkatt-panel-chrome--${orientation}`}
+    >
+      <PanelDragHandle
+        placement={orientation === "vertical" ? "top" : "left"}
+        title={strings.settings.tooltips.panelDragHandle}
+        onDoubleClick={toggleOrientation}
+      />
+      {orientation === "vertical" && title && (
+        <strong className="kizkatt-panel-title">{title}</strong>
+      )}
+      {orientation === "vertical" && panelActions}
+    </div>
+  );
+
+  if (temporarilyClosed) {
+    return null;
+  }
+
+  const actions = orientation === "horizontal" ? panelActions : null;
+  const renderState = {
+    actions,
+    chrome,
+    labelsHidden,
+    orientation,
+    pinned
+  };
 
   return (
     <div
@@ -288,9 +598,14 @@ export function DraggablePanel({
       className={[
         "kizkatt-floating-panel",
         `kizkatt-floating-panel--${id}`,
+        `kizkatt-floating-panel--${orientation}`,
         position ? "is-positioned" : "",
         dragging ? "is-dragging" : "",
-        !dragEnabled ? "is-drag-disabled" : "",
+        resizing ? "is-resizing" : "",
+        !draggable ? "is-drag-disabled" : "",
+        canResize && size ? "is-resized" : "",
+        pinned ? "is-pinned" : "",
+        labelsHidden ? "has-hidden-labels" : "",
         className ?? ""
       ].join(" ")}
       style={style}
@@ -300,6 +615,14 @@ export function DraggablePanel({
         }
 
         suppressClickRef.current = false;
+
+        if (
+          !isPanelDragHandle(event.target) &&
+          !isPanelResizeHandle(event.target)
+        ) {
+          return;
+        }
+
         event.preventDefault();
         event.stopPropagation();
       }}
@@ -310,7 +633,22 @@ export function DraggablePanel({
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
     >
-      {children}
+      {typeof children === "function" ? children(renderState) : (
+        <>
+          {chrome}
+          {children}
+          {actions}
+        </>
+      )}
+      {canResize && (
+        <span
+          className="kizkatt-panel-resize-handle"
+          data-no-panel-drag
+          data-panel-resize-handle
+          aria-hidden="true"
+          title={strings.settings.tooltips.resizePanel}
+        />
+      )}
     </div>
   );
 }

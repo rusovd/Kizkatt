@@ -78,6 +78,7 @@ import {
 import { Toolbar } from "../ui/controls/Toolbar";
 import { I18nProvider, useI18n } from "../i18n";
 import { GraphicEditorSettingsProvider } from "../ui/settings/GraphicEditorSettings";
+import { useGraphicEditorSettings } from "../ui/settings/GraphicEditorSettings";
 import { EditorLoader } from "../ui/feedback/EditorLoader";
 import { SceneElement } from "../controller/SceneElement";
 import {
@@ -305,6 +306,7 @@ function KizkattGraphicEditorView({
   viewModel: KizkattGraphicEditorViewModel;
 }) {
   const { strings } = useI18n();
+  const { isPanelPinned } = useGraphicEditorSettings();
   const {
     boardBindings,
     canvas,
@@ -321,15 +323,17 @@ function KizkattGraphicEditorView({
   const previewMode = state.activeDisplayMode === "preview";
   const showObjectPanel =
     !previewMode &&
-    !state.menuOpen &&
+    (!state.menuOpen || isPanelPinned("object-panel")) &&
     Boolean(selectionGeometryControls);
+  const stylePanelIsRelevant =
+    STYLE_TOOLS.has(styleControls.activeTool) ||
+    (styleControls.selectedElements.length > EMPTY_COLLECTION_LENGTH &&
+      (styleControls.activeTool === DEFAULT_SELECT_TOOL ||
+        SELECTED_ELEMENT_STYLE_TOOLS.has(styleControls.activeTool)));
   const showStylePanel =
     !previewMode &&
-    !state.menuOpen &&
-    (STYLE_TOOLS.has(styleControls.activeTool) ||
-      (styleControls.selectedElements.length > EMPTY_COLLECTION_LENGTH &&
-        (styleControls.activeTool === DEFAULT_SELECT_TOOL ||
-          SELECTED_ELEMENT_STYLE_TOOLS.has(styleControls.activeTool))));
+    ((!state.menuOpen && stylePanelIsRelevant) ||
+      isPanelPinned("style-panel"));
 
   return (
     <section

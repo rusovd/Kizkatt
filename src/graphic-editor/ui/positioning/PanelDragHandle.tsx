@@ -1,7 +1,9 @@
 export function PanelDragHandle({
+  onDoubleClick,
   placement = "left",
   title
 }: {
+  onDoubleClick?: () => void;
   placement?: "left" | "top";
   title: string;
 }) {
@@ -11,6 +13,11 @@ export function PanelDragHandle({
       data-panel-drag-handle
       title={title}
       aria-hidden="true"
+      onDoubleClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onDoubleClick?.();
+      }}
     />
   );
 }
