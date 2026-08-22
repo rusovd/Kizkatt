@@ -129,6 +129,7 @@ export const ENGLISH_TRANSLATIONS = {
   },
   settings: {
     disableAutohide: "Disable Autohide",
+    dpi: "DPI",
     displayMode: "Display",
     enableAutohide: "Enable Autohide",
     editorSettings: "Editor settings",
@@ -143,6 +144,7 @@ export const ENGLISH_TRANSLATIONS = {
     wireframeMode: "Wireframe",
     tooltips: {
       autohideToolbar: "Turn toolbar autohide on or off",
+      dpi: "Set document resolution and raster export quality",
       displayMode: "Choose a canvas display mode",
       editorSettings: "Open editor settings",
       gridSettings: "Open grid settings",

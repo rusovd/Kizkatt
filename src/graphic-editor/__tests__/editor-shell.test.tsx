@@ -259,6 +259,35 @@ describe("KizkattGraphicEditor shell", () => {
     expect(toggleGridItem).toHaveAttribute("aria-checked", "false");
   });
 
+  it("stores the global DPI used for raster output", () => {
+    const { unmount } = render(<KizkattGraphicEditor />);
+
+    openEditorSettings();
+
+    const dpiSelect = screen.getByLabelText("DPI") as HTMLSelectElement;
+
+    expect(dpiSelect).toHaveValue("150");
+    expect(Array.from(dpiSelect.options).map((option) => option.value)).toEqual([
+      "72",
+      "96",
+      "150",
+      "203",
+      "300"
+    ]);
+
+    fireEvent.change(dpiSelect, { target: { value: "300" } });
+
+    expect(window.localStorage.getItem("kizkatt:graphic-engine:dpi")).toBe(
+      "300"
+    );
+
+    unmount();
+    render(<KizkattGraphicEditor />);
+    openEditorSettings();
+
+    expect(screen.getByLabelText("DPI")).toHaveValue("300");
+  });
+
   it("ignores legacy canvas background storage and applies the default color", () => {
     window.localStorage.setItem("kizkatt:canvas-background", "#121212");
 

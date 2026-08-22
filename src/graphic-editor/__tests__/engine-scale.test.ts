@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   findElementAtPoint,
+  getDpiPixelRatio,
   getElementIndicesInBounds,
   getElementLocalPoint,
   getResizeAnchorPoint,
+  isExpectedCopiedPngSize,
   resizeElementFromHandle,
   observeHitTesting,
   simplifyPolyline,
@@ -36,6 +38,17 @@ function createRectangle(index: number): KizkattElement {
 }
 
 describe("engine scale safeguards", () => {
+  it("uses document DPI for raster quality and copied image sizing", () => {
+    expect(getDpiPixelRatio()).toBeCloseTo(150 / 96);
+    expect(getDpiPixelRatio(300)).toBeCloseTo(300 / 96);
+    expect(
+      isExpectedCopiedPngSize(313, 157, { height: 100, width: 200 }, 150)
+    ).toBe(true);
+    expect(
+      isExpectedCopiedPngSize(625, 313, { height: 100, width: 200 }, 300)
+    ).toBe(true);
+  });
+
   it("narrows hit testing to a small spatial-index candidate set", () => {
     const elements = Array.from({ length: 10_000 }, (_, index) =>
       createRectangle(index)

@@ -77,6 +77,7 @@ import {
   getStoredCanvasBackgroundColor,
   getStoredCanvasState,
   getStoredCustomCanvasBackgroundColor,
+  getStoredDpi,
   getStoredGridColor,
   getStoredGridSettings,
   getStoredQuickCanvasState,
@@ -86,6 +87,7 @@ import {
   storeCanvasBackgroundColor,
   storeCanvasState,
   storeCustomCanvasBackgroundColor,
+  storeDpi,
   storeGridColor,
   storeGridSettings,
   storeQuickCanvasState,
@@ -95,6 +97,7 @@ import {
 import { useToolPointerHandlers } from "../tools/pointer";
 import type {
   ContextMenuState,
+  Dpi,
   GridSettings,
   KizkattElement,
   SelectionTransformMode,
@@ -186,6 +189,7 @@ export function KizkattGraphicEditorController({
   const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState<KizkattTheme>(() => getStoredTheme());
   const [uiScale, setUiScale] = useState(() => getStoredUiScale());
+  const [dpi, setDpi] = useState<Dpi>(() => getStoredDpi());
   const [canvasBackgroundColor, setCanvasBackgroundColor] = useState(() =>
     getStoredCanvasBackgroundColor(getStoredTheme())
   );
@@ -453,7 +457,11 @@ export function KizkattGraphicEditorController({
   );
 
   const insertPastedImage = useCallback(
-    (src: string, preferredSize?: Size, pastePoint = getPastePoint()) => {
+    (
+      src: string,
+      copiedExport?: CopiedPngExport,
+      pastePoint = getPastePoint()
+    ) => {
       const endLoading = beginLoading();
 
       const elements = canvasStateRef.current.elements;
@@ -488,13 +496,14 @@ export function KizkattGraphicEditorController({
       const image = new Image();
       image.onload = () => {
         commitImage(
-          preferredSize &&
+          copiedExport &&
             isExpectedCopiedPngSize(
               image.naturalWidth,
               image.naturalHeight,
-              preferredSize
+              copiedExport,
+              copiedExport.dpi
             )
-            ? preferredSize
+            ? { height: copiedExport.height, width: copiedExport.width }
             : getFittedImageSize(image.naturalWidth, image.naturalHeight)
         );
       };
@@ -505,13 +514,14 @@ export function KizkattGraphicEditorController({
 
       if (image.complete && image.naturalWidth >= MIN_PIXEL_SIZE) {
         commitImage(
-          preferredSize &&
+          copiedExport &&
             isExpectedCopiedPngSize(
               image.naturalWidth,
               image.naturalHeight,
-              preferredSize
+              copiedExport,
+              copiedExport.dpi
             )
-            ? preferredSize
+            ? { height: copiedExport.height, width: copiedExport.width }
             : getFittedImageSize(image.naturalWidth, image.naturalHeight)
         );
       }
@@ -521,13 +531,13 @@ export function KizkattGraphicEditorController({
   );
 
   const readClipboardImage = useCallback(
-    (file: Blob, preferredSize?: Size, pastePoint?: Point) => {
+    (file: Blob, copiedExport?: CopiedPngExport, pastePoint?: Point) => {
       const endLoading = beginLoading();
       const reader = new FileReader();
 
       reader.onload = () => {
         if (typeof reader.result === "string") {
-          insertPastedImage(reader.result, preferredSize, pastePoint);
+          insertPastedImage(reader.result, copiedExport, pastePoint);
         }
         endLoading();
       };
@@ -723,6 +733,7 @@ export function KizkattGraphicEditorController({
 
     try {
       const copiedExport = await copySelectionAsPng({
+        dpi,
         elements: selectedElements,
         elementIds: canvasState.selectedIds,
         serializeSvg,
@@ -1052,6 +1063,10 @@ export function KizkattGraphicEditorController({
     setUiScale(scale);
     storeUiScale(scale);
   };
+  const setStoredDpi = (nextDpi: Dpi) => {
+    setDpi(nextDpi);
+    storeDpi(nextDpi);
+  };
 
   const setStoredCanvasBackground = (color: string) => {
     setCanvasBackgroundColor(color);
@@ -1231,7 +1246,7 @@ export function KizkattGraphicEditorController({
     });
   };
 
-  const getCopiedPngPreferredSize = (file: Blob): Size | undefined => {
+  const getCopiedPngExport = (file: Blob): CopiedPngExport | undefined => {
     const copiedPngExport = copiedPngExportRef.current;
 
     if (
@@ -1242,10 +1257,7 @@ export function KizkattGraphicEditorController({
       return undefined;
     }
 
-    return {
-      height: copiedPngExport.height,
-      width: copiedPngExport.width
-    };
+    return copiedPngExport;
   };
 
   const pasteFromContextMenu = async () => {
@@ -1273,7 +1285,7 @@ export function KizkattGraphicEditorController({
             const imageBlob = await item.getType(imageType);
             readClipboardImage(
               imageBlob,
-              getCopiedPngPreferredSize(imageBlob),
+              getCopiedPngExport(imageBlob),
               pastePoint
             );
             return;
@@ -1348,7 +1360,7 @@ export function KizkattGraphicEditorController({
 
     if (imageFile) {
       event.preventDefault();
-      readClipboardImage(imageFile, getCopiedPngPreferredSize(imageFile));
+      readClipboardImage(imageFile, getCopiedPngExport(imageFile));
       return;
     }
 
@@ -1704,11 +1716,13 @@ export function KizkattGraphicEditorController({
       canRedo,
       canUndo,
       canUseGrid: gridHasVisibleLayer,
+      dpi,
       gridColor,
       gridSettings,
       infoMode,
       onGridColorChange: setStoredGridColor,
       onGridSettingsChange: setStoredGridSettings,
+      onDpiChange: setStoredDpi,
       onRedo: redo,
       onToggleGrid: () => setShowGrid((value) => !value),
       onToggleSnapToGrid: () => setSnapToGrid((value) => !value),

@@ -1,10 +1,10 @@
 import {
+  DEFAULT_DPI,
   EXPORT_CANVAS_IMAGE_ERROR_MESSAGE,
   EMPTY_COLLECTION_LENGTH,
+  getDpiPixelRatio,
   MIN_PIXEL_SIZE,
-  PNG_EXPORT_DPI,
   PNG_IMAGE_MIME_TYPE,
-  SCREEN_DPI,
   SVG_IMAGE_MIME_TYPE
 } from "kizkatt-graphic-engine";
 import type { CopiedPngExport } from "kizkatt-graphic-engine";
@@ -18,6 +18,7 @@ type SerializeSvg = (
 ) => string;
 
 type ClipboardExportOptions = {
+  dpi?: number;
   elements: KizkattElement[];
   elementIds: string[];
   serializeSvg: SerializeSvg;
@@ -54,6 +55,7 @@ export async function copySelectionAsSvg({
 }
 
 export async function copySelectionAsPng({
+  dpi = DEFAULT_DPI,
   elements,
   elementIds,
   serializeSvg,
@@ -74,7 +76,7 @@ export async function copySelectionAsPng({
     return null;
   }
 
-  const pixelRatio = PNG_EXPORT_DPI / SCREEN_DPI;
+  const pixelRatio = getDpiPixelRatio(dpi);
   const markup = serializeSvg(svg, {
     bounds,
     elementIds,
@@ -118,6 +120,7 @@ export async function copySelectionAsPng({
 
   return {
     createdAt: Date.now(),
+    dpi,
     height: bounds.height,
     width: bounds.width
   };

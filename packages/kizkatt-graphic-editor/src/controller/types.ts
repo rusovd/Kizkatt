@@ -13,6 +13,7 @@ import type { ElementNamingConfig } from "kizkatt-graphic-engine";
 import type {
   Bounds,
   ContextMenuState,
+  Dpi,
   GridSettings,
   Interaction,
   KizkattElement,
@@ -164,12 +165,14 @@ export type WorkspaceControls = {
   canUseGrid: boolean;
   canRedo: boolean;
   canUndo: boolean;
+  dpi: Dpi;
   gridColor: string;
   gridSettings: GridSettings;
   infoMode: boolean;
   onRedo: () => void;
   onGridColorChange: (color: string) => void;
   onGridSettingsChange: (settings: GridSettings) => void;
+  onDpiChange: (dpi: Dpi) => void;
   onToggleGrid: () => void;
   onToggleSnapToGrid: () => void;
   onToggleDisplayMode: (mode: EditorDisplayMode) => void;

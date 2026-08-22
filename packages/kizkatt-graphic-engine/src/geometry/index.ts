@@ -13,6 +13,9 @@ export {
   type HitTestProfileSample
 } from "./hitTesting";
 export {
+  getDpiPixelRatio
+} from "./dpi";
+export {
   getCalibratedMillimetersWorldSize,
   getDefaultGridSettings,
   getGridWorldSizing,

@@ -1,10 +1,10 @@
 import {
+  DEFAULT_DPI,
   DEFAULT_IMAGE_SIZE,
   MAX_PASTED_IMAGE_SIZE,
-  MIN_PIXEL_SIZE,
-  PNG_EXPORT_DPI,
-  SCREEN_DPI
+  MIN_PIXEL_SIZE
 } from "../config/constants";
+import { getDpiPixelRatio } from "../geometry/dpi";
 
 export type Size = {
   height: number;
@@ -13,6 +13,7 @@ export type Size = {
 
 export type CopiedPngExport = Size & {
   createdAt: number;
+  dpi: number;
 };
 
 export const COPIED_PNG_EXPORT_SIZE_TTL_MS = 5 * 60 * 1000;
@@ -44,9 +45,10 @@ export function getImageSize(width: number, height: number): Size {
 export function isExpectedCopiedPngSize(
   naturalWidth: number,
   naturalHeight: number,
-  preferredSize: Size
+  preferredSize: Size,
+  dpi: number = DEFAULT_DPI
 ) {
-  const pixelRatio = PNG_EXPORT_DPI / SCREEN_DPI;
+  const pixelRatio = getDpiPixelRatio(dpi);
   const expectedWidth = Math.ceil(preferredSize.width * pixelRatio);
   const expectedHeight = Math.ceil(preferredSize.height * pixelRatio);
 

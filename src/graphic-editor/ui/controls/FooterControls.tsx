@@ -6,6 +6,7 @@ import {
   GRID_CALIBRATION_REFERENCE_MM,
   GRID_MM_SCALE_STEP,
   GRID_COLORS_BY_THEME,
+  DPI_OPTIONS,
   MAX_GRID_MM_SCALE,
   MAX_UI_SCALE,
   MIN_GRID_MM_SCALE,
@@ -20,6 +21,7 @@ import {
   getDefaultGridSettings
 } from "../../geometry";
 import type {
+  Dpi,
   EditorDisplayMode,
   GridSettings,
   GridUnit,
@@ -56,11 +58,13 @@ type FooterControlsProps = {
   canRedo: boolean;
   canUndo: boolean;
   canUseGrid: boolean;
+  dpi: Dpi;
   gridColor: string;
   gridSettings: GridSettings;
   infoMode: boolean;
   onGridColorChange: (color: string) => void;
   onGridSettingsChange: (settings: GridSettings) => void;
+  onDpiChange: (dpi: Dpi) => void;
   onRedo: () => void;
   onToggleGrid: () => void;
   onToggleSnapToGrid: () => void;
@@ -225,11 +229,13 @@ function GridNumberInput({
 function EditorSettingsMenu({
   activeDisplayMode,
   canUseGrid,
+  dpi,
   gridColor,
   gridSettings,
   infoMode,
   onGridColorChange,
   onGridSettingsChange,
+  onDpiChange,
   onToggleGrid,
   onToggleSnapToGrid,
   onToggleDisplayMode,
@@ -244,11 +250,13 @@ function EditorSettingsMenu({
   FooterControlsProps,
   | "activeDisplayMode"
   | "canUseGrid"
+  | "dpi"
   | "gridColor"
   | "gridSettings"
   | "infoMode"
   | "onGridColorChange"
   | "onGridSettingsChange"
+  | "onDpiChange"
   | "onToggleGrid"
   | "onToggleSnapToGrid"
   | "onToggleDisplayMode"
@@ -345,6 +353,27 @@ function EditorSettingsMenu({
           ? strings.settings.verticalToolbar
           : strings.settings.horizontalToolbar}
       </SettingsCheckButton>
+      <div className="kizkatt-menu-divider" />
+      <label
+        className="kizkatt-dpi-settings-row"
+        htmlFor="kizkatt-footer-dpi"
+        title={strings.settings.tooltips.dpi}
+      >
+        <span>{strings.settings.dpi}</span>
+        <select
+          id="kizkatt-footer-dpi"
+          aria-label={strings.settings.dpi}
+          value={dpi}
+          onPointerDown={stopPanelDrag}
+          onChange={(event) => onDpiChange(Number(event.target.value) as Dpi)}
+        >
+          {DPI_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="kizkatt-menu-divider" />
       <div className="kizkatt-settings-submenu-row">
         <SettingsSubmenuButton
@@ -631,11 +660,13 @@ export function FooterControls({
   canRedo,
   canUndo,
   canUseGrid,
+  dpi,
   gridColor,
   gridSettings,
   infoMode,
   onGridColorChange,
   onGridSettingsChange,
+  onDpiChange,
   onRedo,
   onToggleGrid,
   onToggleSnapToGrid,
@@ -781,11 +812,13 @@ export function FooterControls({
           <EditorSettingsMenu
             activeDisplayMode={activeDisplayMode}
             canUseGrid={canUseGrid}
+            dpi={dpi}
             gridColor={gridColor}
             gridSettings={gridSettings}
             infoMode={infoMode}
             onGridColorChange={onGridColorChange}
             onGridSettingsChange={onGridSettingsChange}
+            onDpiChange={onDpiChange}
             onToggleGrid={onToggleGrid}
             onToggleSnapToGrid={onToggleSnapToGrid}
             onToggleDisplayMode={onToggleDisplayMode}

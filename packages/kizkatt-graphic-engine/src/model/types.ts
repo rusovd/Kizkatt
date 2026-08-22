@@ -38,6 +38,7 @@ export type SkewHandle = "top" | "right" | "bottom" | "left";
 export type SelectionAreaMode = "intersect" | "contain";
 
 export type GridUnit = "px" | "mm";
+export type Dpi = 72 | 96 | 150 | 203 | 300;
 
 export type ArrowheadStyle =
   | "none"

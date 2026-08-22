@@ -1,4 +1,5 @@
 import type {
+  Dpi,
   ElementType,
   GridSettings,
   KizkattTheme,
@@ -13,6 +14,7 @@ export const GRID_COLOR_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:
 export const GRID_SETTINGS_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:grid-settings`;
 export const THEME_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:theme`;
 export const UI_SCALE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:ui-scale`;
+export const DPI_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:dpi`;
 export const CANVAS_STATE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:canvas-state`;
 export const QUICK_SAVE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:quick-save`;
 export const CONTEXT_MENU_DEFAULTS_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:context-menu-defaults`;
@@ -93,7 +95,9 @@ export const IMAGE_FILE_ACCEPT = "image/*";
 export const SVG_IMAGE_MIME_TYPE = "image/svg+xml;charset=utf-8";
 export const PNG_IMAGE_MIME_TYPE = "image/png";
 export const PLAIN_TEXT_MIME_TYPE = "text/plain";
-export const PNG_EXPORT_DPI = 300;
+export const DPI_OPTIONS: readonly Dpi[] = [72, 96, 150, 203, 300];
+export const DEFAULT_DPI: Dpi = 150;
+export const PNG_EXPORT_DPI = DEFAULT_DPI;
 export const SCREEN_DPI = 96;
 export const PNG_EXPORT_PADDING = 16;
 export const EMPTY_INPUT_VALUE = "";

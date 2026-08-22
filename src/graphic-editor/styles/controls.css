@@ -484,6 +484,27 @@
   font-size: 12px;
 }
 
+.kizkatt-dpi-settings-row {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 7px;
+  color: var(--kizkatt-panel-label);
+}
+
+.kizkatt-dpi-settings-row select {
+  width: 82px;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 0 7px;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 5px;
+  color: var(--kizkatt-text);
+  background: var(--kizkatt-control-bg);
+}
+
 .kizkatt-footer-settings-menu .kizkatt-swatches {
   gap: 5px;
   margin-top: 7px;

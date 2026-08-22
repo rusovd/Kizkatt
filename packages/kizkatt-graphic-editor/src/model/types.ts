@@ -4,6 +4,7 @@ export type {
   ColorPopoverState,
   ColorTarget,
   ContextMenuState,
+  Dpi,
   ElementType,
   GridSettings,
   GridUnit,

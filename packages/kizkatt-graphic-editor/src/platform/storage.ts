@@ -3,6 +3,7 @@ import {
   CANVAS_STATE_STORAGE_KEY,
   CONTEXT_MENU_DEFAULTS_STORAGE_KEY,
   CUSTOM_CANVAS_BACKGROUND_STORAGE_KEY,
+  DEFAULT_DPI,
   DEFAULT_CANVAS_BACKGROUND,
   DEFAULT_CANVAS_BACKGROUND_BY_THEME,
   DEFAULT_MM_GRID_SETTINGS,
@@ -12,6 +13,8 @@ import {
   DEFAULT_GRID_COLOR_BY_THEME,
   GRID_COLOR_STORAGE_KEY,
   GRID_SETTINGS_STORAGE_KEY,
+  DPI_OPTIONS,
+  DPI_STORAGE_KEY,
   MAX_GRID_SIZE,
   MAX_GRID_MM_SCALE,
   MIN_GRID_SIZE,
@@ -27,6 +30,7 @@ import { getElementBends } from "kizkatt-graphic-engine";
 import { normalizeElementNames } from "kizkatt-graphic-engine";
 import type {
   CanvasState,
+  Dpi,
   GridSettings,
   GridUnit,
   KizkattElement,
@@ -391,6 +395,22 @@ export function storeUiScale(
   storage = window.localStorage
 ) {
   storage.setItem(UI_SCALE_STORAGE_KEY, String(normalizeUiScale(scale)));
+}
+
+export function normalizeDpi(value: unknown): Dpi {
+  const numericValue = Number(value);
+
+  return DPI_OPTIONS.includes(numericValue as Dpi)
+    ? (numericValue as Dpi)
+    : DEFAULT_DPI;
+}
+
+export function getStoredDpi(storage = window.localStorage) {
+  return normalizeDpi(storage.getItem(DPI_STORAGE_KEY));
+}
+
+export function storeDpi(dpi: number, storage = window.localStorage) {
+  storage.setItem(DPI_STORAGE_KEY, String(normalizeDpi(dpi)));
 }
 
 function isStoredElement(value: unknown): value is KizkattElement {
