@@ -9,9 +9,102 @@
   font-size: 12px;
 }
 
-.kizkatt-style-panel > .kizkatt-panel-drag-handle {
+.kizkatt-style-panel--vertical > .kizkatt-panel-chrome {
+  grid-column: 1 / -1;
   margin: -5px -5px 1px;
   border-radius: 6px 6px 0 0;
+}
+
+.kizkatt-style-panel--vertical {
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  align-content: start;
+  grid-template-columns:
+    repeat(var(--kizkatt-panel-max-cols), minmax(0, 1fr));
+  container-name: kizkatt-style-panel;
+  container-type: inline-size;
+}
+
+.kizkatt-style-panel--horizontal {
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  grid-template-rows: repeat(var(--kizkatt-panel-max-rows), auto);
+  grid-auto-columns: 198px;
+  grid-auto-flow: column;
+  align-items: center;
+  padding-right: 42px;
+  padding-left: 42px;
+}
+
+.kizkatt-style-panel--horizontal > .kizkatt-panel-chrome {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 6px 0 0 6px;
+}
+
+.kizkatt-style-panel--horizontal > .kizkatt-panel-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  margin: 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.kizkatt-floating-panel--style-panel.is-resized > .kizkatt-style-panel {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+@container kizkatt-style-panel (min-width: 260px) {
+  .kizkatt-style-feature--fill .kizkatt-fill-control,
+  .kizkatt-style-feature--opacity .kizkatt-numeric-slider-control {
+    width: 100%;
+  }
+}
+
+@container kizkatt-style-panel (min-width: 340px) {
+  .kizkatt-style-feature--opacity .kizkatt-numeric-slider-control {
+    grid-template-columns: minmax(0, 1fr) 72px;
+  }
+
+  .kizkatt-style-feature--opacity input[type="number"] {
+    width: 72px;
+  }
+}
+
+.kizkatt-style-panel--horizontal .kizkatt-feature-group {
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+}
+
+.kizkatt-style-panel--horizontal .kizkatt-feature-group-icon {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  color: var(--kizkatt-muted-text);
+}
+
+.kizkatt-style-panel--horizontal .kizkatt-feature-group-icon .kizkatt-tool-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.kizkatt-style-panel--horizontal input[type="number"] {
+  height: 20px;
+  padding-inline: 5px;
+  border-color: var(--kizkatt-border);
+  border-radius: 4px;
+  background: var(--kizkatt-control-bg);
+  font-size: 1em;
 }
 
 .kizkatt-swatches {
@@ -77,11 +170,36 @@
 }
 
 .kizkatt-quick-swatches {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
   overflow: visible;
 }
 
-.kizkatt-custom-color-swatch {
+.kizkatt-quick-color-list,
+.kizkatt-special-color-swatches {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.kizkatt-quick-color-list {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.kizkatt-quick-color-list button {
+  flex: 0 0 20px;
+}
+
+.kizkatt-special-color-swatches {
+  flex: none;
   margin-left: 6px;
+}
+
+.kizkatt-custom-color-swatch {
+  margin-left: 0;
 }
 
 .kizkatt-custom-color-swatch::before {
@@ -234,18 +352,6 @@
   gap: 4px;
 }
 
-.kizkatt-two-segmented {
-  grid-template-columns: repeat(2, minmax(0, 44px));
-}
-
-.kizkatt-four-segmented {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.kizkatt-stroke-style-segmented {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
 .kizkatt-segmented button {
   min-width: 0;
   height: 24px;
@@ -299,22 +405,6 @@
   height: 16px;
 }
 
-.kizkatt-sloppiness-control {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
-  align-items: center;
-  gap: 6px;
-}
-
-.kizkatt-edge-segmented button {
-  height: 32px;
-}
-
-.kizkatt-edge-segmented .kizkatt-tool-icon {
-  width: 22px;
-  height: 22px;
-}
-
 .kizkatt-action-controls {
   grid-template-columns: repeat(3, minmax(0, 32px));
   gap: 6px;
@@ -347,8 +437,7 @@
 
 .kizkatt-numeric-slider-control input[type="number"],
 .kizkatt-number-control input[type="number"],
-.kizkatt-fill-control input[type="number"],
-.kizkatt-sloppiness-control input[type="number"] {
+.kizkatt-fill-control input[type="number"] {
   box-sizing: border-box;
   width: 44px;
   height: 26px;
@@ -365,8 +454,7 @@
 
 .kizkatt-numeric-slider-control input[type="number"]:focus-visible,
 .kizkatt-number-control input[type="number"]:focus-visible,
-.kizkatt-fill-control input[type="number"]:focus-visible,
-.kizkatt-sloppiness-control input[type="number"]:focus-visible {
+.kizkatt-fill-control input[type="number"]:focus-visible {
   border-color: var(--kizkatt-selection);
 }
 
