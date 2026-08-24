@@ -1268,7 +1268,9 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(rectangle).toHaveAttribute("x", "110");
     expect(rectangle).toHaveAttribute("y", "100");
 
-    fireEvent.click(screen.getByRole("button", { name: "dashed" }));
+    fireEvent.change(screen.getByLabelText("Stroke style"), {
+      target: { value: "dashed" }
+    });
     const resizeHandle = canvas.querySelector("[data-resize-handle='se']");
     firePointerEvent(resizeHandle as Element, "pointerdown", {
       clientX: 230,
@@ -1512,6 +1514,11 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     ]);
     const lineWidth = screen.getByLabelText("Line width");
     const lineWidthPreset = screen.getByLabelText("Line width preset");
+    const sloppiness = screen.getByLabelText("Sloppiness") as HTMLSelectElement;
+    const objectPanel = lineWidth.closest(".kizkatt-floating-panel");
+    expect(objectPanel?.querySelectorAll("[data-feature-group]")).toHaveLength(
+      7
+    );
     expect(strokeStyle.closest(".kizkatt-object-panel-stack")).toBe(
       lineWidth.closest(".kizkatt-object-panel-stack")
     );
@@ -1519,16 +1526,28 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       .toHaveClass("has-no-icon");
     expect(
       screen.getByTitle("Flip selected objects left to right").parentElement
-    ).toHaveClass("kizkatt-object-panel-stack");
+    ).toHaveClass("kizkatt-feature-group-content");
     expect(
       screen.getByTitle("Use rounded corners").parentElement
-    ).toHaveClass("kizkatt-object-panel-stack");
+    ).toHaveClass("kizkatt-feature-group-content");
     expect(lineWidth).toHaveValue(10);
+    expect(sloppiness).toHaveValue("artist");
+    expect(Array.from(sloppiness.options).map((option) => option.value)).toEqual([
+      "architect",
+      "artist",
+      "cartoonist",
+      "double"
+    ]);
     expect(
       lineWidthPreset.parentElement?.querySelector(
         ".kizkatt-stroke-width-preset-chevron"
       )
     ).toHaveAttribute("aria-hidden", "true");
+    expect(
+      lineWidthPreset.parentElement?.querySelector(
+        ".kizkatt-stroke-width-preset-chevron circle"
+      )
+    ).toBeInTheDocument();
     expect((lineWidthPreset as HTMLSelectElement).options[0]).toHaveAttribute(
       "hidden"
     );

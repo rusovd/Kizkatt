@@ -138,7 +138,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(canvas.querySelector(".kizkatt-bend-handle")).toBeInTheDocument();
 
     chooseGroupedTool("Draw", "Line");
-    fireEvent.click(screen.getByRole("button", { name: "Edges sharp" }));
+    fireEvent.click(screen.getByTitle("Use straight corners"));
     expect(curvePath?.getAttribute("d")).not.toContain(" C ");
     expect(curvePath?.getAttribute("d")).toContain(" L ");
     expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(0);

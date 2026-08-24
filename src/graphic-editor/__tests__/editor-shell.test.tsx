@@ -477,7 +477,7 @@ describe("KizkattGraphicEditor shell", () => {
     ).toBe(JSON.stringify({ x: 140, y: 16 }));
   });
 
-  it("opens grouped toolbar tools and stores toolbar settings", () => {
+  it("opens grouped tools and applies shared panel settings", () => {
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
@@ -501,15 +501,24 @@ describe("KizkattGraphicEditor shell", () => {
       screen.getByRole("menuitemcheckbox", { name: /Stick panels/ })
     );
 
-    expect(
+    const toolbarPanel = screen
+      .getByLabelText("Kizkatt tools")
+      .closest(".kizkatt-floating-panel");
+    const pinnedPanelIds = JSON.parse(
       window.localStorage.getItem(
-        "kizkatt:graphic-editor:settings:drag-enabled"
-      )
-    ).toBe("false");
+        "kizkatt:graphic-editor:settings:pinned-panels"
+      ) ?? "[]"
+    );
+
+    expect(pinnedPanelIds).toContain("style-panel");
+    expect(pinnedPanelIds).not.toContain("toolbar");
+    expect(toolbarPanel).not.toHaveClass("is-pinned");
     expect(
-      screen.getByLabelText("Kizkatt tools")
-        .closest(".kizkatt-floating-panel")
-    ).toHaveClass("is-drag-disabled");
+      toolbarPanel?.querySelector("button[aria-label='Stick panel']")
+    ).not.toBeInTheDocument();
+    expect(
+      toolbarPanel?.querySelector("button[aria-label='Close panel']")
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 
     openEditorSettings();
@@ -527,18 +536,91 @@ describe("KizkattGraphicEditor shell", () => {
 
     openEditorSettings();
     fireEvent.click(
-      screen.getByRole("menuitemcheckbox", { name: /Vertical toolbar/ })
+      screen.getByRole("menuitemcheckbox", { name: /Unstick panels/ })
     );
+
+    expect(toolbarPanel).not.toHaveClass("is-pinned");
+    expect(screen.getByLabelText("Kizkatt tools")).toHaveClass(
+      "kizkatt-toolbar--autohide"
+    );
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+
+    const dragHandle = toolbarPanel?.querySelector("[data-panel-drag-handle]");
+    fireEvent.doubleClick(dragHandle as Element);
 
     expect(
       window.localStorage.getItem(
-        "kizkatt:graphic-editor:settings:toolbar-orientation"
+        "kizkatt:graphic-editor:panel:toolbar:orientation"
       )
     ).toBe("vertical");
     expect(screen.getByLabelText("Kizkatt tools")).toHaveClass(
       "kizkatt-toolbar--vertical"
     );
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+
+    openEditorSettings();
+    expect(
+      screen.queryByRole("menuitemcheckbox", { name: /Vertical toolbar/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes, reopens, rotates, and resizes capable panels", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const stylePanel = screen
+      .getByLabelText("Element style")
+      .closest(".kizkatt-floating-panel") as HTMLElement;
+    const resizeHandle = stylePanel.querySelector(
+      "[data-panel-resize-handle]"
+    );
+
+    expect(resizeHandle).not.toBeNull();
+    expect(stylePanel).toHaveStyle({ minHeight: "390px", minWidth: "198px" });
+    expect(stylePanel.querySelectorAll("[data-feature-group]")).toHaveLength(
+      6
+    );
+    expect(stylePanel.style.getPropertyValue("--kizkatt-panel-max-cols")).toBe(
+      "1"
+    );
+    fireEvent.mouseDown(resizeHandle as Element, {
+      button: 0,
+      clientX: 10,
+      clientY: 10
+    });
+    fireEvent.mouseMove(stylePanel, { clientX: 210, clientY: 160 });
+    fireEvent.mouseUp(stylePanel, { clientX: 210, clientY: 160 });
+
+    expect(stylePanel).toHaveStyle({ height: "540px", width: "398px" });
+    expect(
+      window.localStorage.getItem(
+        "kizkatt:graphic-editor:panel:style-panel:size:vertical"
+      )
+    ).toBe(JSON.stringify({ height: 540, width: 398 }));
+
+    const dragHandle = stylePanel.querySelector("[data-panel-drag-handle]");
+    fireEvent.doubleClick(dragHandle as Element);
+
+    expect(screen.getByLabelText("Element style")).toHaveClass(
+      "kizkatt-style-panel--horizontal"
+    );
+    expect(
+      stylePanel.querySelectorAll(".kizkatt-feature-group-icon")
+    ).toHaveLength(6);
+    expect(stylePanel).toHaveClass("has-hidden-labels");
+    expect(stylePanel.style.getPropertyValue("--kizkatt-panel-max-rows")).toBe(
+      "2"
+    );
+    expect(
+      stylePanel.querySelector("[data-panel-resize-handle]")
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Close panel" })[0]);
+    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Text" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
   });
 
   it("returns from the hand tool on an empty click but keeps it after panning", () => {
@@ -712,6 +794,34 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByLabelText("Element style")).toBeInTheDocument();
     expect(screen.getByRole("menuitemcheckbox", { name: /Stick panels/ }))
       .toBeInTheDocument();
+  });
+
+  it("keeps an individually stuck panel visible", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    const stylePanel = screen
+      .getByLabelText("Element style")
+      .closest(".kizkatt-floating-panel") as HTMLElement;
+    const stickButton = stylePanel.querySelector(
+      "button[aria-label='Stick panel']"
+    );
+
+    fireEvent.click(stickButton as Element);
+    expect(stylePanel).toHaveClass("is-pinned");
+
+    const rectangleButton = screen.getByRole("button", { name: "Rectangle" });
+    vi.useFakeTimers();
+    fireEvent.pointerDown(rectangleButton);
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    fireEvent.pointerUp(rectangleButton);
+    vi.useRealTimers();
+
+    expect(screen.getByRole("menuitem", { name: "Diamond" }))
+      .toBeInTheDocument();
+    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
   });
 
   it("duplicates toolbar autohide in the main menu", () => {

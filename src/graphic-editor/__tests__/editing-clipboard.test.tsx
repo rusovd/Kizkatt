@@ -594,7 +594,7 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     expect(drawPath).toHaveAttribute("stroke", "#f08c00");
     expect(drawPath?.getAttribute("d")).toContain("C");
 
-    fireEvent.change(screen.getByLabelText("Stroke width value"), {
+    fireEvent.change(screen.getByLabelText("Line width"), {
       target: { value: "8" }
     });
 
@@ -692,7 +692,7 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     expect(inlineSvg.innerHTML).toContain("stroke-linecap=\"round\"");
     expect(inlineSvg).toHaveAttribute("color", "#f08c00");
 
-    fireEvent.change(screen.getByLabelText("Stroke width value"), {
+    fireEvent.change(screen.getByLabelText("Line width"), {
       target: { value: "8" }
     });
 
