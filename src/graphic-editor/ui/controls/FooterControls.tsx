@@ -332,6 +332,37 @@ function EditorSettingsMenu({
           : strings.settings.enableAutohide}
       </SettingsCheckButton>
       <div className="kizkatt-menu-divider" />
+      <div className="kizkatt-grid-settings-row">
+        <span>{strings.mainMenu.gridUnits}</span>
+        <div
+          className="kizkatt-theme-toggle kizkatt-grid-unit-toggle"
+          role="group"
+          aria-label={strings.mainMenu.gridUnits}
+        >
+          <button
+            type="button"
+            data-no-panel-drag
+            aria-label={strings.mainMenu.gridUnitPx}
+            title={strings.mainMenu.tooltips.gridUnitPx}
+            className={gridSettings.unit === "px" ? "is-active" : undefined}
+            onPointerDown={stopPanelDrag}
+            onClick={() => setGridUnit("px")}
+          >
+            px
+          </button>
+          <button
+            type="button"
+            data-no-panel-drag
+            aria-label={strings.mainMenu.gridUnitMm}
+            title={strings.mainMenu.tooltips.gridUnitMm}
+            className={gridSettings.unit === "mm" ? "is-active" : undefined}
+            onPointerDown={stopPanelDrag}
+            onClick={() => setGridUnit("mm")}
+          >
+            mm
+          </button>
+        </div>
+      </div>
       <label
         className="kizkatt-dpi-settings-row"
         htmlFor="kizkatt-footer-dpi"
@@ -406,37 +437,6 @@ function EditorSettingsMenu({
                   onClick={() => onGridColorChange(color)}
                 />
               ))}
-            </div>
-            <div className="kizkatt-grid-settings-row">
-              <span>{strings.mainMenu.gridUnits}</span>
-              <div
-                className="kizkatt-theme-toggle kizkatt-grid-unit-toggle"
-                role="group"
-                aria-label={strings.mainMenu.gridUnits}
-              >
-                <button
-                  type="button"
-                  data-no-panel-drag
-                  aria-label={strings.mainMenu.gridUnitPx}
-                  title={strings.mainMenu.tooltips.gridUnitPx}
-                  className={gridSettings.unit === "px" ? "is-active" : undefined}
-                  onPointerDown={stopPanelDrag}
-                  onClick={() => setGridUnit("px")}
-                >
-                  px
-                </button>
-                <button
-                  type="button"
-                  data-no-panel-drag
-                  aria-label={strings.mainMenu.gridUnitMm}
-                  title={strings.mainMenu.tooltips.gridUnitMm}
-                  className={gridSettings.unit === "mm" ? "is-active" : undefined}
-                  onPointerDown={stopPanelDrag}
-                  onClick={() => setGridUnit("mm")}
-                >
-                  mm
-                </button>
-              </div>
             </div>
             <label
               className="kizkatt-grid-checkbox-row"

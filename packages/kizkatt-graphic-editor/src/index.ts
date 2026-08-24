@@ -1,4 +1,5 @@
 export * from "./controller/KizkattGraphicEditorController";
+export * from "./components/ColorPicker";
 export * from "./controller/objectCommands";
 export * from "./controller/selectionCommands";
 export * from "./controller/style";

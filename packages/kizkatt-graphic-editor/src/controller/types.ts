@@ -119,12 +119,14 @@ export type ObjectMirrorAxis = "horizontal" | "vertical";
 export type ObjectPanelProps = {
   geometry: ObjectPanelGeometry;
   gridSettings: GridSettings;
+  onAction: (action: "delete" | "duplicate" | "link") => void;
   onGeometryChange: (
     patch: ObjectGeometryPatch,
     options?: { transient?: boolean }
   ) => void;
   onGeometryChangeEnd: () => void;
   onMirror: (axis: ObjectMirrorAxis) => void;
+  onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
   onStyleChange: (
     patch: Partial<StyleState>,
     options?: { transient?: boolean }
@@ -139,9 +141,7 @@ export type StylePanelProps = {
   activeTool: Tool;
   canToggleClosedPath: boolean;
   closedPath: boolean;
-  onAction: (action: "delete" | "duplicate" | "link") => void;
   onClosedPathChange: (closed: boolean) => void;
-  onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
   onStyleChange: (
     patch: Partial<StyleState>,
     options?: { transient?: boolean }

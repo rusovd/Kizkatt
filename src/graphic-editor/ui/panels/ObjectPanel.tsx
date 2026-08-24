@@ -18,16 +18,23 @@ import { useI18n } from "../../i18n";
 import {
   AspectLockIcon,
   AspectUnlockIcon,
+  BringForwardIcon,
+  BringToFrontIcon,
   DiameterIcon,
   DimensionHeightIcon,
   DimensionWidthIcon,
   EdgeRoundIcon,
   EdgeSharpIcon,
+  DuplicateIcon,
   GlobeIcon,
+  LinkIcon,
   MirrorHorizontalIcon,
   MirrorVerticalIcon,
   PenNibIcon,
-  RotationAngleIcon
+  RotationAngleIcon,
+  SendBackwardIcon,
+  SendToBackIcon,
+  TrashIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
 import { FeatureGroup } from "./FeatureGroup";
@@ -64,6 +71,19 @@ const SLOPPINESS_LABEL_KEYS = {
   cartoonist: "sloppinessCartoonist",
   double: "sloppinessDouble"
 } as const;
+
+const LAYER_ACTIONS = [
+  { action: "back", labelKey: "sendToBack", icon: SendToBackIcon },
+  { action: "backward", labelKey: "sendBackward", icon: SendBackwardIcon },
+  { action: "forward", labelKey: "bringForward", icon: BringForwardIcon },
+  { action: "front", labelKey: "bringToFront", icon: BringToFrontIcon }
+] as const;
+
+const ELEMENT_ACTIONS = [
+  { action: "duplicate", labelKey: "duplicate", icon: DuplicateIcon },
+  { action: "delete", labelKey: "delete", icon: TrashIcon },
+  { action: "link", labelKey: "link", icon: LinkIcon }
+] as const;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -161,11 +181,13 @@ function ObjectNumberField({
 
 function IconButton({
   active,
+  ariaLabel,
   children,
   onClick,
   title
 }: {
   active?: boolean;
+  ariaLabel?: string;
   children: ReactNode;
   onClick: () => void;
   title: string;
@@ -173,6 +195,7 @@ function IconButton({
   return (
     <button
       type="button"
+      aria-label={ariaLabel}
       aria-pressed={active}
       className={active ? "is-active" : undefined}
       title={title}
@@ -300,8 +323,10 @@ function StrokeWidthField({
 export function ObjectPanel({
   geometry,
   gridSettings,
+  onAction,
   onGeometryChange,
   onGeometryChangeEnd,
+  onLayerAction,
   onMirror,
   onStyleChange,
   onStyleChangeEnd,
@@ -508,7 +533,14 @@ export function ObjectPanel({
         >
           {chrome}
           <div className="kizkatt-object-panel-content">
-            <FeatureGroup className="kizkatt-object-feature--position">
+            <FeatureGroup
+              className="kizkatt-object-feature--position"
+              label={
+                orientation === "vertical"
+                  ? strings.objectPanel.position
+                  : undefined
+              }
+            >
               <div className="kizkatt-object-panel-stack">
                 <ObjectNumberField
                   className="kizkatt-object-field--position"
@@ -565,7 +597,14 @@ export function ObjectPanel({
                 {GlobeIcon}
               </IconButton>
             </FeatureGroup>
-            <FeatureGroup className="kizkatt-object-feature--scale">
+            <FeatureGroup
+              className="kizkatt-object-feature--scale"
+              label={
+                orientation === "vertical"
+                  ? strings.objectPanel.size
+                  : undefined
+              }
+            >
               <div className="kizkatt-object-panel-stack">
                 <ObjectNumberField
                   icon={DimensionWidthIcon}
@@ -606,7 +645,14 @@ export function ObjectPanel({
                 {aspectLocked ? AspectLockIcon : AspectUnlockIcon}
               </IconButton>
             </FeatureGroup>
-            <FeatureGroup className="kizkatt-object-feature--angle">
+            <FeatureGroup
+              className="kizkatt-object-feature--angle"
+              label={
+                orientation === "vertical"
+                  ? strings.objectPanel.rotation
+                  : undefined
+              }
+            >
               <ObjectNumberField
                 className="kizkatt-object-field--angle"
                 icon={RotationAngleIcon}
@@ -622,7 +668,14 @@ export function ObjectPanel({
                 onCommit={onGeometryChangeEnd}
               />
             </FeatureGroup>
-            <FeatureGroup className="kizkatt-object-feature--mirror">
+            <FeatureGroup
+              className="kizkatt-object-feature--mirror"
+              label={
+                orientation === "vertical"
+                  ? strings.objectPanel.mirroring
+                  : undefined
+              }
+            >
               <IconButton
                 title={strings.objectPanel.tooltips.mirrorHorizontal}
                 onClick={() => onMirror(HORIZONTAL_MIRROR_AXIS)}
@@ -636,7 +689,14 @@ export function ObjectPanel({
                 {MirrorVerticalIcon}
               </IconButton>
             </FeatureGroup>
-            <FeatureGroup className="kizkatt-object-feature--edges">
+            <FeatureGroup
+              className="kizkatt-object-feature--edges"
+              label={
+                orientation === "vertical"
+                  ? strings.objectPanel.edges
+                  : undefined
+              }
+            >
               {OBJECT_PANEL_UI_SETTINGS.edgeOptions.map((option) => (
                 <IconButton
                   key={option}
@@ -652,7 +712,12 @@ export function ObjectPanel({
                 </IconButton>
               ))}
             </FeatureGroup>
-            <FeatureGroup className="kizkatt-object-feature--line">
+            <FeatureGroup
+              className="kizkatt-object-feature--line"
+              label={
+                orientation === "vertical" ? strings.objectPanel.line : undefined
+              }
+            >
               <div
                 ref={lineSettingsRef}
                 className="kizkatt-object-line-settings"
@@ -710,7 +775,14 @@ export function ObjectPanel({
                 )}
               </div>
             </FeatureGroup>
-            <FeatureGroup className="kizkatt-object-feature--sloppiness">
+            <FeatureGroup
+              className="kizkatt-object-feature--sloppiness"
+              label={
+                orientation === "vertical"
+                  ? strings.objectPanel.sloppiness
+                  : undefined
+              }
+            >
               <ObjectSelectField
                 className="kizkatt-object-select-field--sloppiness"
                 label={strings.objectPanel.sloppiness}
@@ -719,6 +791,44 @@ export function ObjectPanel({
                 options={sloppinessOptions}
                 onChange={(value) => updateStyle({ sloppiness: value })}
               />
+            </FeatureGroup>
+            <FeatureGroup
+              className="kizkatt-object-feature--layers"
+              label={
+                orientation === "vertical"
+                  ? strings.stylePanel.layers
+                  : undefined
+              }
+            >
+              {LAYER_ACTIONS.map(({ action, labelKey, icon }) => (
+                <IconButton
+                  key={action}
+                  ariaLabel={strings.stylePanel[labelKey]}
+                  title={strings.stylePanel.tooltips[labelKey]}
+                  onClick={() => onLayerAction(action)}
+                >
+                  {icon}
+                </IconButton>
+              ))}
+            </FeatureGroup>
+            <FeatureGroup
+              className="kizkatt-object-feature--actions"
+              label={
+                orientation === "vertical"
+                  ? strings.stylePanel.actions
+                  : undefined
+              }
+            >
+              {ELEMENT_ACTIONS.map(({ action, labelKey, icon }) => (
+                <IconButton
+                  key={action}
+                  ariaLabel={strings.stylePanel[labelKey]}
+                  title={strings.stylePanel.tooltips[labelKey]}
+                  onClick={() => onAction(action)}
+                >
+                  {icon}
+                </IconButton>
+              ))}
             </FeatureGroup>
           </div>
           {actions}

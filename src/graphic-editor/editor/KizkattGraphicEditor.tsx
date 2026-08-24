@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { CSSProperties } from "react";
 
 import {
@@ -321,10 +322,20 @@ function KizkattGraphicEditorView({
     workspaceControls
   } = viewModel;
   const previewMode = state.activeDisplayMode === "preview";
+  const objectPanelPinned = isPanelPinned("object-panel");
+  const lastSelectionGeometryControlsRef = useRef(selectionGeometryControls);
+
+  if (selectionGeometryControls) {
+    lastSelectionGeometryControlsRef.current = selectionGeometryControls;
+  }
+
+  const visibleSelectionGeometryControls =
+    selectionGeometryControls ??
+    (objectPanelPinned ? lastSelectionGeometryControlsRef.current : null);
   const showObjectPanel =
     !previewMode &&
-    (!state.menuOpen || isPanelPinned("object-panel")) &&
-    Boolean(selectionGeometryControls);
+    (!state.menuOpen || objectPanelPinned) &&
+    Boolean(visibleSelectionGeometryControls);
   const stylePanelIsRelevant =
     STYLE_TOOLS.has(styleControls.activeTool) ||
     (styleControls.selectedElements.length > EMPTY_COLLECTION_LENGTH &&
@@ -366,8 +377,8 @@ function KizkattGraphicEditorView({
       <CanvasContextMenu {...commandControls} />
       <MainMenu {...documentControls} />
 
-      {showObjectPanel && selectionGeometryControls && (
-        <AppObjectPanel {...selectionGeometryControls} />
+      {showObjectPanel && visibleSelectionGeometryControls && (
+        <AppObjectPanel {...visibleSelectionGeometryControls} />
       )}
       {showStylePanel && <AppStylePanel {...styleControls} />}
       {textEditing && <TextEditor {...textEditing} />}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { ColorPicker } from "kizkatt-graphic-editor";
 
 import {
   COLOR_PALETTES,
@@ -20,21 +21,15 @@ import { isHexColor } from "../../geometry";
 import { canElementUseBackground } from "../../model/element";
 import { useI18n } from "../../i18n";
 import {
-  BringForwardIcon,
-  BringToFrontIcon,
+  CloseIcon,
   ClosedPathIcon,
-  DuplicateIcon,
   EyedropperIcon,
   FillCrossHatchIcon,
   FillHachureIcon,
   FillSolidIcon,
-  LinkIcon,
   OpacityIcon,
   PaletteIcon,
-  SendBackwardIcon,
-  SendToBackIcon,
   StrokeStyleSolidIcon,
-  TrashIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
@@ -63,9 +58,7 @@ type StylePanelProps = {
   canToggleClosedPath: boolean;
   closedPath: boolean;
   colorColumnCount?: number;
-  onAction: (action: "delete" | "duplicate" | "link") => void;
   onClosedPathChange: (closed: boolean) => void;
-  onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
   onStyleChange: (
     patch: Partial<StyleState>,
     options?: { transient?: boolean }
@@ -76,18 +69,17 @@ type StylePanelProps = {
   theme: KizkattTheme;
 };
 
-const COMPACT_QUICK_SWATCH_COUNT = 5;
-const BASE_QUICK_SWATCH_COUNT = DARK_THEME_BACKGROUND_COLORS.length;
-const QUICK_CUSTOM_FALLBACK_OFFSET = 1;
+const BASE_QUICK_SWATCH_COUNT = DARK_THEME_STROKE_COLORS.length + 1;
+const COMPACT_QUICK_SWATCH_COUNT = BASE_QUICK_SWATCH_COUNT;
+const HORIZONTAL_QUICK_SWATCH_COUNT = BASE_QUICK_SWATCH_COUNT + 2;
 const QUICK_SWATCH_SIZE = 20;
 const QUICK_SWATCH_GAP = 5;
 const ADAPTIVE_SHADE_INDICES = [0, 3, 6, 10, 13] as const;
+const REDUNDANT_NEUTRAL_PALETTE_IDS = new Set(["black", "white"]);
 const COLOR_CHANNEL_RADIX = 16;
 const HEX_BYTE_LENGTH = 2;
 const HEX_FULL_LENGTH = 6;
 const HEX_PREFIX = "#";
-const HEX_PREFIX_PATTERN = /^#/;
-const HEX_COLOR_CHARACTER_PATTERN = /[^0-9a-f]/gi;
 const EMPTY_HEX_DRAFT = "";
 const BLACK_HEX_COLOR = "#000000";
 const WHITE_HEX_COLOR = "#ffffff";
@@ -127,17 +119,6 @@ const FILL_STYLE_LABEL_KEYS = {
   hachure: "fillHachure",
   solid: "fillSolid"
 } as const;
-const LAYER_ACTIONS = [
-  { action: "back", labelKey: "sendToBack", icon: SendToBackIcon },
-  { action: "backward", labelKey: "sendBackward", icon: SendBackwardIcon },
-  { action: "forward", labelKey: "bringForward", icon: BringForwardIcon },
-  { action: "front", labelKey: "bringToFront", icon: BringToFrontIcon }
-] as const;
-const ELEMENT_ACTIONS = [
-  { action: "duplicate", labelKey: "duplicate", icon: DuplicateIcon },
-  { action: "delete", labelKey: "delete", icon: TrashIcon },
-  { action: "link", labelKey: "link", icon: LinkIcon }
-] as const;
 const MIN_FILL_WEIGHT = 0.25;
 const MAX_FILL_WEIGHT = 6;
 const FILL_WEIGHT_STEP = 0.25;
@@ -193,24 +174,37 @@ function hexToRgb(color: string) {
 }
 
 function getQuickColors(target: ColorTarget, theme: KizkattTheme) {
+  let colors: readonly string[];
+
   if (target === "backgroundColor") {
     if (theme === "dark") {
-      return DARK_THEME_BACKGROUND_COLORS;
+      colors = DARK_THEME_BACKGROUND_COLORS;
+    } else {
+      colors = LIGHT_THEME_BACKGROUND_COLORS;
     }
-
-    return LIGHT_THEME_BACKGROUND_COLORS;
+  } else {
+    colors = theme === "dark"
+      ? DARK_THEME_STROKE_COLORS
+      : LIGHT_THEME_STROKE_COLORS;
   }
 
-  if (theme === "dark") {
-    return DARK_THEME_STROKE_COLORS;
+  const opaqueColors = colors.filter((color) => color !== TRANSPARENT_COLOR);
+
+  if (opaqueColors.length < DARK_THEME_STROKE_COLORS.length) {
+    opaqueColors.push(
+      getPaletteColorForTarget(DEFAULT_POPOVER_PALETTE, target, theme)
+    );
   }
 
-  return LIGHT_THEME_STROKE_COLORS;
+  return [TRANSPARENT_COLOR, ...opaqueColors];
 }
 
 function getAdaptiveQuickColors(target: ColorTarget, theme: KizkattTheme) {
+  const quickColors = getQuickColors(target, theme);
   const adaptiveShades = COLOR_PALETTES.filter(
-    (palette) => palette.id !== TRANSPARENT_COLOR
+    (palette) =>
+      palette.id !== TRANSPARENT_COLOR &&
+      !REDUNDANT_NEUTRAL_PALETTE_IDS.has(palette.id)
   ).flatMap((palette) => {
     const paletteColor = getPaletteColorForTarget(palette, target, theme);
     const shades = buildShadesFromColor(paletteColor);
@@ -220,28 +214,37 @@ function getAdaptiveQuickColors(target: ColorTarget, theme: KizkattTheme) {
     );
   });
 
-  return [...getQuickColors(target, theme), ...adaptiveShades];
+  return Array.from(new Set([...quickColors, ...adaptiveShades]));
 }
 
-function rgbToHex({ b, g, r }: { b: number; g: number; r: number }) {
+function rgbToHex(
+  { b, g, r }: { b: number; g: number; r: number },
+  alpha = ""
+) {
   return `#${[r, g, b]
     .map((value) =>
       Math.round(value)
         .toString(COLOR_CHANNEL_RADIX)
         .padStart(HEX_BYTE_LENGTH, "0")
     )
-    .join("")}`;
+    .join("")}${alpha}`;
 }
 
 function mixHexColor(color: string, target: string, amount: number) {
   const sourceRgb = hexToRgb(color);
   const targetRgb = hexToRgb(target);
+  const alpha = color.length > HEX_FULL_LENGTH + HEX_PREFIX.length
+    ? color.slice(HEX_FULL_LENGTH + HEX_PREFIX.length)
+    : "";
 
-  return rgbToHex({
-    b: sourceRgb.b + (targetRgb.b - sourceRgb.b) * amount,
-    g: sourceRgb.g + (targetRgb.g - sourceRgb.g) * amount,
-    r: sourceRgb.r + (targetRgb.r - sourceRgb.r) * amount
-  });
+  return rgbToHex(
+    {
+      b: sourceRgb.b + (targetRgb.b - sourceRgb.b) * amount,
+      g: sourceRgb.g + (targetRgb.g - sourceRgb.g) * amount,
+      r: sourceRgb.r + (targetRgb.r - sourceRgb.r) * amount
+    },
+    alpha
+  );
 }
 
 function buildShadesFromColor(color: string) {
@@ -305,22 +308,6 @@ function findPaletteForTargetColor(
   }) ?? findPaletteForColor(color);
 }
 
-function completeHexDraft(rawValue: string) {
-  const value = rawValue
-    .replace(HEX_PREFIX_PATTERN, EMPTY_HEX_DRAFT)
-    .replace(HEX_COLOR_CHARACTER_PATTERN, EMPTY_HEX_DRAFT)
-    .slice(0, HEX_FULL_LENGTH)
-    .toLowerCase();
-
-  if (value.length === EMPTY_COLLECTION_LENGTH) {
-    return EMPTY_HEX_DRAFT;
-  }
-
-  return `${HEX_PREFIX}${value
-    .repeat(Math.ceil(HEX_FULL_LENGTH / value.length))
-    .slice(FIRST_ARRAY_INDEX, HEX_FULL_LENGTH)}`;
-}
-
 function getSwatchClassName({
   active,
   color,
@@ -380,9 +367,7 @@ export function StylePanel({
   canToggleClosedPath,
   closedPath,
   colorColumnCount = COLOR_PANEL_COLUMN_COUNT,
-  onAction,
   onClosedPathChange,
-  onLayerAction,
   onStyleChange,
   onStyleChangeEnd,
   selectedElements,
@@ -395,6 +380,9 @@ export function StylePanel({
   const [colorPopover, setColorPopover] = useState<ColorPopoverState | null>(
     null
   );
+  const [customPaletteColors, setCustomPaletteColors] = useState<
+    Record<ColorTarget, string[]>
+  >({ backgroundColor: [], strokeColor: [] });
   const [activeFloatingPanel, setActiveFloatingPanelSource] = useState<
     string | null
   >(null);
@@ -454,6 +442,23 @@ export function StylePanel({
     setCustomShadeBaseColor(target, color);
   };
 
+  const commitCustomColor = (target: ColorTarget, color: string) => {
+    const normalizedColor = color.toLowerCase();
+    const defaultPaletteColors = COLOR_PALETTES.map((palette) =>
+      getPaletteColorForTarget(palette, target, theme)
+    );
+
+    applyCustomColor(target, normalizedColor);
+    setCustomPaletteColors((currentColors) => ({
+      ...currentColors,
+      [target]:
+        currentColors[target].includes(normalizedColor) ||
+        defaultPaletteColors.includes(normalizedColor)
+          ? currentColors[target]
+          : [...currentColors[target], normalizedColor]
+    }));
+  };
+
   const openColorPopover = (target: ColorTarget, color = style[target]) => {
     if (target === "backgroundColor" && backgroundControlDisabled) {
       return;
@@ -468,23 +473,12 @@ export function StylePanel({
     closeOtherFloatingPanels(STYLE_PANEL_FLOATING_PANEL_SOURCE);
 
     setColorPopover({
-      paletteId:
-        palette?.id ??
-        colorPopover?.paletteId ??
-        DEFAULT_POPOVER_PALETTE.id,
+      paletteId: palette?.id,
       shadeBaseColor:
         paletteColor ??
         (isHexColor(color) ? color : DEFAULT_POPOVER_PALETTE.color),
       target
     });
-  };
-
-  const updateHexColor = (target: ColorTarget, rawValue: string) => {
-    const normalizedValue = completeHexDraft(rawValue);
-
-    if (isHexColor(normalizedValue)) {
-      applyCustomColor(target, normalizedValue);
-    }
   };
 
   const pickColorFromScreen = async (target: ColorTarget) => {
@@ -496,7 +490,7 @@ export function StylePanel({
     }
 
     const result = await new EyeDropper().open();
-    applyCustomColor(target, result.sRGBHex);
+    commitCustomColor(target, result.sRGBHex);
   };
   const updateFillWeight = (value: string) => {
     onStyleChange({ fillWeight: normalizeFillWeight(value) });
@@ -526,7 +520,7 @@ export function StylePanel({
       defaultOrientation="vertical"
       hideLabels={{ horizontal: true }}
       horizontalActionsLayout="column"
-      maxCols={1}
+      maxCols={2}
       maxRows={2}
       minSize={STYLE_PANEL_MIN_SIZE}
       pinnable
@@ -552,8 +546,10 @@ export function StylePanel({
               colors={getAdaptiveQuickColors("backgroundColor", theme)}
               disabled={backgroundControlDisabled}
               label={strings.stylePanel.background}
-              onNativeColorSelect={(color) =>
-                applyCustomColor("backgroundColor", color)
+              minimumColorCount={
+                orientation === "horizontal"
+                  ? HORIZONTAL_QUICK_SWATCH_COUNT
+                  : COMPACT_QUICK_SWATCH_COUNT
               }
               onColorSelect={(color) => {
                 applyColor("backgroundColor", color);
@@ -573,8 +569,10 @@ export function StylePanel({
               activeColor={style.strokeColor}
               colors={getAdaptiveQuickColors("strokeColor", theme)}
               label={strings.stylePanel.stroke}
-              onNativeColorSelect={(color) =>
-                applyCustomColor("strokeColor", color)
+              minimumColorCount={
+                orientation === "horizontal"
+                  ? HORIZONTAL_QUICK_SWATCH_COUNT
+                  : COMPACT_QUICK_SWATCH_COUNT
               }
               onColorSelect={(color) => {
                 applyColor("strokeColor", color);
@@ -594,6 +592,7 @@ export function StylePanel({
                 activeColor={style[colorPopover.target]}
                 activePaletteId={colorPopover.paletteId}
                 colorColumnCount={colorColumnCount}
+                customColors={customPaletteColors[colorPopover.target]}
                 shadeBaseColor={colorPopover.shadeBaseColor}
                 target={colorPopover.target}
                 theme={theme}
@@ -604,7 +603,9 @@ export function StylePanel({
                   applyColor(target, color);
                   setColorPopover({ paletteId, shadeBaseColor: color, target });
                 }}
-                onHexColorChange={updateHexColor}
+                onClose={() => setColorPopover(null)}
+                onPickerColorChange={applyCustomColor}
+                onPickerColorCommit={commitCustomColor}
                 onPickColorFromScreen={pickColorFromScreen}
               />
             )}
@@ -700,44 +701,6 @@ export function StylePanel({
               />
             </div>
           </FeatureGroup>
-          <FeatureGroup
-            className="kizkatt-style-feature--layers"
-            icon={BringToFrontIcon}
-            label={strings.stylePanel.layers}
-          >
-            <div className="kizkatt-segmented kizkatt-icon-segmented kizkatt-layer-controls">
-              {LAYER_ACTIONS.map(({ action, labelKey, icon }) => (
-                <button
-                  key={action}
-                  type="button"
-                  aria-label={strings.stylePanel[labelKey]}
-                  title={tooltips[labelKey]}
-                  onClick={() => onLayerAction(action)}
-                >
-                  {icon}
-                </button>
-              ))}
-            </div>
-          </FeatureGroup>
-          <FeatureGroup
-            className="kizkatt-style-feature--actions"
-            icon={DuplicateIcon}
-            label={strings.stylePanel.actions}
-          >
-            <div className="kizkatt-segmented kizkatt-icon-segmented kizkatt-action-controls">
-              {ELEMENT_ACTIONS.map(({ action, labelKey, icon }) => (
-                <button
-                  key={action}
-                  type="button"
-                  aria-label={strings.stylePanel[labelKey]}
-                  title={tooltips[labelKey]}
-                  onClick={() => onAction(action)}
-                >
-                  {icon}
-                </button>
-              ))}
-            </div>
-          </FeatureGroup>
           {actions}
         </aside>
       )}
@@ -750,38 +713,31 @@ function ColorSwatches({
   colors,
   disabled = false,
   label,
+  minimumColorCount,
   onColorSelect,
-  onCustomColorOpen,
-  onNativeColorSelect
+  onCustomColorOpen
 }: {
   activeColor: string;
   colors: readonly string[];
   disabled?: boolean;
   label: string;
+  minimumColorCount: number;
   onColorSelect: (color: string) => void;
   onCustomColorOpen: (color: string) => void;
-  onNativeColorSelect: (color: string) => void;
 }) {
   const { strings } = useI18n();
   const tooltips = strings.stylePanel.tooltips;
   const quickColors = colors;
   const colorListRef = useRef<HTMLDivElement | null>(null);
-  const [visibleColorCount, setVisibleColorCount] = useState(
-    COMPACT_QUICK_SWATCH_COUNT
-  );
+  const [visibleColorCount, setVisibleColorCount] = useState(minimumColorCount);
   const visibleColors = quickColors.slice(
     FIRST_ARRAY_INDEX,
     visibleColorCount
   );
-  const fallbackCustomColor =
-    quickColors[COMPACT_QUICK_SWATCH_COUNT - QUICK_CUSTOM_FALLBACK_OFFSET] ??
-    quickColors[FIRST_ARRAY_INDEX];
-  const customColor =
-    activeColor === TRANSPARENT_COLOR ? fallbackCustomColor : activeColor;
-  const customAriaLabel = visibleColors.includes(customColor)
+  const customColor = activeColor;
+  const customAriaLabel = quickColors.includes(customColor)
     ? `${label} custom ${customColor}`
     : `${label} ${customColor}`;
-  const nativeColor = isHexColor(customColor) ? customColor : BLACK_HEX_COLOR;
 
   useEffect(() => {
     const colorList = colorListRef.current;
@@ -792,20 +748,17 @@ function ColorSwatches({
 
     const updateVisibleColorCount = () => {
       const availableWidth = colorList.clientWidth;
-
-      if (availableWidth <= 0) {
-        return;
-      }
-
-      const fittingColorCount = Math.floor(
-        (availableWidth + QUICK_SWATCH_GAP) /
-          (QUICK_SWATCH_SIZE + QUICK_SWATCH_GAP)
-      );
+      const fittingColorCount = availableWidth > 0
+        ? Math.floor(
+            (availableWidth + QUICK_SWATCH_GAP) /
+              (QUICK_SWATCH_SIZE + QUICK_SWATCH_GAP)
+          )
+        : minimumColorCount;
 
       setVisibleColorCount(
         Math.min(
           quickColors.length,
-          Math.max(COMPACT_QUICK_SWATCH_COUNT, fittingColorCount)
+          Math.max(minimumColorCount, fittingColorCount)
         )
       );
     };
@@ -824,41 +777,45 @@ function ColorSwatches({
     resizeObserver.observe(colorList);
 
     return () => resizeObserver.disconnect();
-  }, [quickColors.length]);
+  }, [minimumColorCount, quickColors.length]);
 
   return (
     <div className="kizkatt-swatches kizkatt-quick-swatches">
       <div ref={colorListRef} className="kizkatt-quick-color-list">
-        {visibleColors.map((color, index) => (
-          <button
-            key={`${color}-${index}`}
-            type="button"
-            aria-label={
-              index < BASE_QUICK_SWATCH_COUNT
-                ? `${label} ${color}`
-                : `${label} ${color} shade ${index}`
-            }
-            title={`${
-              label === strings.stylePanel.stroke
-                ? tooltips.strokeColor
-                : tooltips.backgroundColor
-            } ${color}`}
-            disabled={disabled}
-            className={getSwatchClassName({
-              active: activeColor === color,
-              color
-            })}
-            style={{
-              backgroundColor:
-                color === TRANSPARENT_COLOR ? undefined : color
-            }}
-            onClick={() => {
-              if (!disabled) {
-                onColorSelect(color);
+        {visibleColors.map((color, index) => {
+          const sourceIndex = quickColors.indexOf(color);
+
+          return (
+            <button
+              key={`${color}-${index}`}
+              type="button"
+              aria-label={
+                sourceIndex < BASE_QUICK_SWATCH_COUNT
+                  ? `${label} ${color}`
+                  : `${label} ${color} shade ${sourceIndex}`
               }
-            }}
-          />
-        ))}
+              title={`${
+                label === strings.stylePanel.stroke
+                  ? tooltips.strokeColor
+                  : tooltips.backgroundColor
+              } ${color}`}
+              disabled={disabled}
+              className={getSwatchClassName({
+                active: false,
+                color
+              })}
+              style={{
+                backgroundColor:
+                  color === TRANSPARENT_COLOR ? undefined : color
+              }}
+              onClick={() => {
+                if (!disabled) {
+                  onColorSelect(color);
+                }
+              }}
+            />
+          );
+        })}
       </div>
       <div className="kizkatt-special-color-swatches">
         <button
@@ -867,7 +824,7 @@ function ColorSwatches({
           title={`${tooltips.customColor} ${label}`}
           disabled={disabled}
           className={getSwatchClassName({
-            active: !visibleColors.includes(activeColor),
+            active: false,
             color: customColor,
             isCustomSwatch: true
           })}
@@ -881,25 +838,6 @@ function ColorSwatches({
             }
           }}
         />
-        <label
-          className={[
-            "kizkatt-palette-swatch",
-            disabled ? "is-disabled" : ""
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          title={`${label} ${tooltips.nativeColorPicker}`}
-        >
-          {PaletteIcon}
-          <input
-            aria-label={`${label} ${strings.stylePanel.nativeColorPicker}`}
-            title={`${label} ${tooltips.nativeColorPicker}`}
-            disabled={disabled}
-            type="color"
-            value={nativeColor}
-            onChange={(event) => onNativeColorSelect(event.target.value)}
-          />
-        </label>
       </div>
     </div>
   );
@@ -909,9 +847,12 @@ function ColorPopover({
   activeColor,
   activePaletteId,
   colorColumnCount,
+  customColors,
+  onClose,
   onColorSelect,
-  onHexColorChange,
   onPaletteColorSelect,
+  onPickerColorChange,
+  onPickerColorCommit,
   onPickColorFromScreen,
   shadeBaseColor,
   target,
@@ -920,13 +861,16 @@ function ColorPopover({
   activeColor: string;
   activePaletteId?: string;
   colorColumnCount: number;
+  customColors: readonly string[];
+  onClose: () => void;
   onColorSelect: (target: ColorTarget, color: string) => void;
-  onHexColorChange: (target: ColorTarget, rawValue: string) => void;
   onPaletteColorSelect: (
     target: ColorTarget,
     color: string,
-    paletteId: string
+    paletteId?: string
   ) => void;
+  onPickerColorChange: (target: ColorTarget, color: string) => void;
+  onPickerColorCommit: (target: ColorTarget, color: string) => void;
   onPickColorFromScreen: (target: ColorTarget) => void;
   shadeBaseColor?: string;
   target: ColorTarget;
@@ -941,45 +885,14 @@ function ColorPopover({
     DEFAULT_POPOVER_PALETTE;
   const resolvedShadeBaseColor =
     shadeBaseColor ?? getPaletteColorForTarget(shadePalette, target, theme);
-  const [hexDraft, setHexDraft] = useState(
-    isHexColor(activeColor) ? activeColor.slice(HEX_PREFIX.length) : EMPTY_HEX_DRAFT
-  );
   const [draftShadeBaseColor, setDraftShadeBaseColor] = useState(
     resolvedShadeBaseColor
   );
   const activeShades = buildShadesFromColor(draftShadeBaseColor);
 
   useEffect(() => {
-    if (completeHexDraft(hexDraft) === activeColor.toLowerCase()) {
-      return;
-    }
-
-        setHexDraft(
-          isHexColor(activeColor)
-            ? activeColor.slice(HEX_PREFIX.length)
-            : EMPTY_HEX_DRAFT
-        );
-  }, [activeColor, hexDraft]);
-
-  useEffect(() => {
     setDraftShadeBaseColor(resolvedShadeBaseColor);
   }, [resolvedShadeBaseColor]);
-
-  const updateHexDraft = (rawValue: string) => {
-    const nextValue = rawValue
-      .replace(HEX_PREFIX_PATTERN, EMPTY_HEX_DRAFT)
-      .replace(HEX_COLOR_CHARACTER_PATTERN, EMPTY_HEX_DRAFT)
-      .slice(FIRST_ARRAY_INDEX, HEX_FULL_LENGTH);
-
-    setHexDraft(nextValue);
-    const normalizedValue = completeHexDraft(nextValue);
-
-    if (isHexColor(normalizedValue)) {
-      setDraftShadeBaseColor(normalizedValue);
-    }
-
-    onHexColorChange(target, nextValue);
-  };
 
   return (
     <div
@@ -996,68 +909,106 @@ function ColorPopover({
         } as CSSProperties
       }
     >
-      <label>{strings.stylePanel.colors}</label>
-      <div className="kizkatt-swatches kizkatt-color-grid">
-        {COLOR_PALETTES.map((palette) => {
-          const color = getPaletteColorForTarget(palette, target, theme);
+      <div className="kizkatt-panel-chrome kizkatt-panel-chrome--vertical kizkatt-color-popover-header">
+        <strong className="kizkatt-panel-title">
+          {strings.stylePanel.colors}
+        </strong>
+        <span className="kizkatt-panel-actions kizkatt-panel-actions--vertical">
+          <button
+            type="button"
+            aria-label={strings.stylePanel.closeColors}
+            title={strings.stylePanel.closeColors}
+            onClick={onClose}
+          >
+            {CloseIcon}
+          </button>
+        </span>
+      </div>
+      <div className="kizkatt-color-popover-palettes">
+        <div className="kizkatt-swatches kizkatt-color-grid">
+          {COLOR_PALETTES.map((palette) => {
+            const color = getPaletteColorForTarget(palette, target, theme);
 
-          return (
+            return (
+              <button
+                key={palette.id}
+                type="button"
+                aria-label={`${target} palette ${color}`}
+                title={`${tooltips.paletteColor} ${color}`}
+                className={[
+                  color === TRANSPARENT_COLOR
+                    ? TRANSPARENT_COLOR
+                    : EMPTY_HEX_DRAFT,
+                  selectedPalette?.id === palette.id ? "is-active" : ""
+                ].join(" ")}
+                style={{
+                  backgroundColor:
+                    color === TRANSPARENT_COLOR ? undefined : color
+                }}
+                onClick={() => {
+                  onPaletteColorSelect(target, color, palette.id);
+                }}
+                onDoubleClick={() => {
+                  onPaletteColorSelect(target, color, palette.id);
+                  onClose();
+                }}
+              />
+            );
+          })}
+          {customColors.map((color) => (
             <button
-              key={palette.id}
+              key={color}
               type="button"
-              aria-label={`${target} palette ${color}`}
+              aria-label={`${target} custom palette ${color}`}
               title={`${tooltips.paletteColor} ${color}`}
-              className={[
-                color === TRANSPARENT_COLOR ? TRANSPARENT_COLOR : EMPTY_HEX_DRAFT,
-                selectedPalette?.id === palette.id ? "is-active" : ""
-              ].join(" ")}
-              style={{
-                backgroundColor: color === TRANSPARENT_COLOR ? undefined : color
-              }}
-              onClick={() => {
-                onPaletteColorSelect(target, color, palette.id);
+              className={
+                !selectedPalette && draftShadeBaseColor === color
+                  ? "is-active"
+                  : undefined
+              }
+              style={{ backgroundColor: color }}
+              onClick={() => onPaletteColorSelect(target, color)}
+              onDoubleClick={() => {
+                onPaletteColorSelect(target, color);
+                onClose();
               }}
             />
-          );
-        })}
-      </div>
-      <label>{strings.stylePanel.shades}</label>
-      <div className="kizkatt-swatches kizkatt-color-grid">
-        {activeShades.map((color) => (
+          ))}
+        </div>
+        <label>{strings.stylePanel.shades}</label>
+        <div className="kizkatt-swatches kizkatt-color-grid">
+          {activeShades.map((color) => (
+            <button
+              key={color}
+              type="button"
+              aria-label={`${target} shade ${color}`}
+              title={`${tooltips.shadeColor} ${color}`}
+              className={activeColor === color ? "is-active" : undefined}
+              style={{ backgroundColor: color }}
+              onClick={() => onColorSelect(target, color)}
+              onDoubleClick={() => {
+                onColorSelect(target, color);
+                onClose();
+              }}
+            />
+          ))}
+        </div>
+        <div className="kizkatt-color-tools">
           <button
-            key={color}
             type="button"
-            aria-label={`${target} shade ${color}`}
-            title={`${tooltips.shadeColor} ${color}`}
-            className={activeColor === color ? "is-active" : undefined}
-            style={{ backgroundColor: color }}
-            onClick={() => onColorSelect(target, color)}
-          />
-        ))}
+            aria-label={`${target} ${strings.stylePanel.eyedropper}`}
+            title={tooltips.eyedropper}
+            onClick={() => void onPickColorFromScreen(target)}
+          >
+            {EyedropperIcon}
+          </button>
+        </div>
       </div>
-      <label htmlFor="color-hex">{strings.stylePanel.hexCode}</label>
-      <div className="kizkatt-hex-input">
-        <span>#</span>
-        <input
-          id="color-hex"
-          aria-label={strings.stylePanel.hexColor}
-          title={tooltips.hexColor}
-          maxLength={HEX_FULL_LENGTH}
-          placeholder={strings.stylePanel.transparent}
-          value={hexDraft}
-          onChange={(event) => updateHexDraft(event.target.value)}
-        />
-      </div>
-      <div className="kizkatt-color-tools">
-        <button
-          type="button"
-          aria-label={`${target} ${strings.stylePanel.eyedropper}`}
-          title={tooltips.eyedropper}
-          onClick={() => void onPickColorFromScreen(target)}
-        >
-          {EyedropperIcon}
-        </button>
-      </div>
+      <ColorPicker
+        value={isHexColor(activeColor) ? activeColor : draftShadeBaseColor}
+        onChange={(color) => onPickerColorChange(target, color)}
+        onCommit={(color) => onPickerColorCommit(target, color)}
+      />
     </div>
   );
 }

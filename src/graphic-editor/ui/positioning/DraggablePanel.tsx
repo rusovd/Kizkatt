@@ -556,7 +556,13 @@ export function DraggablePanel({
           data-no-panel-drag
           aria-label={strings.settings.closePanel}
           title={strings.settings.tooltips.closePanel}
-          onClick={() => setTemporarilyClosed(true)}
+          onClick={() => {
+            if (pinned) {
+              setPanelPinned(id, false);
+            }
+
+            setTemporarilyClosed(true);
+          }}
         >
           {CloseIcon}
         </button>

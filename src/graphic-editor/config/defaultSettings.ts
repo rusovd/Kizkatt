@@ -44,6 +44,6 @@ export const OBJECT_PANEL_MIN_SIZE = {
 } as const;
 
 export const STYLE_PANEL_MIN_SIZE = {
-  height: 390,
-  width: 198
+  height: 195,
+  width: 280
 } as const;
