@@ -151,7 +151,7 @@ describe("KizkattGraphicEditor shell", () => {
 
     openGridSettings();
 
-    expect(screen.getByRole("group", { name: "Grid units" }))
+    expect(screen.getByRole("group", { name: "Global units" }))
       .toBeInTheDocument();
     expect(screen.getByLabelText("Major spacing (px)")).toHaveValue(30);
     expect(screen.getByLabelText("Minor spacing (px)")).toHaveValue(3);
@@ -265,8 +265,13 @@ describe("KizkattGraphicEditor shell", () => {
     openEditorSettings();
 
     const dpiSelect = screen.getByLabelText("DPI") as HTMLSelectElement;
+    const globalUnits = screen.getByRole("group", { name: "Global units" });
 
     expect(dpiSelect).toHaveValue("150");
+    expect(
+      globalUnits.compareDocumentPosition(dpiSelect) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(Array.from(dpiSelect.options).map((option) => option.value)).toEqual([
       "72",
       "96",
@@ -395,6 +400,11 @@ describe("KizkattGraphicEditor shell", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
 
     expect(screen.getByRole("button", { name: "Fill solid" }))
       .toHaveAttribute("title", "Use solid fill");
@@ -576,12 +586,12 @@ describe("KizkattGraphicEditor shell", () => {
     );
 
     expect(resizeHandle).not.toBeNull();
-    expect(stylePanel).toHaveStyle({ minHeight: "390px", minWidth: "198px" });
+    expect(stylePanel).toHaveStyle({ minHeight: "195px", minWidth: "280px" });
     expect(stylePanel.querySelectorAll("[data-feature-group]")).toHaveLength(
-      6
+      4
     );
     expect(stylePanel.style.getPropertyValue("--kizkatt-panel-max-cols")).toBe(
-      "1"
+      "2"
     );
     fireEvent.mouseDown(resizeHandle as Element, {
       button: 0,
@@ -591,12 +601,12 @@ describe("KizkattGraphicEditor shell", () => {
     fireEvent.mouseMove(stylePanel, { clientX: 210, clientY: 160 });
     fireEvent.mouseUp(stylePanel, { clientX: 210, clientY: 160 });
 
-    expect(stylePanel).toHaveStyle({ height: "540px", width: "398px" });
+    expect(stylePanel).toHaveStyle({ height: "345px", width: "480px" });
     expect(
       window.localStorage.getItem(
         "kizkatt:graphic-editor:panel:style-panel:size:vertical"
       )
-    ).toBe(JSON.stringify({ height: 540, width: 398 }));
+    ).toBe(JSON.stringify({ height: 345, width: 480 }));
 
     const dragHandle = stylePanel.querySelector("[data-panel-drag-handle]");
     fireEvent.doubleClick(dragHandle as Element);
@@ -606,11 +616,25 @@ describe("KizkattGraphicEditor shell", () => {
     );
     expect(
       stylePanel.querySelectorAll(".kizkatt-feature-group-icon")
-    ).toHaveLength(6);
+    ).toHaveLength(4);
     expect(stylePanel).toHaveClass("has-hidden-labels");
     expect(stylePanel.style.getPropertyValue("--kizkatt-panel-max-rows")).toBe(
       "2"
     );
+    const horizontalColorLists = Array.from(
+      stylePanel.querySelectorAll(".kizkatt-quick-color-list")
+    );
+
+    expect(horizontalColorLists).toHaveLength(2);
+    expect(
+      horizontalColorLists.every((list) => list.children.length >= 9)
+    ).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Background custom #653b00" })
+    ).not.toHaveClass("is-active");
+    expect(
+      screen.getByRole("button", { name: "Stroke custom #f08c00" })
+    ).not.toHaveClass("is-active");
     expect(
       stylePanel.querySelector("[data-panel-resize-handle]")
     ).not.toBeInTheDocument();
@@ -822,6 +846,40 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByRole("menuitem", { name: "Diamond" }))
       .toBeInTheDocument();
     expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Eraser" }));
+    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+  });
+
+  it("keeps pinned object geometry visible after the selection is cleared", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    const objectPanel = document.querySelector(
+      ".kizkatt-floating-panel--object-panel"
+    ) as HTMLElement;
+    const stickButton = objectPanel.querySelector(
+      "button[aria-label='Stick panel']"
+    );
+
+    fireEvent.click(stickButton as Element);
+    firePointerEvent(canvas, "pointerdown", { clientX: 400, clientY: 400 });
+    firePointerEvent(canvas, "pointerup", { clientX: 400, clientY: 400 });
+
+    expect(document.querySelector(".kizkatt-floating-panel--object-panel"))
+      .toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(document.querySelector(".kizkatt-floating-panel--object-panel"))
+      .not.toBeInTheDocument();
   });
 
   it("duplicates toolbar autohide in the main menu", () => {
@@ -1041,9 +1099,8 @@ describe("KizkattGraphicEditor shell", () => {
     );
     expect(screen.getByRole("dialog", { name: "Background colors" }))
       .toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Background native color picker")
-    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Color picker" }))
+      .toBeInTheDocument();
 
     expect(
       screen.getByRole("button", { name: "backgroundColor palette #fbdfb8" })

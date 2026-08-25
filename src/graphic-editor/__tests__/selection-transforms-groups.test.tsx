@@ -1517,7 +1517,7 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     const sloppiness = screen.getByLabelText("Sloppiness") as HTMLSelectElement;
     const objectPanel = lineWidth.closest(".kizkatt-floating-panel");
     expect(objectPanel?.querySelectorAll("[data-feature-group]")).toHaveLength(
-      7
+      9
     );
     expect(strokeStyle.closest(".kizkatt-object-panel-stack")).toBe(
       lineWidth.closest(".kizkatt-object-panel-stack")
@@ -1622,6 +1622,30 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
         .getByRole("application", { name: "Drawing canvas" })
         .querySelector("[data-decorative-stroke='wavy']")
     ).toBeInTheDocument();
+
+    const dragHandle = objectPanel?.querySelector("[data-panel-drag-handle]");
+    fireEvent.doubleClick(dragHandle as Element);
+
+    expect(objectPanel?.querySelector(".kizkatt-object-panel")).toHaveClass(
+      "kizkatt-object-panel--vertical"
+    );
+    expect(
+      Array.from(
+        objectPanel?.querySelectorAll(
+          "[data-feature-group] > [data-panel-label]"
+        ) ?? []
+      ).map((label) => label.textContent)
+    ).toEqual([
+      "Position",
+      "Size",
+      "Rotation",
+      "Mirroring",
+      "Edges",
+      "Line",
+      "Sloppiness",
+      "Layers",
+      "Actions"
+    ]);
   });
 
   it("changes a manually entered angle without resizing the object", () => {

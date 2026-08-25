@@ -494,15 +494,20 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(
       screen.getByRole("button", { name: "Stroke custom #f08c00" })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Background #653b00" })
+    ).not.toHaveClass("is-active");
+    expect(
+      screen.getByRole("button", { name: "Stroke #f08c00" })
+    ).not.toHaveClass("is-active");
 
     fireEvent.click(
       screen.getByRole("button", { name: "Background custom #653b00" })
     );
     expect(screen.getByRole("dialog", { name: "Background colors" }))
       .toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Background native color picker")
-    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Color picker" }))
+      .toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "backgroundColor palette #653b00" })
     ).toHaveClass("is-active");
@@ -527,11 +532,8 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(
       screen.getByRole("button", { name: "strokeColor eyedropper" })
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("strokeColor native color picker")).not
+    expect(screen.getByRole("region", { name: "Color picker" }))
       .toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Stroke native color picker")
-    ).toBeInTheDocument();
     expect(
       screen.getAllByRole("button", { name: /strokeColor shade/ })
     ).toHaveLength(15);
@@ -566,12 +568,12 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     );
     expect(elementRect).toHaveAttribute("stroke", "#6741d9");
 
-    const hexInput = screen.getByRole("textbox", { name: "Hex color" });
+    const hexInput = screen.getByRole("textbox", { name: "HEX" });
 
     fireEvent.change(hexInput, {
-      target: { value: "8d" }
+      target: { value: "8d8d8d" }
     });
-    expect(hexInput).toHaveValue("8d");
+    expect(hexInput).toHaveValue("8d8d8d");
     expect(elementRect).toHaveAttribute("stroke", "#8d8d8d");
     expect(
       screen.getAllByRole("button", { name: /strokeColor shade/ })[7]
@@ -580,6 +582,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     fireEvent.change(hexInput, {
       target: { value: "123abc" }
     });
+    fireEvent.blur(hexInput);
     expect(elementRect).toHaveAttribute("stroke", "#123abc");
     expect(hexInput).toHaveValue("123abc");
     expect(
@@ -603,10 +606,24 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       screen.getByRole("button", { name: "strokeColor shade #d9dff4" })
     ).toBeInTheDocument();
     expect(screen.queryByText("User Colors")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "strokeColor custom palette #123abc"
+      })
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "strokeColor custom palette #123abc"
+      })
+    );
+    expect(
+      screen.getByRole("button", { name: "strokeColor shade #123abc" })
+    ).toHaveClass("is-active");
 
-    fireEvent.change(screen.getByLabelText("Stroke native color picker"), {
+    fireEvent.change(hexInput, {
       target: { value: "#abcdef" }
     });
+    fireEvent.blur(hexInput);
     expect(elementRect).toHaveAttribute("stroke", "#abcdef");
 
     fireEvent.click(
@@ -622,6 +639,47 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       .toBeInTheDocument();
   });
 
+  it("closes Colors explicitly and after a color double-click", () => {
+    render(<KizkattGraphicEditor />);
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Background custom #653b00" })
+    );
+
+    const closeColorsButton = screen.getByRole("button", {
+      name: "Close colors"
+    });
+    expect(screen.getByText("Colors").closest(".kizkatt-panel-chrome"))
+      .toHaveClass("kizkatt-color-popover-header");
+    expect(closeColorsButton.closest(".kizkatt-panel-actions"))
+      .toBeInTheDocument();
+    fireEvent.click(closeColorsButton);
+    expect(screen.queryByRole("dialog", { name: "Background colors" })).not
+      .toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Background custom #653b00" })
+    );
+    const paletteColor = screen.getAllByRole("button", {
+      name: /backgroundColor palette #[0-9a-f]+/i
+    })[0];
+    const selectedColor = paletteColor
+      .getAttribute("aria-label")
+      ?.split(" ")
+      .at(-1);
+
+    expect(selectedColor).toBeDefined();
+    fireEvent.doubleClick(paletteColor);
+
+    expect(screen.queryByRole("dialog", { name: "Background colors" })).not
+      .toBeInTheDocument();
+    expect(
+      document.querySelector(
+        ".kizkatt-style-feature--background .kizkatt-custom-color-swatch"
+      )
+    ).toHaveAttribute("aria-label", `Background ${selectedColor}`);
+  });
+
   it("fills equally wide background and stroke color rows with shades", () => {
     const clientWidthSpy = vi
       .spyOn(HTMLElement.prototype, "clientWidth", "get")
@@ -634,10 +692,17 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       document.querySelectorAll(".kizkatt-quick-color-list")
     );
     const colorCounts = colorLists.map((list) => list.children.length);
+    const firstColorLabels = colorLists.map(
+      (list) => list.firstElementChild?.getAttribute("aria-label")
+    );
 
     expect(colorLists).toHaveLength(2);
     expect(colorCounts[0]).toBeGreaterThan(5);
     expect(colorCounts[0]).toBe(colorCounts[1]);
+    expect(firstColorLabels).toEqual([
+      "Background transparent",
+      "Stroke transparent"
+    ]);
 
     clientWidthSpy.mockRestore();
   });
