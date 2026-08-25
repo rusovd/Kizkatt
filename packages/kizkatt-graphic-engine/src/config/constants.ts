@@ -277,6 +277,51 @@ export const COLOR_PALETTES = [
     id: "red",
     color: "#e03131",
     shades: ["#ffe3e3", "#ffa8a8", "#ff8787", "#fa5252", "#e03131"]
+  },
+  {
+    id: "navy",
+    color: "#1864ab",
+    shades: ["#d0ebff", "#74c0fc", "#339af0", "#1c7ed6", "#1864ab"]
+  },
+  {
+    id: "azure",
+    color: "#1098ad",
+    shades: ["#c5f6fa", "#66d9e8", "#22b8cf", "#15aabf", "#1098ad"]
+  },
+  {
+    id: "indigo",
+    color: "#3b5bdb",
+    shades: ["#dbe4ff", "#91a7ff", "#5c7cfa", "#4263eb", "#3b5bdb"]
+  },
+  {
+    id: "purple",
+    color: "#7048e8",
+    shades: ["#e5dbff", "#b197fc", "#9775fa", "#7950f2", "#7048e8"]
+  },
+  {
+    id: "magenta",
+    color: "#a61e4d",
+    shades: ["#ffdeeb", "#faa2c1", "#f06595", "#d6336c", "#a61e4d"]
+  },
+  {
+    id: "lime",
+    color: "#66a80f",
+    shades: ["#e9fac8", "#c0eb75", "#94d82d", "#74b816", "#66a80f"]
+  },
+  {
+    id: "olive",
+    color: "#5c940d",
+    shades: ["#f4fce3", "#d8f5a2", "#a9e34b", "#82c91e", "#5c940d"]
+  },
+  {
+    id: "amber",
+    color: "#d9480f",
+    shades: ["#fff4e6", "#ffd8a8", "#ffa94d", "#f76707", "#d9480f"]
+  },
+  {
+    id: "coral",
+    color: "#c92a2a",
+    shades: ["#fff5f5", "#ffc9c9", "#ff8787", "#f03e3e", "#c92a2a"]
   }
 ] as const;
 
@@ -408,6 +453,7 @@ const DEFAULT_STYLE_BASE = {
   scaleStrokeWithObject: false,
   startArrowhead: "none",
   strokeBehindFill: false,
+  strokeLineCount: 1,
   strokeWidth: DEFAULT_STROKE_WIDTH,
   strokeStyle: DEFAULT_STROKE_STYLE,
   opacity: DEFAULT_OPACITY

@@ -25,6 +25,7 @@ export { reorderElementsByLayerAction } from "./layers";
 export { simplifyPolyline } from "./pathSimplification";
 export {
   getElementBends,
+  insertLinearElementBend,
   getLinearElementPath,
   getLinearElementPoints,
   getLinearElementSegmentMidpoint,

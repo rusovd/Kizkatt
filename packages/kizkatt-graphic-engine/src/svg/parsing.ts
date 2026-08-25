@@ -405,6 +405,10 @@ export function getSvgElementStyle(
     currentColor
   );
   const strokeWidth = getSvgNumber(element, "stroke-width");
+  const storedStrokeLineCount = Number.parseInt(
+    getInheritedSvgAttribute(element, "data-stroke-line-count") ?? "",
+    10
+  );
   const secondaryStroke = group.querySelector("[data-sloppiness-stroke]");
   const primaryElementHasFilter = Boolean(
     getInheritedSvgAttribute(element, "filter")?.includes("kizkatt-sloppy")
@@ -434,6 +438,11 @@ export function getSvgElementStyle(
         ? Math.max(0, (spacing as number) - strokeWidth)
         : fallbackStyle.sloppinessGap,
     strokeColor: stroke ?? TRANSPARENT_COLOR,
+    strokeLineCount: Number.isFinite(storedStrokeLineCount)
+      ? Math.min(10, Math.max(1, storedStrokeLineCount))
+      : secondaryStroke
+        ? 2
+        : fallbackStyle.strokeLineCount,
     strokeStyle: getSvgStrokeStyle(element),
     strokeWidth: stroke ? strokeWidth ?? fallbackStyle.strokeWidth : 0
   };

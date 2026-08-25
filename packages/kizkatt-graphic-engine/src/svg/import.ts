@@ -553,6 +553,8 @@ function getGenericSvgElementStyle(
     sloppiness: sourceElement.sloppiness ?? rawStyle.sloppiness,
     sloppinessGap: sourceElement.sloppinessGap ?? rawStyle.sloppinessGap,
     strokeColor: hasStroke ? sourceElement.strokeColor : TRANSPARENT_COLOR,
+    strokeLineCount:
+      sourceElement.strokeLineCount ?? rawStyle.strokeLineCount,
     strokeStyle: sourceElement.strokeStyle,
     strokeWidth: hasStroke ? sourceElement.strokeWidth * strokeScale : 0
   };
@@ -1241,6 +1243,9 @@ function getImportedOutlineSettings(group: Element): ImportedElementSettings {
   const strokeWidth = parseSvgNumber(
     group.getAttribute("data-kizkatt-stroke-width")
   );
+  const strokeLineCount = parseSvgNumber(
+    group.getAttribute("data-kizkatt-stroke-line-count")
+  );
 
   const calligraphy = group.getAttribute("data-kizkatt-calligraphy");
   const scaleStrokeWithObject = group.getAttribute(
@@ -1288,6 +1293,12 @@ function getImportedOutlineSettings(group: Element): ImportedElementSettings {
   }
   if (strokeWidth !== null) {
     settings.strokeWidth = strokeWidth;
+  }
+  if (strokeLineCount !== null) {
+    settings.strokeLineCount = Math.min(
+      10,
+      Math.max(1, Math.floor(strokeLineCount))
+    );
   }
 
   return settings;

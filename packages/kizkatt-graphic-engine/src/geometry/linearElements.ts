@@ -21,6 +21,7 @@ import type {
   Point
 } from "../model/types";
 import {
+  distanceSquaredToSegment,
   getElementEnd,
   getElementLocalPoint,
   getElementLocalVector,
@@ -29,6 +30,73 @@ import {
 } from "./primitives";
 
 const MIN_LINEAR_SCALE_DENOMINATOR = 0.000001;
+
+export function insertLinearElementBend(
+  element: KizkattElement,
+  worldPoint: Point
+) {
+  const localPoint = getElementLocalPoint(element, worldPoint);
+  const linePoints = getLinearElementPoints(element);
+  let nearestSegmentIndex = FIRST_ARRAY_INDEX;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  for (
+    let index = FIRST_ARRAY_INDEX;
+    index < linePoints.length - NEXT_ARRAY_INDEX_OFFSET;
+    index += NEXT_ARRAY_INDEX_OFFSET
+  ) {
+    const distance = distanceSquaredToSegment(
+      localPoint,
+      linePoints[index],
+      linePoints[index + NEXT_ARRAY_INDEX_OFFSET]
+    );
+
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestSegmentIndex = index;
+    }
+  }
+
+  const bends = getElementBends(element);
+  const segmentStart = linePoints[nearestSegmentIndex];
+  const segmentEnd = linePoints[nearestSegmentIndex + NEXT_ARRAY_INDEX_OFFSET];
+  const segmentX = segmentEnd.x - segmentStart.x;
+  const segmentY = segmentEnd.y - segmentStart.y;
+  const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
+  const segmentPosition =
+    segmentLengthSquared === 0
+      ? 0
+      : Math.max(
+          0,
+          Math.min(
+            1,
+            ((localPoint.x - segmentStart.x) * segmentX +
+              (localPoint.y - segmentStart.y) * segmentY) /
+              segmentLengthSquared
+          )
+        );
+  const projectedPoint = {
+    x: segmentStart.x + segmentPosition * segmentX,
+    y: segmentStart.y + segmentPosition * segmentY
+  };
+  const nextBend = {
+    x: projectedPoint.x - element.x,
+    y: projectedPoint.y - element.y
+  };
+
+  return {
+    bendIndex: nearestSegmentIndex,
+    element: {
+      ...element,
+      bends: [
+        ...bends.slice(FIRST_ARRAY_INDEX, nearestSegmentIndex),
+        nextBend,
+        ...bends.slice(nearestSegmentIndex)
+      ],
+      curve: undefined
+    }
+  };
+}
 
 export function getElementBends(element: KizkattElement) {
   return element.bends ?? (element.curve ? [element.curve] : []);

@@ -7,6 +7,7 @@ export type Tool =
   | "ellipse"
   | "arrow"
   | "line"
+  | "polyline"
   | "draw"
   | "text"
   | "image"
@@ -77,6 +78,7 @@ export type KizkattElement = {
   fillStyle?: "hachure" | "crossHatch" | "solid";
   fillWeight?: number;
   strokeWidth: number;
+  strokeLineCount?: number;
   strokeStyle:
     | "solid"
     | "dashed"
@@ -150,6 +152,14 @@ export type Interaction =
       current: Point;
       hasMoved: boolean;
       origin: Point;
+    }
+  | {
+      type: "polylineCreate";
+      current: Point;
+      elementId: string;
+      fixedPoints: Point[];
+      hasMoved: boolean;
+      pointerDownOrigin: Point | null;
     }
   | {
       type: "move";
@@ -253,6 +263,7 @@ export type StyleState = Pick<
   | "startArrowhead"
   | "strokeBehindFill"
   | "strokeColor"
+  | "strokeLineCount"
   | "strokeStyle"
   | "strokeWidth"
 >;
