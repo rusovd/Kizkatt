@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import type { PointerEvent } from "react";
+import type { MouseEvent, PointerEvent } from "react";
 
 import {
+  findElementAtPoint,
   getWorldPoint,
+  insertLinearElementBend,
   snapPointToElements,
-  snapPointToGrid
+  snapPointToGrid,
+  withUpdatedObjectBase
 } from "kizkatt-graphic-engine";
 import type { Interaction, Point } from "kizkatt-graphic-engine";
 import { finishPointerInteraction } from "./finishPointerInteraction";
 import { startPointerInteraction } from "./startPointerInteraction";
 import type { PointerHandlerContext, UseToolPointerHandlersArgs } from "./types";
 import { updatePointerInteraction } from "./updatePointerInteraction";
+import { appendPolylinePoint, updatePolylineElement } from "./polylineCreate";
 
 export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
   const [interaction, setInteraction] = useState<Interaction | null>(null);
@@ -39,7 +43,9 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
     []
   );
 
-  const getPointerWorldPoint = (event: PointerEvent<SVGSVGElement>) =>
+  const getPointerWorldPoint = (
+    event: Pick<PointerEvent<SVGSVGElement>, "clientX" | "clientY">
+  ) =>
     getWorldPoint(event, args.svgRef.current, args.zoom, args.pan);
   const getSnappedPointerWorldPoint = (
     event: PointerEvent<SVGSVGElement>,
@@ -83,6 +89,46 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
     updateInteraction
   };
 
+  useEffect(() => {
+    const activeInteraction = interactionRef.current;
+
+    if (
+      args.tool === "polyline" ||
+      activeInteraction?.type !== "polylineCreate"
+    ) {
+      return;
+    }
+
+    const activeCanvasState = args.canvasStateRef.current;
+    const finalPoint = activeInteraction.fixedPoints.at(-1);
+
+    args.replaceActiveState({
+      ...activeCanvasState,
+      elements:
+        activeInteraction.fixedPoints.length >= 2 && finalPoint
+          ? activeCanvasState.elements.map((element) =>
+              element.id === activeInteraction.elementId
+                ? withUpdatedObjectBase(
+                    updatePolylineElement(
+                      element,
+                      activeInteraction.fixedPoints,
+                      finalPoint
+                    )
+                  )
+                : element
+            )
+          : activeCanvasState.elements.filter(
+              (element) => element.id !== activeInteraction.elementId
+            ),
+      selectedBend: undefined,
+      selectedIds:
+        activeInteraction.fixedPoints.length >= 2
+          ? [activeInteraction.elementId]
+          : []
+    });
+    updateInteraction(null);
+  }, [args.tool]);
+
   const flushPendingPointerMove = () => {
     const pendingPointerMove = pendingPointerMoveRef.current;
     pendingPointerMoveRef.current = null;
@@ -99,6 +145,25 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
 
   const onPointerDown = (event: PointerEvent<SVGSVGElement>) => {
     if (event.button !== 0) {
+      return;
+    }
+
+    const activeInteraction = interactionRef.current;
+
+    if (
+      args.tool === "polyline" &&
+      activeInteraction?.type === "polylineCreate"
+    ) {
+      const current = getSnappedPointerWorldPoint(event, [
+        activeInteraction.elementId
+      ]);
+
+      updateInteraction({
+        ...activeInteraction,
+        current,
+        hasMoved: false,
+        pointerDownOrigin: current
+      });
       return;
     }
 
@@ -162,9 +227,89 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
     }
   };
 
+  const onDoubleClick = (event: MouseEvent<SVGSVGElement>) => {
+    const activeInteraction = interactionRef.current;
+
+    if (
+      args.tool === "polyline" &&
+      activeInteraction?.type === "polylineCreate"
+    ) {
+      event.preventDefault();
+      const activeCanvasState = args.canvasStateRef.current;
+      const fixedPoints = appendPolylinePoint(
+        activeInteraction.fixedPoints,
+        activeInteraction.current
+      );
+
+      if (fixedPoints.length < 2) {
+        args.replaceActiveState({
+          ...activeCanvasState,
+          elements: activeCanvasState.elements.filter(
+            (element) => element.id !== activeInteraction.elementId
+          ),
+          selectedBend: undefined,
+          selectedIds: []
+        });
+      } else {
+        args.replaceActiveState({
+          ...activeCanvasState,
+          elements: activeCanvasState.elements.map((element) =>
+            element.id === activeInteraction.elementId
+              ? withUpdatedObjectBase(
+                  updatePolylineElement(
+                    element,
+                    fixedPoints,
+                    activeInteraction.current
+                  )
+                )
+              : element
+          ),
+          selectedBend: undefined,
+          selectedIds: [activeInteraction.elementId]
+        });
+      }
+
+      args.setTool("select");
+      updateInteraction(null);
+      return;
+    }
+
+    if (
+      args.tool !== "nodeEdit" ||
+      (event.target instanceof Element && event.target.closest("[data-handle]"))
+    ) {
+      return;
+    }
+
+    const activeCanvasState = args.canvasStateRef.current;
+    const worldPoint = getPointerWorldPoint(event);
+    const hitElement = findElementAtPoint(
+      activeCanvasState.elements,
+      worldPoint
+    );
+
+    if (hitElement?.type !== "line") {
+      return;
+    }
+
+    const insertedBend = insertLinearElementBend(hitElement, worldPoint);
+    args.commitState({
+      ...activeCanvasState,
+      elements: activeCanvasState.elements.map((element) =>
+        element.id === hitElement.id ? insertedBend.element : element
+      ),
+      selectedBend: {
+        bendIndex: insertedBend.bendIndex,
+        elementId: hitElement.id
+      },
+      selectedIds: [hitElement.id]
+    });
+  };
+
   return {
     imagePreviewPoint,
     interaction,
+    onDoubleClick,
     onPointerDown,
     onPointerLeave,
     onPointerMove,

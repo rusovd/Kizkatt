@@ -5,6 +5,7 @@ export type ColorPickerMode = "hex" | "rgba" | "cmyk";
 
 export type ColorPickerProps = {
   className?: string;
+  defaultMode?: ColorPickerMode;
   labels?: Partial<{
     alpha: string;
     blue: string;
@@ -20,6 +21,7 @@ export type ColorPickerProps = {
   }>;
   onChange: (color: string) => void;
   onCommit?: (color: string) => void;
+  onModeChange?: (mode: ColorPickerMode) => void;
   value: string;
 };
 
@@ -232,15 +234,17 @@ function Field({
 
 export function ColorPicker({
   className,
+  defaultMode = "hex",
   labels: labelOverrides,
   onChange,
   onCommit,
+  onModeChange,
   value
 }: ColorPickerProps) {
   const labels = { ...DEFAULT_LABELS, ...labelOverrides };
   const initialColor = parseHexColor(value) ?? { a: 1, h: 0, s: 0, v: 0 };
   const [color, setColor] = useState<HsvaColor>(initialColor);
-  const [mode, setMode] = useState<ColorPickerMode>("hex");
+  const [mode, setMode] = useState<ColorPickerMode>(defaultMode);
   const [hexDraft, setHexDraft] = useState(hsvaToHex(initialColor));
   const colorRef = useRef(color);
   const activePointerRef = useRef<number | null>(null);
@@ -257,6 +261,10 @@ export function ColorPicker({
     setColor(nextColor);
     setHexDraft(hsvaToHex(nextColor));
   }, [value]);
+
+  useEffect(() => {
+    setMode(defaultMode);
+  }, [defaultMode]);
 
   const emitColor = (nextColor: HsvaColor, commit = false) => {
     const normalizedColor = {
@@ -413,7 +421,10 @@ export function ColorPicker({
             type="button"
             aria-pressed={mode === format}
             className={mode === format ? "is-active" : undefined}
-            onClick={() => setMode(format)}
+            onClick={() => {
+              setMode(format);
+              onModeChange?.(format);
+            }}
           >
             {format === "rgba" ? "RGB/A" : format.toUpperCase()}
           </button>

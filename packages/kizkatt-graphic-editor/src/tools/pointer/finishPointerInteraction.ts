@@ -23,6 +23,7 @@ import {
 import { getIdSet } from "kizkatt-graphic-engine";
 import type { CanvasState, Interaction, KizkattElement } from "kizkatt-graphic-engine";
 import type { PointerHandlerContext } from "./types";
+import { appendPolylinePoint, updatePolylineElement } from "./polylineCreate";
 
 function hasElementPreviewChanged(
   currentElements: KizkattElement[],
@@ -129,6 +130,31 @@ export function finishPointerInteraction(
     setPendingImageSrc(null);
     setTool(DEFAULT_SELECT_TOOL);
     updateInteraction(null);
+    return;
+  }
+
+  if (activeInteraction.type === "polylineCreate") {
+    const fixedPoints = appendPolylinePoint(
+      activeInteraction.fixedPoints,
+      activeInteraction.current
+    );
+
+    replaceActiveState({
+      ...activeCanvasState,
+      elements: activeCanvasState.elements.map((element) =>
+        element.id === activeInteraction.elementId
+          ? updatePolylineElement(element, fixedPoints, activeInteraction.current)
+          : element
+      ),
+      selectedBend: undefined,
+      selectedIds: [activeInteraction.elementId]
+    });
+    updateInteraction({
+      ...activeInteraction,
+      fixedPoints,
+      hasMoved: false,
+      pointerDownOrigin: null
+    });
     return;
   }
 

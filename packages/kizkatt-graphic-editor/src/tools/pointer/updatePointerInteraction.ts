@@ -23,6 +23,7 @@ import {
 import type { ElementType, Interaction } from "kizkatt-graphic-engine";
 import { getIdSet } from "kizkatt-graphic-engine";
 import type { PointerHandlerContext } from "./types";
+import { updatePolylineElement } from "./polylineCreate";
 
 const PROPORTIONAL_CREATION_TYPES: ReadonlySet<ElementType> = new Set([
   "diamond",
@@ -163,6 +164,36 @@ export function updatePointerInteraction(
           height: currentPoint.y - activeInteraction.origin.y
         };
       })
+    });
+    return;
+  }
+
+  if (activeInteraction.type === "polylineCreate") {
+    const currentPoint = getSnappedPointerWorldPoint(event, [
+      activeInteraction.elementId
+    ]);
+    const hasMoved = activeInteraction.pointerDownOrigin
+      ? activeInteraction.hasMoved ||
+        getDistance(activeInteraction.pointerDownOrigin, currentPoint) >=
+          MIN_CREATE_DRAG_DISTANCE
+      : activeInteraction.hasMoved;
+
+    replaceActiveState({
+      ...activeCanvasState,
+      elements: activeCanvasState.elements.map((element) =>
+        element.id === activeInteraction.elementId
+          ? updatePolylineElement(
+              element,
+              activeInteraction.fixedPoints,
+              currentPoint
+            )
+          : element
+      )
+    });
+    updateInteraction({
+      ...activeInteraction,
+      current: currentPoint,
+      hasMoved
     });
     return;
   }

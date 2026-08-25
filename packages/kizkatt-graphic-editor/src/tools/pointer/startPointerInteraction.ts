@@ -412,6 +412,26 @@ export function startPointerInteraction(
   }
 
   const creationPoint = getSnappedPointerWorldPoint(event);
+  if (tool === "polyline") {
+    const nextElement = createElement("line", creationPoint, style);
+    nextElement.name = createElementName(nextElement.type, canvasState.elements);
+
+    commitState({
+      elements: [...canvasState.elements, nextElement],
+      selectedBend: undefined,
+      selectedIds: [nextElement.id]
+    });
+    updateInteraction({
+      type: "polylineCreate",
+      current: creationPoint,
+      elementId: nextElement.id,
+      fixedPoints: [creationPoint],
+      hasMoved: false,
+      pointerDownOrigin: creationPoint
+    });
+    return;
+  }
+
   if (!isCreatableElementTool(tool)) {
     return;
   }

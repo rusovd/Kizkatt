@@ -35,7 +35,6 @@ import {
   PLAIN_TEXT_MIME_TYPE,
   PNG_IMAGE_MIME_TYPE,
   RENDER_OVERSCAN_PX,
-  SELECTION_LINK_PREFIX,
   SINGLE_SELECTION_COUNT,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
   TEXT_ELEMENT_DEFAULT_WIDTH,
@@ -80,6 +79,7 @@ import {
   getStoredDpi,
   getStoredGridColor,
   getStoredGridSettings,
+  getStoredContextMenuDefaults,
   getStoredQuickCanvasState,
   getStoredTheme,
   getStoredUiScale,
@@ -168,6 +168,16 @@ type EyeDropperConstructor = new () => {
   open: () => Promise<{ sRGBHex: string }>;
 };
 
+const DEFAULT_STROKE_STYLE_TOOLS: ReadonlySet<Tool> = new Set([
+  "arrow",
+  "diamond",
+  "draw",
+  "ellipse",
+  "line",
+  "polyline",
+  "rectangle"
+]);
+
 export function KizkattGraphicEditorController({
   arrowMarkerId = DEFAULT_ARROW_MARKER_ID,
   canvasAriaLabel = DEFAULT_CANVAS_ARIA_LABEL,
@@ -203,7 +213,7 @@ export function KizkattGraphicEditorController({
   );
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pan, setPan] = useState<Point>(() => ({ ...INITIAL_PAN }));
-  const [style, setStyle] = useState<StyleState>(
+  const [defaultStyle, setDefaultStyle] = useState<StyleState>(
     () => defaultElementStyleByTheme[getStoredTheme()]
   );
   const initialCanvasState = useMemo(() => {
@@ -321,12 +331,18 @@ export function KizkattGraphicEditorController({
         fillWeight: selectedElements[0].fillWeight ?? DEFAULT_FILL_WEIGHT,
         opacity: selectedElements[0].opacity,
         sloppiness: selectedElements[0].sloppiness ?? DEFAULT_SELECTED_SLOPPINESS,
-        sloppinessGap: selectedElements[0].sloppinessGap ?? style.sloppinessGap,
+        sloppinessGap:
+          selectedElements[0].sloppinessGap ?? defaultStyle.sloppinessGap,
         scaleStrokeWithObject:
           selectedElements[0].scaleStrokeWithObject ?? false,
         startArrowhead: selectedElements[0].startArrowhead ?? "none",
         strokeBehindFill: selectedElements[0].strokeBehindFill ?? false,
         strokeColor: selectedElements[0].strokeColor,
+        strokeLineCount: selectedElements[0].strokeLineCount ??
+          (selectedElements[0].sloppiness === "double" ||
+          selectedElements[0].sloppiness === "cartoonist"
+            ? 2
+            : 1),
         strokeStyle: selectedElements[0].strokeStyle,
         strokeWidth:
           selectedElements[0].type === "image" &&
@@ -334,11 +350,14 @@ export function KizkattGraphicEditorController({
             ? 0
             : selectedElements[0].strokeWidth
       }
-    : style;
+    : defaultStyle;
   const objectPanelGeometry = useMemo(
     () => getObjectPanelGeometry(selectedElements),
     [selectedElements]
   );
+  const canEditDefaultStroke =
+    selectedElements.length === EMPTY_COLLECTION_LENGTH &&
+    DEFAULT_STROKE_STYLE_TOOLS.has(tool);
   const canGroup = canGroupSelection(
     canvasState.elements,
     canvasState.selectedIds
@@ -427,7 +446,7 @@ export function KizkattGraphicEditorController({
       );
       const elements = canvasStateRef.current.elements;
       const nextElement: KizkattElement = withUpdatedObjectBase({
-        ...createElement("text", pastePoint, style),
+        ...createElement("text", pastePoint, defaultStyle),
         height: Math.max(
           TEXT_ELEMENT_DEFAULT_HEIGHT,
           lines.length * PASTED_TEXT_LINE_HEIGHT
@@ -453,7 +472,7 @@ export function KizkattGraphicEditorController({
 
       return true;
     },
-    [commitState, getPastePoint, naming, style]
+    [commitState, defaultStyle, getPastePoint, naming]
   );
 
   const insertPastedImage = useCallback(
@@ -466,7 +485,7 @@ export function KizkattGraphicEditorController({
 
       const elements = canvasStateRef.current.elements;
       const baseElement: KizkattElement = {
-        ...createElement("image", pastePoint, style),
+        ...createElement("image", pastePoint, defaultStyle),
         backgroundColor: TRANSPARENT_COLOR,
         height: DEFAULT_IMAGE_SIZE.height,
         name: buildElementName("image", elements, naming),
@@ -527,7 +546,7 @@ export function KizkattGraphicEditorController({
       }
       window.setTimeout(() => commitImage(), IMAGE_LOAD_FALLBACK_TIMEOUT_MS);
     },
-    [beginLoading, commitState, getPastePoint, naming, style]
+    [beginLoading, commitState, defaultStyle, getPastePoint, naming]
   );
 
   const readClipboardImage = useCallback(
@@ -563,7 +582,7 @@ export function KizkattGraphicEditorController({
           insertionBounds
             ? { x: insertionBounds.x, y: insertionBounds.y }
             : pastePoint,
-          style
+          defaultStyle
         ),
         backgroundColor: TRANSPARENT_COLOR,
         height: insertionBounds?.height ?? parsedSvg.size.height,
@@ -601,7 +620,7 @@ export function KizkattGraphicEditorController({
 
       return true;
     },
-    [commitState, getPastePoint, naming, style]
+    [commitState, defaultStyle, getPastePoint, naming]
   );
 
   const deleteSelected = useCallback(() => {
@@ -647,19 +666,6 @@ export function KizkattGraphicEditorController({
     });
     setEditingTextElementId(null);
   }, [canvasState, commitState, selectedIdSet]);
-
-  const copySelectedLink = useCallback(() => {
-    if (
-      canvasState.selectedIds.length === EMPTY_COLLECTION_LENGTH ||
-      !navigator.clipboard?.writeText
-    ) {
-      return;
-    }
-
-    void navigator.clipboard.writeText(
-      `${SELECTION_LINK_PREFIX}${canvasState.selectedIds.join(",")}`
-    );
-  }, [canvasState.selectedIds]);
 
   const groupSelected = useCallback(() => {
     if (!canGroup) {
@@ -752,9 +758,8 @@ export function KizkattGraphicEditorController({
     patch: Partial<StyleState>,
     options: { transient?: boolean } = {}
   ) => {
-    setStyle((previousStyle) => ({ ...previousStyle, ...patch }));
-
     if (canvasState.selectedIds.length === EMPTY_COLLECTION_LENGTH) {
+      setDefaultStyle((previousStyle) => ({ ...previousStyle, ...patch }));
       mergingStyleChangeRef.current = false;
       return;
     }
@@ -782,8 +787,8 @@ export function KizkattGraphicEditorController({
           : true;
         const restoredStrokeWidth =
           !explicitlyChangesWidth && element.strokeWidth <= 0
-            ? style.strokeWidth > 0
-              ? style.strokeWidth
+            ? defaultStyle.strokeWidth > 0
+              ? defaultStyle.strokeWidth
               : DEFAULT_STROKE_WIDTH
             : element.strokeWidth;
 
@@ -990,19 +995,14 @@ export function KizkattGraphicEditorController({
   };
 
   const applyElementAction = (
-    action: "delete" | "duplicate" | "link"
+    action: "delete" | "duplicate"
   ) => {
     if (action === "delete") {
       deleteSelected();
       return;
     }
 
-    if (action === "duplicate") {
-      duplicateSelected();
-      return;
-    }
-
-    copySelectedLink();
+    duplicateSelected();
   };
 
   const updateTextElement = (elementId: string, text: string) => {
@@ -1052,7 +1052,7 @@ export function KizkattGraphicEditorController({
       getStoredCustomCanvasBackgroundColor(nextTheme)
     );
     setGridColor(getStoredGridColor(nextTheme));
-    setStyle((previousStyle) =>
+    setDefaultStyle((previousStyle) =>
       isSameStyle(previousStyle, defaultElementStyleByTheme[previousTheme])
         ? defaultElementStyleByTheme[nextTheme]
         : previousStyle
@@ -1389,6 +1389,7 @@ export function KizkattGraphicEditorController({
   const {
     imagePreviewPoint,
     interaction,
+    onDoubleClick,
     onPointerDown,
     onPointerLeave,
     onPointerMove,
@@ -1421,7 +1422,7 @@ export function KizkattGraphicEditorController({
       snapToGrid: snapToGrid && gridHasVisibleLayer,
       snapToMidpoints,
       snapToObjects,
-      style,
+      style: defaultStyle,
       svgRef,
       tool,
       zoom
@@ -1543,12 +1544,17 @@ export function KizkattGraphicEditorController({
       interaction?.type === "create" &&
       interaction.elementId === element.id &&
       element.type === "draw";
+    const isDrawingPolygon =
+      interaction?.type === "polylineCreate" &&
+      interaction.elementId === element.id;
     const isCreatingLinearElement =
-      interaction?.type === "create" &&
-      interaction.elementId === element.id &&
+      ((interaction?.type === "create" &&
+        interaction.elementId === element.id) ||
+        isDrawingPolygon) &&
       (element.type === "line" || element.type === "arrow");
     const isCreatingElement =
-      interaction?.type === "create" && interaction.elementId === element.id;
+      (interaction?.type === "create" && interaction.elementId === element.id) ||
+      isDrawingPolygon;
     const isRotatingSelection = interaction?.type === "rotate";
 
     const options: KizkattRenderElementOptions = {
@@ -1570,7 +1576,8 @@ export function KizkattGraphicEditorController({
     return {
       options,
       showInternalOverlay,
-      showPrimaryOverlay: showPrimaryOverlay && !isDrawingFreehand
+      showPrimaryOverlay:
+        showPrimaryOverlay && !isDrawingFreehand && !isDrawingPolygon
     };
   };
 
@@ -1591,6 +1598,7 @@ export function KizkattGraphicEditorController({
     infoOverlayItems,
     interaction,
     onContextMenu: onCanvasContextMenu,
+    onDoubleClick,
     onPointerDown,
     onPointerLeave,
     onPointerMove,
@@ -1664,7 +1672,7 @@ export function KizkattGraphicEditorController({
       onChange: onImageFileChange,
       ref: imageInputRef
     },
-    selectionGeometryControls: objectPanelGeometry
+    selectionGeometryControls: objectPanelGeometry || canEditDefaultStroke
       ? {
           geometry: objectPanelGeometry,
           gridSettings,
@@ -1673,6 +1681,10 @@ export function KizkattGraphicEditorController({
           onGeometryChangeEnd: endSelectedGeometryChange,
           onLayerAction: applyLayerAction,
           onMirror: mirrorSelected,
+          onPaste: () =>
+            getStoredContextMenuDefaults().paste === "svgCode"
+              ? pasteSvgCodeFromContextMenu()
+              : pasteFromContextMenu(),
           onStyleChange: updateSelectedStyle,
           onStyleChangeEnd: endSelectedStyleChange,
           selectedElements,
@@ -1687,7 +1699,7 @@ export function KizkattGraphicEditorController({
       uiScale,
       activeDisplayMode
     },
-    styleControls: {
+    stylingControls: {
       activeTool: tool,
       canToggleClosedPath: Boolean(closeablePathElement),
       closedPath: Boolean(closeablePathElement?.closed),

@@ -8,6 +8,7 @@ const IMAGE_BORDER_STYLE_KEYS: ReadonlyArray<keyof StyleState> = [
   "sloppinessGap",
   "scaleStrokeWithObject",
   "strokeColor",
+  "strokeLineCount",
   "strokeStyle",
   "strokeBehindFill",
   "strokeWidth"
@@ -46,6 +47,7 @@ export function isSameStyle(
     firstStyle.startArrowhead === secondStyle.startArrowhead &&
     firstStyle.strokeBehindFill === secondStyle.strokeBehindFill &&
     firstStyle.strokeColor === secondStyle.strokeColor &&
+    firstStyle.strokeLineCount === secondStyle.strokeLineCount &&
     firstStyle.strokeStyle === secondStyle.strokeStyle &&
     firstStyle.strokeWidth === secondStyle.strokeWidth
   );

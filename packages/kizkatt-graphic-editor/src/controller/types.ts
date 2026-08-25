@@ -117,15 +117,16 @@ export type ObjectGeometryPatch = Partial<
 export type ObjectMirrorAxis = "horizontal" | "vertical";
 
 export type ObjectPanelProps = {
-  geometry: ObjectPanelGeometry;
+  geometry: ObjectPanelGeometry | null;
   gridSettings: GridSettings;
-  onAction: (action: "delete" | "duplicate" | "link") => void;
+  onAction: (action: "delete" | "duplicate") => void;
   onGeometryChange: (
     patch: ObjectGeometryPatch,
     options?: { transient?: boolean }
   ) => void;
   onGeometryChangeEnd: () => void;
   onMirror: (axis: ObjectMirrorAxis) => void;
+  onPaste: () => void | Promise<void>;
   onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
   onStyleChange: (
     patch: Partial<StyleState>,
@@ -137,7 +138,7 @@ export type ObjectPanelProps = {
   theme: KizkattTheme;
 };
 
-export type StylePanelProps = {
+export type StylingPanelProps = {
   activeTool: Tool;
   canToggleClosedPath: boolean;
   closedPath: boolean;
@@ -218,6 +219,7 @@ export type KizkattGraphicEditorCanvasViewModel = {
   infoOverlayItems: ElementInfoOverlayItem[];
   interaction: Interaction | null;
   onContextMenu: (event: MouseEvent<SVGSVGElement>) => void;
+  onDoubleClick: (event: MouseEvent<SVGSVGElement>) => void;
   onPointerDown: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerLeave: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
@@ -255,7 +257,7 @@ export type KizkattGraphicEditorViewModel = {
     theme: KizkattTheme;
     uiScale: number;
   };
-  styleControls: StylePanelProps;
+  stylingControls: StylingPanelProps;
   textEditing: TextEditorProps | null;
   toolControls: ToolControls;
   workspaceControls: WorkspaceControls;
