@@ -8,7 +8,14 @@ import {
 
 import { OBJECT_PANEL_UI_SETTINGS } from "../../config/defaultSettings";
 import { useI18n } from "../../i18n";
-import { EdgeRoundIcon, EdgeSharpIcon } from "../icons";
+import {
+  EdgeRoundIcon,
+  EdgeSharpIcon,
+  SloppinessDoubleIcon
+} from "../icons";
+
+type StrokeStyleSelectValue = Exclude<StyleState["strokeStyle"], "wavy"> |
+  "handDrawn";
 
 const ARROWHEAD_OPTIONS: readonly ArrowheadStyle[] = [
   "none",
@@ -91,6 +98,7 @@ export function LineSettingsPopover({
   onClose,
   onContinuousStyleChange,
   onStrokeWidthChange,
+  onStrokeStyleChange,
   onStyleChange,
   onStyleChangeEnd,
   strokeStyleOptions,
@@ -102,11 +110,12 @@ export function LineSettingsPopover({
   onClose: () => void;
   onContinuousStyleChange: (patch: Partial<StyleState>) => void;
   onStrokeWidthChange: (value: string) => void;
+  onStrokeStyleChange: (value: StrokeStyleSelectValue) => void;
   onStyleChange: (patch: Partial<StyleState>) => void;
   onStyleChangeEnd: () => void;
   strokeStyleOptions: ReadonlyArray<{
     label: string;
-    value: StyleState["strokeStyle"];
+    value: StrokeStyleSelectValue;
   }>;
   strokeWidthValue: string;
   style: StyleState;
@@ -115,6 +124,13 @@ export function LineSettingsPopover({
   const { strings } = useI18n();
   const labels = strings.objectPanel.lineSettings;
   const edgeStyle = style.edgeStyle ?? "round";
+  const strokeStyleValue: StrokeStyleSelectValue =
+    ((style.sloppiness === "artist" || style.sloppiness === "cartoonist") &&
+    (style.strokeStyle ?? DEFAULT_STROKE_STYLE) === "solid")
+      ? "handDrawn"
+      : style.strokeStyle === "wavy"
+        ? "zigzag"
+        : style.strokeStyle ?? DEFAULT_STROKE_STYLE;
   const arrowheadLabels: Record<ArrowheadStyle, string> = {
     circle: labels.arrowheadCircle,
     none: labels.arrowheadNone,
@@ -195,11 +211,9 @@ export function LineSettingsPopover({
           <span>{labels.style}</span>
           <select
             aria-label={labels.style}
-            value={style.strokeStyle ?? DEFAULT_STROKE_STYLE}
+            value={strokeStyleValue}
             onChange={(event) =>
-              onStyleChange({
-                strokeStyle: event.target.value as StyleState["strokeStyle"]
-              })
+              onStrokeStyleChange(event.target.value as StrokeStyleSelectValue)
             }
           >
             {strokeStyleOptions.map((option) => (
@@ -228,6 +242,33 @@ export function LineSettingsPopover({
             ))}
           </div>
         </div>
+        <label className="kizkatt-line-settings-row">
+          <span className="kizkatt-line-settings-label-with-icon">
+            {SloppinessDoubleIcon}
+            {labels.lines}
+          </span>
+          <input
+            aria-label={labels.lines}
+            type="number"
+            min="1"
+            max="10"
+            step="1"
+            value={style.strokeLineCount ?? 1}
+            onChange={(event) => {
+              const count = Number.parseInt(event.target.value, 10);
+
+              if (Number.isFinite(count)) {
+                onStyleChange({
+                  strokeLineCount: clamp(count, 1, 10),
+                  sloppiness:
+                    style.sloppiness === "cartoonist" ? "artist" :
+                    style.sloppiness === "double" ? "architect" :
+                    style.sloppiness
+                });
+              }
+            }}
+          />
+        </label>
       </section>
 
       <section className={!canUseArrowheads ? "is-disabled" : undefined}>

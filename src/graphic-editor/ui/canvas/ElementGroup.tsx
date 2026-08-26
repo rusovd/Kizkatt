@@ -29,6 +29,7 @@ export function ElementGroup({
     skewY: element.skewY ?? 0,
     startArrowhead: element.startArrowhead,
     strokeBehindFill: element.strokeBehindFill,
+    strokeLineCount: element.strokeLineCount,
     type: element.type
   });
 
@@ -51,6 +52,7 @@ export function ElementGroup({
       data-kizkatt-stroke-behind-fill={
         element.strokeBehindFill ? "true" : "false"
       }
+      data-kizkatt-stroke-line-count={element.strokeLineCount}
       data-kizkatt-stroke-width={element.strokeWidth}
       data-image-border-enabled={
         element.imageBorderEnabled ? "true" : undefined

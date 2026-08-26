@@ -135,6 +135,32 @@ function getSloppiness(element: KizkattElement) {
   return element.sloppiness ?? DEFAULT_SLOPPINESS;
 }
 
+function getStrokeLineCount(element: KizkattElement) {
+  if (Number.isFinite(element.strokeLineCount)) {
+    return Math.min(10, Math.max(1, Math.floor(element.strokeLineCount ?? 1)));
+  }
+
+  const sloppiness = getSloppiness(element);
+
+  return sloppiness === SLOPPINESS_CARTOONIST ||
+    sloppiness === SLOPPINESS_DOUBLE
+    ? 2
+    : 1;
+}
+
+function getSecondaryStrokeIndices(element: KizkattElement) {
+  return Array.from(
+    { length: Math.max(0, getStrokeLineCount(element) - 1) },
+    (_, index) => index + 1
+  );
+}
+
+function getDecorativeStrokeStyle(element: KizkattElement) {
+  return element.strokeStyle === "zigzag" && element.edgeStyle === "round"
+    ? "wavy"
+    : element.strokeStyle;
+}
+
 function shouldUseHandDrawnStroke(element: KizkattElement) {
   const sloppiness = getSloppiness(element);
 
@@ -151,13 +177,16 @@ function getDoubleStrokeOffset(element: KizkattElement) {
   return Math.max(MIN_DOUBLE_STROKE_OFFSET, strokeWidth + gap);
 }
 
-function getSecondaryClosedShapeInset(element: KizkattElement) {
+function getSecondaryClosedShapeInset(
+  element: KizkattElement,
+  lineIndex: number
+) {
   const sloppiness = getSloppiness(element);
   const offset = getDoubleStrokeOffset(element);
   const rawInset =
     sloppiness === SLOPPINESS_DOUBLE
-      ? offset
-      : offset * SECONDARY_HAND_DRAWN_INSET_MULTIPLIER;
+      ? offset * lineIndex
+      : offset * lineIndex * SECONDARY_HAND_DRAWN_INSET_MULTIPLIER;
   const maxInset = Math.max(
     MIN_SHAPE_SIZE_AFTER_INSET,
     Math.min(element.width, element.height) *
@@ -184,8 +213,65 @@ function getPrimaryBaseShapeProps(element: KizkattElement) {
 
   return {
     ...shapeProps,
+    "data-stroke-line-count": getStrokeLineCount(element),
     "data-stroke-style": element.strokeStyle,
     strokeOpacity: isDecorativeStrokeStyle(element.strokeStyle) ? 0 : undefined
+  };
+}
+
+function getParallelDecorativeOutline(
+  outline: NonNullable<ReturnType<typeof getDecorativeStrokeOutline>>,
+  element: KizkattElement,
+  lineIndex: number
+) {
+  if (lineIndex === 0) {
+    return outline;
+  }
+
+  const offset = getDoubleStrokeOffset(element) * lineIndex;
+
+  if (outline.closed) {
+    const center = getElementCenter(element);
+    const width = Math.max(MIN_SHAPE_SIZE_AFTER_INSET, Math.abs(element.width));
+    const height = Math.max(
+      MIN_SHAPE_SIZE_AFTER_INSET,
+      Math.abs(element.height)
+    );
+    const scaleX = Math.max(
+      MIN_SHAPE_SIZE_AFTER_INSET / width,
+      (width - offset * HALF_DIVISOR) / width
+    );
+    const scaleY = Math.max(
+      MIN_SHAPE_SIZE_AFTER_INSET / height,
+      (height - offset * HALF_DIVISOR) / height
+    );
+
+    return {
+      ...outline,
+      points: outline.points.map((point) => ({
+        x: center.x + (point.x - center.x) * scaleX,
+        y: center.y + (point.y - center.y) * scaleY
+      }))
+    };
+  }
+
+  const start = outline.points[0];
+  const end = outline.points[outline.points.length - 1];
+  const length = Math.max(
+    MIN_RENDERED_STROKE_WIDTH,
+    Math.hypot(end.x - start.x, end.y - start.y)
+  );
+  const normal = {
+    x: (-(end.y - start.y) / length) * offset,
+    y: ((end.x - start.x) / length) * offset
+  };
+
+  return {
+    ...outline,
+    points: outline.points.map((point) => ({
+      x: point.x + normal.x,
+      y: point.y + normal.y
+    }))
   };
 }
 
@@ -196,31 +282,39 @@ function DecorativeStroke({
   element: KizkattElement;
   linePoints?: Array<{ x: number; y: number }>;
 }) {
-  if (!isDecorativeStrokeStyle(element.strokeStyle)) {
+  const decorativeStyle = getDecorativeStrokeStyle(element);
+
+  if (!isDecorativeStrokeStyle(decorativeStyle)) {
     return null;
   }
 
   const outline = getDecorativeStrokeOutline(element, linePoints);
-  const pathData = outline
-    ? getDecorativeStrokePath(
-        outline,
-        element.strokeStyle,
-        element.strokeWidth
-      )
-    : "";
-
-  if (!pathData) {
+  if (!outline) {
     return null;
   }
 
-  return (
-    <path
-      data-decorative-stroke={element.strokeStyle}
-      d={pathData}
-      fill={SVG_FILL_NONE}
-      {...getPrimaryShapeProps(element)}
-    />
-  );
+  return Array.from(
+    { length: getStrokeLineCount(element) },
+    (_, lineIndex) => lineIndex
+  ).map((lineIndex) => {
+    const pathData = getDecorativeStrokePath(
+      getParallelDecorativeOutline(outline, element, lineIndex),
+      decorativeStyle,
+      element.strokeWidth
+    );
+
+    return pathData ? (
+      <path
+        key={lineIndex}
+        data-decorative-stroke={decorativeStyle}
+        d={pathData}
+        fill={SVG_FILL_NONE}
+        {...(lineIndex === 0
+          ? getPrimaryShapeProps(element)
+          : getSecondaryStrokeProps(element, lineIndex))}
+      />
+    ) : null;
+  });
 }
 
 function Arrowhead({
@@ -300,17 +394,18 @@ function Arrowhead({
 
 function getSecondaryStrokeProps(
   element: KizkattElement,
-  variant: number
+  lineIndex: number
 ) {
   const filter =
-    getSloppiness(element) === SLOPPINESS_CARTOONIST &&
+    shouldUseHandDrawnStroke(element) &&
     !usesGeometricDotPattern(element)
-      ? `url(#${getSloppyFilterId(element, variant)})`
+      ? `url(#${getSloppyFilterId(element, CARTOONIST_FILTER_VARIANT)})`
       : undefined;
 
   return {
     "data-sloppiness-stroke": "secondary",
-    "data-sloppiness-spacing": getDoubleStrokeOffset(element),
+    "data-sloppiness-line": lineIndex,
+    "data-sloppiness-spacing": getDoubleStrokeOffset(element) * lineIndex,
     ...getElementShapeProps(element),
     fill: SVG_FILL_NONE,
     filter,
@@ -546,111 +641,113 @@ function SelectedElementOverlay({
 }
 
 function SecondaryRectStroke({ element }: { element: KizkattElement }) {
-  const sloppiness = getSloppiness(element);
-
   if (
     isDecorativeStrokeStyle(element.strokeStyle) ||
-    (sloppiness !== SLOPPINESS_CARTOONIST &&
-      sloppiness !== SLOPPINESS_DOUBLE)
+    getStrokeLineCount(element) <= 1
   ) {
     return null;
   }
-
-  const inset = getSecondaryClosedShapeInset(element);
   const edgeRadius =
     (element.edgeStyle ?? SVG_LINECAP_ROUND) === SVG_LINECAP_ROUND
       ? ROUNDED_EDGE_RADIUS
       : SHARP_EDGE_RADIUS;
 
-  return (
-    <rect
-      x={element.x + inset}
-      y={element.y + inset}
-      width={Math.max(
-        MIN_SHAPE_SIZE_AFTER_INSET,
-        element.width - inset * HALF_DIVISOR
-      )}
-      height={Math.max(
-        MIN_SHAPE_SIZE_AFTER_INSET,
-        element.height - inset * HALF_DIVISOR
-      )}
-      rx={Math.max(SHARP_EDGE_RADIUS, edgeRadius - inset)}
-      {...getSecondaryStrokeProps(element, CARTOONIST_FILTER_VARIANT)}
-    />
-  );
+  return getSecondaryStrokeIndices(element).map((lineIndex) => {
+    const inset = getSecondaryClosedShapeInset(element, lineIndex);
+
+    return (
+      <rect
+        key={lineIndex}
+        x={element.x + inset}
+        y={element.y + inset}
+        width={Math.max(
+          MIN_SHAPE_SIZE_AFTER_INSET,
+          element.width - inset * HALF_DIVISOR
+        )}
+        height={Math.max(
+          MIN_SHAPE_SIZE_AFTER_INSET,
+          element.height - inset * HALF_DIVISOR
+        )}
+        rx={Math.max(SHARP_EDGE_RADIUS, edgeRadius - inset)}
+        {...getSecondaryStrokeProps(element, lineIndex)}
+      />
+    );
+  });
 }
 
 function SecondaryDiamondStroke({ element }: { element: KizkattElement }) {
-  const sloppiness = getSloppiness(element);
-
   if (
     isDecorativeStrokeStyle(element.strokeStyle) ||
-    (sloppiness !== SLOPPINESS_CARTOONIST &&
-      sloppiness !== SLOPPINESS_DOUBLE)
+    getStrokeLineCount(element) <= 1
   ) {
     return null;
   }
 
-  const inset = getSecondaryClosedShapeInset(element);
   const center = getElementCenter(element);
-  const halfWidth = Math.max(
-    MIN_SHAPE_SIZE_AFTER_INSET,
-    element.width / HALF_DIVISOR - inset
-  );
-  const halfHeight = Math.max(
-    MIN_SHAPE_SIZE_AFTER_INSET,
-    element.height / HALF_DIVISOR - inset
-  );
-  const points = [
-    `${center.x}${SVG_COORDINATE_SEPARATOR}${center.y - halfHeight}`,
-    `${center.x + halfWidth}${SVG_COORDINATE_SEPARATOR}${center.y}`,
-    `${center.x}${SVG_COORDINATE_SEPARATOR}${center.y + halfHeight}`,
-    `${center.x - halfWidth}${SVG_COORDINATE_SEPARATOR}${center.y}`
-  ].join(SVG_COMMAND_SEPARATOR);
 
-  return (
-    <polygon
-      points={points}
-      {...getSecondaryStrokeProps(element, CARTOONIST_FILTER_VARIANT)}
-    />
-  );
+  return getSecondaryStrokeIndices(element).map((lineIndex) => {
+    const inset = getSecondaryClosedShapeInset(element, lineIndex);
+    const halfWidth = Math.max(
+      MIN_SHAPE_SIZE_AFTER_INSET,
+      element.width / HALF_DIVISOR - inset
+    );
+    const halfHeight = Math.max(
+      MIN_SHAPE_SIZE_AFTER_INSET,
+      element.height / HALF_DIVISOR - inset
+    );
+    const points = [
+      `${center.x}${SVG_COORDINATE_SEPARATOR}${center.y - halfHeight}`,
+      `${center.x + halfWidth}${SVG_COORDINATE_SEPARATOR}${center.y}`,
+      `${center.x}${SVG_COORDINATE_SEPARATOR}${center.y + halfHeight}`,
+      `${center.x - halfWidth}${SVG_COORDINATE_SEPARATOR}${center.y}`
+    ].join(SVG_COMMAND_SEPARATOR);
+
+    return (
+      <polygon
+        key={lineIndex}
+        points={points}
+        {...getSecondaryStrokeProps(element, lineIndex)}
+      />
+    );
+  });
 }
 
 function SecondaryEllipseStroke({ element }: { element: KizkattElement }) {
-  const sloppiness = getSloppiness(element);
-
   if (
     isDecorativeStrokeStyle(element.strokeStyle) ||
-    (sloppiness !== SLOPPINESS_CARTOONIST &&
-      sloppiness !== SLOPPINESS_DOUBLE)
+    getStrokeLineCount(element) <= 1
   ) {
     return null;
   }
 
-  const inset = getSecondaryClosedShapeInset(element);
+  return getSecondaryStrokeIndices(element).map((lineIndex) => {
+    const inset = getSecondaryClosedShapeInset(element, lineIndex);
 
-  return (
-    <ellipse
-      cx={element.x + element.width / HALF_DIVISOR}
-      cy={element.y + element.height / HALF_DIVISOR}
-      rx={Math.max(
-        MIN_SHAPE_SIZE_AFTER_INSET,
-        Math.abs(element.width / HALF_DIVISOR) - inset
-      )}
-      ry={Math.max(
-        MIN_SHAPE_SIZE_AFTER_INSET,
-        Math.abs(element.height / HALF_DIVISOR) - inset
-      )}
-      {...getSecondaryStrokeProps(element, CARTOONIST_FILTER_VARIANT)}
-    />
-  );
+    return (
+      <ellipse
+        key={lineIndex}
+        cx={element.x + element.width / HALF_DIVISOR}
+        cy={element.y + element.height / HALF_DIVISOR}
+        rx={Math.max(
+          MIN_SHAPE_SIZE_AFTER_INSET,
+          Math.abs(element.width / HALF_DIVISOR) - inset
+        )}
+        ry={Math.max(
+          MIN_SHAPE_SIZE_AFTER_INSET,
+          Math.abs(element.height / HALF_DIVISOR) - inset
+        )}
+        {...getSecondaryStrokeProps(element, lineIndex)}
+      />
+    );
+  });
 }
 
 function getLineOffsetPoints(
   element: KizkattElement,
-  linePoints: Array<{ x: number; y: number }>
+  linePoints: Array<{ x: number; y: number }>,
+  lineIndex: number
 ) {
-  const offset = getDoubleStrokeOffset(element);
+  const offset = getDoubleStrokeOffset(element) * lineIndex;
   const start = linePoints[0];
   const end = linePoints[linePoints.length - 1];
   const length =
@@ -676,73 +773,70 @@ function SecondaryLineStroke({
   element: KizkattElement;
   linePoints: Array<{ x: number; y: number }>;
 }) {
-  const sloppiness = getSloppiness(element);
-
   if (
     isDecorativeStrokeStyle(element.strokeStyle) ||
-    (sloppiness !== SLOPPINESS_CARTOONIST &&
-      sloppiness !== SLOPPINESS_DOUBLE)
+    getStrokeLineCount(element) <= 1
   ) {
     return null;
   }
 
-  const secondaryProps = getSecondaryStrokeProps(
-    element,
-    CARTOONIST_FILTER_VARIANT
-  );
+  return getSecondaryStrokeIndices(element).map((lineIndex) => {
+    const secondaryProps = getSecondaryStrokeProps(element, lineIndex);
 
-  if (linePoints.length > LINEAR_ELEMENT_SIMPLE_POINT_COUNT) {
-    const offset = getDoubleStrokeOffset(element);
-    const d = getLinearElementPath(
-      linePoints.map((point) => ({
-        x: point.x,
-        y: point.y + offset
-      })),
-      element.edgeStyle
+    if (linePoints.length > LINEAR_ELEMENT_SIMPLE_POINT_COUNT) {
+      const offset = getDoubleStrokeOffset(element) * lineIndex;
+      const d = getLinearElementPath(
+        linePoints.map((point) => ({
+          x: point.x,
+          y: point.y + offset
+        })),
+        element.edgeStyle
+      );
+
+      return <path key={lineIndex} d={d} {...secondaryProps} />;
+    }
+
+    return (
+      <line
+        key={lineIndex}
+        {...getLineOffsetPoints(element, linePoints, lineIndex)}
+        {...secondaryProps}
+      />
     );
-
-    return <path d={d} {...secondaryProps} />;
-  }
-
-  return (
-    <line
-      {...getLineOffsetPoints(element, linePoints)}
-      {...secondaryProps}
-    />
-  );
+  });
 }
 
 function SecondaryFreehandStroke({ element }: { element: KizkattElement }) {
-  const sloppiness = getSloppiness(element);
-
   if (
     isDecorativeStrokeStyle(element.strokeStyle) ||
-    (sloppiness !== SLOPPINESS_CARTOONIST &&
-      sloppiness !== SLOPPINESS_DOUBLE)
+    getStrokeLineCount(element) <= 1
   ) {
     return null;
   }
 
-  const offset = getDoubleStrokeOffset(element);
-  const d = element.pathData
-    ? getFreehandPath({ ...element, y: element.y + offset })
-    : (element.points ?? [])
-        .map((point, index) => {
-          const command =
-            index === ZERO_COORDINATE ? SVG_MOVE_COMMAND : SVG_LINE_COMMAND;
+  return getSecondaryStrokeIndices(element).map((lineIndex) => {
+    const offset = getDoubleStrokeOffset(element) * lineIndex;
+    const d = element.pathData
+      ? getFreehandPath({ ...element, y: element.y + offset })
+      : (element.points ?? [])
+          .map((point, index) => {
+            const command =
+              index === ZERO_COORDINATE ? SVG_MOVE_COMMAND : SVG_LINE_COMMAND;
 
-          return `${command} ${element.x + point.x} ${
-            element.y + point.y + offset
-          }`;
-        })
-        .join(SVG_COMMAND_SEPARATOR);
+            return `${command} ${element.x + point.x} ${
+              element.y + point.y + offset
+            }`;
+          })
+          .join(SVG_COMMAND_SEPARATOR);
 
-  return (
-    <path
-      d={d}
-      {...getSecondaryStrokeProps(element, CARTOONIST_FILTER_VARIANT)}
-    />
-  );
+    return (
+      <path
+        key={lineIndex}
+        d={d}
+        {...getSecondaryStrokeProps(element, lineIndex)}
+      />
+    );
+  });
 }
 
 export function renderElementOverlay(

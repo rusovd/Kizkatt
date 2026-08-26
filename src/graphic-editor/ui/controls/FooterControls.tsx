@@ -271,7 +271,9 @@ function EditorSettingsMenu({
   const {
     allVisiblePanelsPinned,
     autohideToolbar,
+    colorMode,
     setAutohideToolbar,
+    setColorMode,
     toggleVisiblePanelsPinned
   } = useGraphicEditorSettings();
   const { strings } = useI18n();
@@ -332,6 +334,29 @@ function EditorSettingsMenu({
           : strings.settings.enableAutohide}
       </SettingsCheckButton>
       <div className="kizkatt-menu-divider" />
+      <div className="kizkatt-color-mode-settings-row">
+        <span>{strings.settings.colorMode}</span>
+        <div
+          className="kizkatt-theme-toggle kizkatt-color-mode-toggle"
+          role="group"
+          aria-label={strings.settings.colorMode}
+          title={strings.settings.tooltips.colorMode}
+        >
+          {(["hex", "cmyk", "rgba"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              data-no-panel-drag
+              aria-label={mode === "rgba" ? "RGB/A" : mode.toUpperCase()}
+              className={colorMode === mode ? "is-active" : undefined}
+              onPointerDown={stopPanelDrag}
+              onClick={() => setColorMode(mode)}
+            >
+              {mode === "rgba" ? "RGB/A" : mode.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="kizkatt-grid-settings-row">
         <span>{strings.mainMenu.gridUnits}</span>
         <div

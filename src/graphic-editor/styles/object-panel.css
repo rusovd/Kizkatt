@@ -59,6 +59,14 @@
   gap: 4px;
 }
 
+.kizkatt-object-panel--horizontal
+  .kizkatt-object-feature--layers
+  .kizkatt-feature-group-content {
+  display: grid;
+  grid-template-columns: repeat(2, 24px);
+  grid-template-rows: repeat(2, 24px);
+}
+
 .kizkatt-object-panel-stack {
   display: grid;
   gap: 2px;
@@ -168,11 +176,19 @@
 .kizkatt-object-field--stroke-width .kizkatt-object-field-control {
   width: 132px;
   height: 20px;
-  grid-template-columns: minmax(0, 1fr) auto 28px;
+  grid-template-columns: minmax(0, 1fr) auto 28px 28px;
   gap: 0;
   border: 1px solid var(--kizkatt-border);
   border-radius: 4px;
   background: var(--kizkatt-control-bg);
+}
+
+.kizkatt-line-style-row {
+  width: 132px;
+}
+
+.kizkatt-line-style-row .kizkatt-object-select-field--stroke-style select {
+  width: 100%;
 }
 
 .kizkatt-object-field--stroke-width .kizkatt-object-field-control:focus-within {
@@ -190,7 +206,7 @@
   height: 18px;
 }
 
-.kizkatt-object-field--stroke-width select {
+.kizkatt-stroke-width-preset-control select {
   box-sizing: border-box;
   width: 28px;
   height: 18px;
@@ -220,12 +236,27 @@
   height: 14px;
 }
 
-.kizkatt-object-field--stroke-width select:focus-visible {
+.kizkatt-stroke-width-preset-control select:focus-visible {
   outline: 0;
 }
 
-.kizkatt-object-field--stroke-width select option {
+.kizkatt-stroke-width-preset-control select option {
   color: var(--kizkatt-text-secondary);
+}
+
+.kizkatt-stroke-none-button {
+  display: grid;
+  width: 28px;
+  height: 100%;
+  place-items: center;
+  border-left: 1px solid var(--kizkatt-divider);
+  color: var(--kizkatt-text-secondary);
+  cursor: pointer;
+}
+
+.kizkatt-stroke-none-button .kizkatt-tool-icon {
+  width: 12px;
+  height: 12px;
 }
 
 .kizkatt-object-line-settings {
@@ -295,6 +326,7 @@
 }
 
 .kizkatt-line-settings-row > select,
+.kizkatt-line-settings-row > input,
 .kizkatt-line-settings-number-control,
 .kizkatt-line-settings-color-control {
   box-sizing: border-box;
@@ -310,6 +342,22 @@
 
 .kizkatt-line-settings-row > select {
   padding: 0 24px 0 7px;
+}
+
+.kizkatt-line-settings-row > input {
+  padding: 0 7px;
+  outline: 0;
+}
+
+.kizkatt-line-settings-label-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kizkatt-line-settings-label-with-icon .kizkatt-tool-icon {
+  width: 15px;
+  height: 15px;
 }
 
 .kizkatt-line-settings-number-control {
@@ -476,7 +524,7 @@
 
 .kizkatt-object-panel--vertical .kizkatt-object-field--stroke-width input,
 .kizkatt-object-panel--vertical .kizkatt-stroke-width-preset-control,
-.kizkatt-object-panel--vertical .kizkatt-object-field--stroke-width select {
+.kizkatt-object-panel--vertical .kizkatt-stroke-width-preset-control select {
   height: 26px;
 }
 
@@ -523,7 +571,8 @@
 
 .kizkatt-object-panel--vertical .kizkatt-object-feature--line .kizkatt-object-panel-stack,
 .kizkatt-object-panel--vertical .kizkatt-object-feature--line .kizkatt-object-select-field select,
-.kizkatt-object-panel--vertical .kizkatt-object-feature--line .kizkatt-object-field-control {
+.kizkatt-object-panel--vertical .kizkatt-object-feature--line .kizkatt-object-field-control,
+.kizkatt-object-panel--vertical .kizkatt-line-style-row {
   width: 100%;
 }
 
@@ -535,6 +584,15 @@
 .kizkatt-object-feature--mirror .kizkatt-feature-group-content,
 .kizkatt-object-feature--edges .kizkatt-feature-group-content {
   flex-direction: row;
+}
+
+.kizkatt-object-panel--horizontal
+  .kizkatt-object-feature--mirror
+  .kizkatt-feature-group-content,
+.kizkatt-object-panel--horizontal
+  .kizkatt-object-feature--edges
+  .kizkatt-feature-group-content {
+  flex-direction: column;
 }
 
 .kizkatt-floating-panel--object-panel.is-resized > .kizkatt-object-panel {

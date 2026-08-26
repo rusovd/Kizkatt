@@ -46,7 +46,7 @@ export {
   SINGLE_SELECTION_COUNT
 } from "kizkatt-graphic-engine";
 
-export const COLOR_PANEL_COLUMN_COUNT = 5;
+export const COLOR_PANEL_COLUMN_COUNT = 8;
 export const GRID_CROSS_MIN_SIZE = 1.25;
 export const GRID_CROSS_MAX_SIZE = 3;
 export const GRID_CROSS_CELL_RATIO = 0.11;

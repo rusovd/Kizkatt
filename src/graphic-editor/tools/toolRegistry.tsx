@@ -11,6 +11,7 @@ import {
   ImageIcon,
   LineIcon,
   NodeEditIcon,
+  PolylineIcon,
   RectangleIcon,
   SelectionIcon,
   TextIcon,
@@ -27,6 +28,7 @@ export type ToolLabelKey =
   | "image"
   | "line"
   | "nodeEdit"
+  | "polyline"
   | "rectangle"
   | "select"
   | "text";
@@ -37,7 +39,7 @@ export type ToolDefinition = {
   labelKey: ToolLabelKey;
   submenu?: "line" | "shape";
   shortcut?: string;
-  showsStylePanel?: boolean;
+  showsStylingPanel?: boolean;
 };
 
 export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
@@ -46,7 +48,7 @@ export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
     labelKey: "arrow",
     icon: ArrowIcon,
     shortcut: "5",
-    showsStylePanel: true,
+    showsStylingPanel: true,
     submenu: "line"
   },
   diamond: {
@@ -54,7 +56,7 @@ export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
     labelKey: "diamond",
     icon: DiamondIcon,
     shortcut: "3",
-    showsStylePanel: true,
+    showsStylingPanel: true,
     submenu: "shape"
   },
   draw: {
@@ -62,7 +64,7 @@ export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
     labelKey: "draw",
     icon: FreedrawIcon,
     shortcut: "7",
-    showsStylePanel: true,
+    showsStylingPanel: true,
     submenu: "line"
   },
   ellipse: {
@@ -70,7 +72,7 @@ export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
     labelKey: "ellipse",
     icon: EllipseIcon,
     shortcut: "4",
-    showsStylePanel: true,
+    showsStylingPanel: true,
     submenu: "shape"
   },
   eraser: { id: "eraser", labelKey: "eraser", icon: EraserIcon, shortcut: "0" },
@@ -81,7 +83,7 @@ export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
     labelKey: "line",
     icon: LineIcon,
     shortcut: "6",
-    showsStylePanel: true,
+    showsStylingPanel: true,
     submenu: "line"
   },
   nodeEdit: {
@@ -89,12 +91,19 @@ export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
     labelKey: "nodeEdit",
     icon: NodeEditIcon
   },
+  polyline: {
+    id: "polyline",
+    labelKey: "polyline",
+    icon: PolylineIcon,
+    showsStylingPanel: true,
+    submenu: "line"
+  },
   rectangle: {
     id: "rectangle",
     labelKey: "rectangle",
     icon: RectangleIcon,
     shortcut: "2",
-    showsStylePanel: true,
+    showsStylingPanel: true,
     submenu: "shape"
   },
   select: {
@@ -114,16 +123,17 @@ export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
 export const TOOL_REGISTRY: ToolDefinition[] =
   Object.values(TOOL_REGISTRY_BY_ID);
 
-export const STYLE_TOOLS = new Set<Tool>(
-  TOOL_REGISTRY.filter((tool) => tool.showsStylePanel).map((tool) => tool.id)
+export const STYLING_TOOLS = new Set<Tool>(
+  TOOL_REGISTRY.filter((tool) => tool.showsStylingPanel).map((tool) => tool.id)
 );
 
-export const SELECTED_ELEMENT_STYLE_TOOLS = new Set<Tool>([
+export const SELECTED_ELEMENT_STYLING_TOOLS = new Set<Tool>([
   "rectangle",
   "diamond",
   "ellipse",
   "arrow",
   "line",
+  "polyline",
   "draw",
   "text"
 ]);

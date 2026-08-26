@@ -19,6 +19,7 @@ import {
   TOOLBAR_SUBMENU_HOLD_MS
 } from "./toolbarConstants";
 import { ToolbarButton } from "./ToolbarButton";
+import { ShapeIcon } from "../icons";
 
 type ToolbarSubmenuId = "line" | "shape";
 const TOOLBAR_FLOATING_PANEL_SOURCE = "toolbar";
@@ -297,6 +298,12 @@ export function Toolbar({
             openSubmenu={openSubmenu}
             onOpenSubmenuChange={openToolbarSubmenu}
             onActivateTool={onActivateTool}
+          />
+          <ToolbarButton
+            disabled
+            icon={ShapeIcon}
+            label={strings.toolbar.tools.shape}
+            tooltip={strings.toolbar.tooltips.shape}
           />
           <ToolGroupButton
             activeTool={activeTool}

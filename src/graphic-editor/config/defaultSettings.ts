@@ -1,13 +1,15 @@
 import { DEFAULT_STROKE_WIDTH } from "./constants";
 
 export const DEFAULT_GRAPHIC_EDITOR_SETTINGS = {
-  autohideToolbar: false
+  autohideToolbar: false,
+  colorMode: "hex"
 } as const;
 
 export const OBJECT_PANEL_UI_SETTINGS = {
   anglePrecision: 1,
   angleStep: 0.1,
   degreeSymbol: "°",
+  defaultScalePercent: 100,
   edgeOptions: ["sharp", "round"],
   fullPercentRatio: 1,
   gridMillimeterReference: 1,
@@ -28,7 +30,6 @@ export const OBJECT_PANEL_UI_SETTINGS = {
     "stitched",
     "dotted",
     "dashDot",
-    "wavy",
     "zigzag"
   ],
   strokeWidthPresets: {
@@ -43,7 +44,7 @@ export const OBJECT_PANEL_MIN_SIZE = {
   width: 172
 } as const;
 
-export const STYLE_PANEL_MIN_SIZE = {
+export const STYLING_PANEL_MIN_SIZE = {
   height: 195,
   width: 280
 } as const;

@@ -6,21 +6,26 @@ import {
   useMemo,
   useState
 } from "react";
+import type { ColorPickerMode } from "kizkatt-graphic-editor";
 
 import { DEFAULT_GRAPHIC_EDITOR_SETTINGS } from "../../config/defaultSettings";
 
 type GraphicEditorSettings = {
   autohideToolbar: boolean;
   allVisiblePanelsPinned: boolean;
+  colorMode: ColorPickerMode;
   isPanelPinned: (id: string) => boolean;
   registerVisiblePanel: (id: string, pinnable: boolean) => () => void;
   setAutohideToolbar: (value: boolean) => void;
+  setColorMode: (value: ColorPickerMode) => void;
   setPanelPinned: (id: string, pinned: boolean) => void;
   toggleVisiblePanelsPinned: () => void;
 };
 
 const AUTOHIDE_TOOLBAR_STORAGE_KEY =
   "kizkatt:graphic-editor:settings:autohide-toolbar";
+const COLOR_MODE_STORAGE_KEY =
+  "kizkatt:graphic-editor:settings:color-mode";
 const PINNED_PANELS_STORAGE_KEY =
   "kizkatt:graphic-editor:settings:pinned-panels";
 
@@ -43,6 +48,16 @@ function readStoredBoolean(key: string, fallback: boolean) {
 
 function storeBoolean(key: string, value: boolean) {
   window.localStorage.setItem(key, String(value));
+}
+
+function readStoredColorMode(): ColorPickerMode {
+  const storedValue = window.localStorage.getItem(COLOR_MODE_STORAGE_KEY);
+
+  return storedValue === "hex" ||
+    storedValue === "rgba" ||
+    storedValue === "cmyk"
+    ? storedValue
+    : DEFAULT_GRAPHIC_EDITOR_SETTINGS.colorMode;
 }
 
 function readStoredPanelIds() {
@@ -83,6 +98,7 @@ export function GraphicEditorSettingsProvider({
       DEFAULT_GRAPHIC_EDITOR_SETTINGS.autohideToolbar
     )
   );
+  const [colorMode, setColorModeState] = useState(readStoredColorMode);
   const [pinnedPanelIds, setPinnedPanelIds] = useState(readStoredPanelIds);
   const [visiblePinnablePanelIds, setVisiblePinnablePanelIds] = useState(
     () => new Set<string>()
@@ -151,11 +167,16 @@ export function GraphicEditorSettingsProvider({
     () => ({
       autohideToolbar,
       allVisiblePanelsPinned,
+      colorMode,
       isPanelPinned: (id) => pinnedPanelIds.has(id),
       registerVisiblePanel,
       setAutohideToolbar: (value) => {
         setAutohideToolbarState(value);
         storeBoolean(AUTOHIDE_TOOLBAR_STORAGE_KEY, value);
+      },
+      setColorMode: (value) => {
+        setColorModeState(value);
+        window.localStorage.setItem(COLOR_MODE_STORAGE_KEY, value);
       },
       setPanelPinned,
       toggleVisiblePanelsPinned
@@ -163,6 +184,7 @@ export function GraphicEditorSettingsProvider({
     [
       allVisiblePanelsPinned,
       autohideToolbar,
+      colorMode,
       pinnedPanelIds,
       registerVisiblePanel,
       setPanelPinned,

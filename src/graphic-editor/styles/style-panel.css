@@ -35,7 +35,7 @@
   width: max-content;
   max-width: calc(100vw - 24px);
   grid-template-rows: repeat(var(--kizkatt-panel-max-rows), auto);
-  grid-template-columns: 280px 198px;
+  grid-template-columns: minmax(280px, 1fr) 198px;
   grid-auto-columns: 198px;
   grid-auto-flow: column;
   align-items: center;
@@ -65,8 +65,12 @@
 .kizkatt-floating-panel--style-panel.is-resized > .kizkatt-style-panel {
   box-sizing: border-box;
   width: 100%;
-  height: 100%;
   overflow: visible;
+}
+
+.kizkatt-floating-panel--style-panel.is-resized.kizkatt-floating-panel--vertical
+  > .kizkatt-style-panel {
+  height: 100%;
 }
 
 @container kizkatt-style-panel (min-width: 260px) {
@@ -200,17 +204,22 @@
   margin-left: 0;
 }
 
-.kizkatt-style-panel--vertical
-  .kizkatt-style-feature--background
-  .kizkatt-special-color-swatches::before {
+.kizkatt-style-panel--horizontal .kizkatt-special-color-swatches::before {
   position: absolute;
-  top: 3px;
+  top: 2px;
   left: -8px;
   width: 1px;
-  height: 61px;
+  height: 16px;
   background: var(--kizkatt-divider);
   content: "";
   pointer-events: none;
+}
+
+.kizkatt-style-panel--vertical
+  .kizkatt-style-feature--background
+  .kizkatt-special-color-swatches::before {
+  top: 3px;
+  height: 61px;
 }
 
 .kizkatt-color-popover {
@@ -222,7 +231,7 @@
   display: grid;
   width: max-content;
   min-width: 420px;
-  grid-template-columns: minmax(164px, auto) 236px;
+  grid-template-columns: minmax(195px, auto) 236px;
   align-items: start;
   column-gap: 14px;
   row-gap: 12px;
@@ -242,7 +251,7 @@
 
 .kizkatt-color-popover-palettes {
   display: grid;
-  min-width: 164px;
+  min-width: 195px;
   align-content: start;
   gap: 8px;
 }
@@ -317,17 +326,17 @@
 
 .kizkatt-fill-control {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 6px;
 }
 
 .kizkatt-fill-control--with-path {
-  grid-template-columns: minmax(0, 1fr) 30px 44px;
+  grid-template-columns: minmax(0, 1fr) 30px;
 }
 
 .kizkatt-fill-control .kizkatt-segmented {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .kizkatt-fill-control > button {
@@ -376,8 +385,7 @@
 }
 
 .kizkatt-numeric-slider-control input[type="number"],
-.kizkatt-number-control input[type="number"],
-.kizkatt-fill-control input[type="number"] {
+.kizkatt-number-control input[type="number"] {
   box-sizing: border-box;
   width: 44px;
   height: 26px;
@@ -393,8 +401,7 @@
 }
 
 .kizkatt-numeric-slider-control input[type="number"]:focus-visible,
-.kizkatt-number-control input[type="number"]:focus-visible,
-.kizkatt-fill-control input[type="number"]:focus-visible {
+.kizkatt-number-control input[type="number"]:focus-visible {
   border-color: var(--kizkatt-selection);
 }
 

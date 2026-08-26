@@ -9,7 +9,11 @@ export const SHAPE_TOOL_GROUP: readonly Tool[] = [
   "ellipse"
 ];
 
-export const LINE_TOOL_GROUP: readonly Tool[] = ["draw", "line"];
+export const LINE_TOOL_GROUP: readonly Tool[] = [
+  "draw",
+  "polyline",
+  "line"
+];
 
 export const SINGLE_TOOL_ORDER: readonly Tool[] = [
   "hand",

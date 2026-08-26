@@ -33,7 +33,7 @@ import {
   type KizkattGraphicEditorCanvasViewModel,
   type KizkattGraphicEditorViewModel,
   type ObjectPanelProps,
-  type StylePanelProps,
+  type StylingPanelProps,
   type TextEditorProps
 } from "kizkatt-graphic-editor";
 import {
@@ -69,12 +69,12 @@ import { CanvasContextMenu } from "../ui/menus/CanvasContextMenu";
 import { FooterControls } from "../ui/controls/FooterControls";
 import { MainMenu } from "../ui/menus/MainMenu";
 import { ObjectPanel } from "../ui/panels/ObjectPanel";
-import { StylePanel } from "../ui/panels/StylePanel";
+import { StylingPanel } from "../ui/panels/StylePanel";
 import {
   ELEMENT_NAMING,
   ELEMENT_TOOL_BY_TYPE,
-  SELECTED_ELEMENT_STYLE_TOOLS,
-  STYLE_TOOLS
+  SELECTED_ELEMENT_STYLING_TOOLS,
+  STYLING_TOOLS
 } from "../tools/toolRegistry";
 import { Toolbar } from "../ui/controls/Toolbar";
 import { I18nProvider, useI18n } from "../i18n";
@@ -144,9 +144,9 @@ function TextEditor({
   );
 }
 
-function AppStylePanel(props: StylePanelProps) {
+function AppStylingPanel(props: StylingPanelProps) {
   return (
-    <StylePanel
+    <StylingPanel
       {...props}
       colorColumnCount={COLOR_PANEL_COLUMN_COUNT}
     />
@@ -179,6 +179,7 @@ function AppCanvas({
     infoOverlayItems,
     interaction,
     onContextMenu,
+    onDoubleClick,
     onPointerDown,
     onPointerLeave,
     onPointerMove,
@@ -211,6 +212,7 @@ function AppCanvas({
         } as CSSProperties
       }
       onPointerDown={onPointerDown}
+      onDoubleClick={onDoubleClick}
       onPointerLeave={onPointerLeave}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -316,7 +318,7 @@ function KizkattGraphicEditorView({
     imageInputBindings,
     selectionGeometryControls,
     state,
-    styleControls,
+    stylingControls,
     textEditing,
     toolControls,
     workspaceControls
@@ -336,14 +338,14 @@ function KizkattGraphicEditorView({
     !previewMode &&
     (!state.menuOpen || objectPanelPinned) &&
     Boolean(visibleSelectionGeometryControls);
-  const stylePanelIsRelevant =
-    STYLE_TOOLS.has(styleControls.activeTool) ||
-    (styleControls.selectedElements.length > EMPTY_COLLECTION_LENGTH &&
-      (styleControls.activeTool === DEFAULT_SELECT_TOOL ||
-        SELECTED_ELEMENT_STYLE_TOOLS.has(styleControls.activeTool)));
-  const showStylePanel =
+  const stylingPanelIsRelevant =
+    STYLING_TOOLS.has(stylingControls.activeTool) ||
+    (stylingControls.selectedElements.length > EMPTY_COLLECTION_LENGTH &&
+      (stylingControls.activeTool === DEFAULT_SELECT_TOOL ||
+        SELECTED_ELEMENT_STYLING_TOOLS.has(stylingControls.activeTool)));
+  const showStylingPanel =
     !previewMode &&
-    ((!state.menuOpen && stylePanelIsRelevant) ||
+    ((!state.menuOpen && stylingPanelIsRelevant) ||
       isPanelPinned("style-panel"));
 
   return (
@@ -380,7 +382,7 @@ function KizkattGraphicEditorView({
       {showObjectPanel && visibleSelectionGeometryControls && (
         <AppObjectPanel {...visibleSelectionGeometryControls} />
       )}
-      {showStylePanel && <AppStylePanel {...styleControls} />}
+      {showStylingPanel && <AppStylingPanel {...stylingControls} />}
       {textEditing && <TextEditor {...textEditing} />}
 
       {canvas}

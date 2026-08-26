@@ -20,6 +20,7 @@ import {
   AspectUnlockIcon,
   BringForwardIcon,
   BringToFrontIcon,
+  CloseIcon,
   DiameterIcon,
   DimensionHeightIcon,
   DimensionWidthIcon,
@@ -27,10 +28,10 @@ import {
   EdgeSharpIcon,
   DuplicateIcon,
   GlobeIcon,
-  LinkIcon,
   MirrorHorizontalIcon,
   MirrorVerticalIcon,
   PenNibIcon,
+  PasteIcon,
   RotationAngleIcon,
   SendBackwardIcon,
   SendToBackIcon,
@@ -52,25 +53,12 @@ const STROKE_STYLE_LABEL_KEYS = {
   dashed: "strokeStyleDashed",
   dashDot: "strokeStyleDashDot",
   dotted: "strokeStyleDotted",
+  handDrawn: "sloppinessArtist",
   solid: "strokeStyleSolid",
   stitched: "strokeStyleStitched",
-  wavy: "strokeStyleWavy",
   zigzag: "strokeStyleZigzag"
 } as const;
-
-const SLOPPINESS_OPTIONS = [
-  "architect",
-  "artist",
-  "cartoonist",
-  "double"
-] as const;
-
-const SLOPPINESS_LABEL_KEYS = {
-  architect: "sloppinessArchitect",
-  artist: "sloppinessArtist",
-  cartoonist: "sloppinessCartoonist",
-  double: "sloppinessDouble"
-} as const;
+type StrokeStyleSelectValue = keyof typeof STROKE_STYLE_LABEL_KEYS;
 
 const LAYER_ACTIONS = [
   { action: "back", labelKey: "sendToBack", icon: SendToBackIcon },
@@ -81,8 +69,7 @@ const LAYER_ACTIONS = [
 
 const ELEMENT_ACTIONS = [
   { action: "duplicate", labelKey: "duplicate", icon: DuplicateIcon },
-  { action: "delete", labelKey: "delete", icon: TrashIcon },
-  { action: "link", labelKey: "link", icon: LinkIcon }
+  { action: "delete", labelKey: "delete", icon: TrashIcon }
 ] as const;
 
 function clamp(value: number, min: number, max: number) {
@@ -255,8 +242,10 @@ function StrokeWidthField({
   onChange,
   onCommit,
   onPresetSelect,
+  onRemove,
   presetLabel,
   presetOptions,
+  removeLabel,
   step,
   suffix,
   title,
@@ -266,15 +255,17 @@ function StrokeWidthField({
   onChange: (value: string) => void;
   onCommit: () => void;
   onPresetSelect: (value: string) => void;
+  onRemove: () => void;
   presetLabel: string;
   presetOptions: ReadonlyArray<{ label: string; value: string }>;
+  removeLabel: string;
   step: number;
   suffix: string;
   title: string;
   value: string;
 }) {
   return (
-    <label
+    <div
       className="kizkatt-object-field kizkatt-object-field--stroke-width"
       title={title}
     >
@@ -288,35 +279,56 @@ function StrokeWidthField({
           onChange={(event) => onChange(event.target.value)}
         />
         <small>{suffix}</small>
-        <span className="kizkatt-stroke-width-preset-control">
-          <select
-            aria-label={presetLabel}
-            value=""
-            title={presetLabel}
-            onChange={(event) => {
-              onPresetSelect(event.target.value);
-              event.target.value = "";
-            }}
-          >
-            <option disabled hidden value="" />
-            {presetOptions.map((option) => (
-              <option
-                key={option.label}
-                value={option.value}
-              >
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <span
-            aria-hidden="true"
-            className="kizkatt-stroke-width-preset-chevron"
-          >
-            {DiameterIcon}
-          </span>
-        </span>
+        <StrokeWidthPresetSelect
+          label={presetLabel}
+          options={presetOptions}
+          onSelect={onPresetSelect}
+        />
+        <button
+          type="button"
+          className="kizkatt-stroke-none-button"
+          aria-label={removeLabel}
+          title={removeLabel}
+          onClick={onRemove}
+        >
+          {CloseIcon}
+        </button>
       </span>
-    </label>
+    </div>
+  );
+}
+
+function StrokeWidthPresetSelect({
+  label,
+  onSelect,
+  options
+}: {
+  label: string;
+  onSelect: (value: string) => void;
+  options: ReadonlyArray<{ label: string; value: string }>;
+}) {
+  return (
+    <span className="kizkatt-stroke-width-preset-control">
+      <select
+        aria-label={label}
+        value=""
+        title={label}
+        onChange={(event) => {
+          onSelect(event.target.value);
+          event.target.value = "";
+        }}
+      >
+        <option disabled hidden value="" />
+        {options.map((option) => (
+          <option key={option.label} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <span aria-hidden="true" className="kizkatt-stroke-width-preset-chevron">
+        {DiameterIcon}
+      </span>
+    </span>
   );
 }
 
@@ -328,6 +340,7 @@ export function ObjectPanel({
   onGeometryChangeEnd,
   onLayerAction,
   onMirror,
+  onPaste,
   onStyleChange,
   onStyleChangeEnd,
   selectedElements,
@@ -378,40 +391,67 @@ export function ObjectPanel({
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [lineSettingsOpen]);
-  const baseCenter = {
-    x: geometry.baseBounds.x + geometry.baseBounds.width / 2,
-    y: geometry.baseBounds.y + geometry.baseBounds.height / 2
-  };
-  const canvasCenter = {
-    x: geometry.bounds.x + geometry.bounds.width / 2,
-    y: geometry.bounds.y + geometry.bounds.height / 2
-  };
+  const baseCenter = geometry
+    ? {
+        x: geometry.baseBounds.x + geometry.baseBounds.width / 2,
+        y: geometry.baseBounds.y + geometry.baseBounds.height / 2
+      }
+    : { x: 0, y: 0 };
+  const canvasCenter = geometry
+    ? {
+        x: geometry.bounds.x + geometry.bounds.width / 2,
+        y: geometry.bounds.y + geometry.bounds.height / 2
+      }
+    : { x: 0, y: 0 };
   const widthRatio =
-    geometry.widthPercent /
-    Math.max(OBJECT_PANEL_UI_SETTINGS.minScalePercent, geometry.heightPercent);
+    (geometry?.widthPercent ?? OBJECT_PANEL_UI_SETTINGS.defaultScalePercent) /
+    Math.max(
+      OBJECT_PANEL_UI_SETTINGS.minScalePercent,
+      geometry?.heightPercent ?? OBJECT_PANEL_UI_SETTINGS.defaultScalePercent
+    );
   const heightRatio =
-    geometry.heightPercent /
-    Math.max(OBJECT_PANEL_UI_SETTINGS.minScalePercent, geometry.widthPercent);
+    (geometry?.heightPercent ?? OBJECT_PANEL_UI_SETTINGS.defaultScalePercent) /
+    Math.max(
+      OBJECT_PANEL_UI_SETTINGS.minScalePercent,
+      geometry?.widthPercent ?? OBJECT_PANEL_UI_SETTINGS.defaultScalePercent
+    );
   const edgeStyle = style.edgeStyle ?? "round";
   const strokeStyle = style.strokeStyle ?? DEFAULT_STROKE_STYLE;
   const strokeWidth = style.strokeWidth ?? DEFAULT_STROKE_WIDTH;
   const sloppiness = style.sloppiness ?? DEFAULT_SELECTED_SLOPPINESS;
-  const strokeStyleOptions = OBJECT_PANEL_UI_SETTINGS.strokeStyleOptions.map((option) => ({
+  const strokeStyleValue: StrokeStyleSelectValue =
+    (sloppiness === "artist" || sloppiness === "cartoonist") &&
+    strokeStyle === "solid"
+      ? "handDrawn"
+      : strokeStyle === "wavy"
+        ? "zigzag"
+        : strokeStyle;
+  const strokeStyleOptionValues: readonly StrokeStyleSelectValue[] = [
+    ...OBJECT_PANEL_UI_SETTINGS.strokeStyleOptions,
+    "handDrawn"
+  ];
+  const strokeStyleOptions: ReadonlyArray<{
+    label: string;
+    value: StrokeStyleSelectValue;
+  }> = strokeStyleOptionValues.map((option) => ({
     label: strings.objectPanel[STROKE_STYLE_LABEL_KEYS[option]],
     value: option
   }));
-  const sloppinessOptions = SLOPPINESS_OPTIONS.map((option) => ({
-    label: strings.objectPanel[SLOPPINESS_LABEL_KEYS[option]],
-    value: option
-  }));
+  const updateStrokeStyle = (value: StrokeStyleSelectValue) => {
+    updateStyle(
+      value === "handDrawn"
+        ? { sloppiness: "artist", strokeLineCount: 1, strokeStyle: "solid" }
+        : {
+            edgeStyle:
+              strokeStyle === "wavy" && value === "zigzag"
+                ? "round"
+                : style.edgeStyle,
+            sloppiness: "architect",
+            strokeStyle: value
+          }
+    );
+  };
   const strokeWidthPresetOptions = [
-    {
-      label: strings.objectPanel.strokeWidthPresetNone,
-      value: formatNumber(
-        toDisplayUnit(OBJECT_PANEL_UI_SETTINGS.minStrokeWidth),
-        precision
-      )
-    },
     {
       label: strings.objectPanel.strokeWidthPresetContour,
       value: formatNumber(
@@ -520,7 +560,11 @@ export function ObjectPanel({
       pinnable
       reopenKey={selectedElements.map((element) => element.id).join(":")}
       resizable
-      title={strings.objectPanel.objectGeometry}
+      title={
+        geometry
+          ? strings.objectPanel.objectGeometry
+          : strings.objectPanel.lineDefaults
+      }
       topDock
     >
       {({ actions, chrome, orientation }) => (
@@ -533,162 +577,166 @@ export function ObjectPanel({
         >
           {chrome}
           <div className="kizkatt-object-panel-content">
-            <FeatureGroup
-              className="kizkatt-object-feature--position"
-              label={
-                orientation === "vertical"
-                  ? strings.objectPanel.position
-                  : undefined
-              }
-            >
-              <div className="kizkatt-object-panel-stack">
-                <ObjectNumberField
-                  className="kizkatt-object-field--position"
-                  label={strings.objectPanel.centerX}
-                  title={
-                    useCanvasCoordinates
-                      ? strings.objectPanel.tooltips.centerXGlobal
-                      : strings.objectPanel.tooltips.centerX
+            {geometry && (
+              <>
+                <FeatureGroup
+                  className="kizkatt-object-feature--position"
+                  label={
+                    orientation === "vertical"
+                      ? strings.objectPanel.position
+                      : undefined
                   }
-                  step={OBJECT_PANEL_UI_SETTINGS.positionStep}
-                  suffix={unit}
-                  value={formatNumber(
-                    toDisplayUnit(
+                >
+                  <div className="kizkatt-object-panel-stack">
+                    <ObjectNumberField
+                      className="kizkatt-object-field--position"
+                      label={strings.objectPanel.centerX}
+                      title={
+                        useCanvasCoordinates
+                          ? strings.objectPanel.tooltips.centerXGlobal
+                          : strings.objectPanel.tooltips.centerX
+                      }
+                      step={OBJECT_PANEL_UI_SETTINGS.positionStep}
+                      suffix={unit}
+                      value={formatNumber(
+                        toDisplayUnit(
+                          useCanvasCoordinates
+                            ? canvasCenter.x
+                            : geometry.offsetX
+                        ),
+                        precision
+                      )}
+                      onChange={(value) => updateOffset("offsetX", value)}
+                      onCommit={onGeometryChangeEnd}
+                    />
+                    <ObjectNumberField
+                      className="kizkatt-object-field--position"
+                      label={strings.objectPanel.centerY}
+                      title={
+                        useCanvasCoordinates
+                          ? strings.objectPanel.tooltips.centerYGlobal
+                          : strings.objectPanel.tooltips.centerY
+                      }
+                      step={OBJECT_PANEL_UI_SETTINGS.positionStep}
+                      suffix={unit}
+                      value={formatNumber(
+                        toDisplayUnit(
+                          useCanvasCoordinates
+                            ? canvasCenter.y
+                            : geometry.offsetY
+                        ),
+                        precision
+                      )}
+                      onChange={(value) => updateOffset("offsetY", value)}
+                      onCommit={onGeometryChangeEnd}
+                    />
+                  </div>
+                  <IconButton
+                    active={useCanvasCoordinates}
+                    title={
                       useCanvasCoordinates
-                        ? canvasCenter.x
-                        : geometry.offsetX
-                    ),
-                    precision
-                  )}
-                  onChange={(value) => updateOffset("offsetX", value)}
-                  onCommit={onGeometryChangeEnd}
-                />
-                <ObjectNumberField
-                  className="kizkatt-object-field--position"
-                  label={strings.objectPanel.centerY}
-                  title={
-                    useCanvasCoordinates
-                      ? strings.objectPanel.tooltips.centerYGlobal
-                      : strings.objectPanel.tooltips.centerY
+                        ? strings.objectPanel.coordinatesGlobal
+                        : strings.objectPanel.coordinatesRelative
+                    }
+                    onClick={() => setUseCanvasCoordinates((value) => !value)}
+                  >
+                    {GlobeIcon}
+                  </IconButton>
+                </FeatureGroup>
+                <FeatureGroup
+                  className="kizkatt-object-feature--scale"
+                  label={
+                    orientation === "vertical"
+                      ? strings.objectPanel.size
+                      : undefined
                   }
-                  step={OBJECT_PANEL_UI_SETTINGS.positionStep}
-                  suffix={unit}
-                  value={formatNumber(
-                    toDisplayUnit(
-                      useCanvasCoordinates
-                        ? canvasCenter.y
-                        : geometry.offsetY
-                    ),
-                    precision
-                  )}
-                  onChange={(value) => updateOffset("offsetY", value)}
-                  onCommit={onGeometryChangeEnd}
-                />
-              </div>
-              <IconButton
-                active={useCanvasCoordinates}
-                title={
-                  useCanvasCoordinates
-                    ? strings.objectPanel.coordinatesGlobal
-                    : strings.objectPanel.coordinatesRelative
-                }
-                onClick={() => setUseCanvasCoordinates((value) => !value)}
-              >
-                {GlobeIcon}
-              </IconButton>
-            </FeatureGroup>
-            <FeatureGroup
-              className="kizkatt-object-feature--scale"
-              label={
-                orientation === "vertical"
-                  ? strings.objectPanel.size
-                  : undefined
-              }
-            >
-              <div className="kizkatt-object-panel-stack">
-                <ObjectNumberField
-                  icon={DimensionWidthIcon}
-                  label={strings.objectPanel.width}
-                  title={strings.objectPanel.tooltips.width}
-                  step={OBJECT_PANEL_UI_SETTINGS.percentStep}
-                  suffix="%"
-                  value={formatNumber(
-                    geometry.widthPercent,
-                    OBJECT_PANEL_UI_SETTINGS.percentPrecision
-                  )}
-                  onChange={(value) => updateScale("widthPercent", value)}
-                  onCommit={onGeometryChangeEnd}
-                />
-                <ObjectNumberField
-                  icon={DimensionHeightIcon}
-                  label={strings.objectPanel.height}
-                  title={strings.objectPanel.tooltips.height}
-                  step={OBJECT_PANEL_UI_SETTINGS.percentStep}
-                  suffix="%"
-                  value={formatNumber(
-                    geometry.heightPercent,
-                    OBJECT_PANEL_UI_SETTINGS.percentPrecision
-                  )}
-                  onChange={(value) => updateScale("heightPercent", value)}
-                  onCommit={onGeometryChangeEnd}
-                />
-              </div>
-              <IconButton
-                active={aspectLocked}
-                title={
-                  aspectLocked
-                    ? strings.objectPanel.aspectLocked
-                    : strings.objectPanel.aspectUnlocked
-                }
-                onClick={() => setAspectLocked((value) => !value)}
-              >
-                {aspectLocked ? AspectLockIcon : AspectUnlockIcon}
-              </IconButton>
-            </FeatureGroup>
-            <FeatureGroup
-              className="kizkatt-object-feature--angle"
-              label={
-                orientation === "vertical"
-                  ? strings.objectPanel.rotation
-                  : undefined
-              }
-            >
-              <ObjectNumberField
-                className="kizkatt-object-field--angle"
-                icon={RotationAngleIcon}
-                label={strings.objectPanel.angle}
-                title={strings.objectPanel.tooltips.angle}
-                step={OBJECT_PANEL_UI_SETTINGS.angleStep}
-                suffix={OBJECT_PANEL_UI_SETTINGS.degreeSymbol}
-                value={formatNumber(
-                  geometry.angle,
-                  OBJECT_PANEL_UI_SETTINGS.anglePrecision
-                )}
-                onChange={updateAngle}
-                onCommit={onGeometryChangeEnd}
-              />
-            </FeatureGroup>
-            <FeatureGroup
-              className="kizkatt-object-feature--mirror"
-              label={
-                orientation === "vertical"
-                  ? strings.objectPanel.mirroring
-                  : undefined
-              }
-            >
-              <IconButton
-                title={strings.objectPanel.tooltips.mirrorHorizontal}
-                onClick={() => onMirror(HORIZONTAL_MIRROR_AXIS)}
-              >
-                {MirrorHorizontalIcon}
-              </IconButton>
-              <IconButton
-                title={strings.objectPanel.tooltips.mirrorVertical}
-                onClick={() => onMirror(VERTICAL_MIRROR_AXIS)}
-              >
-                {MirrorVerticalIcon}
-              </IconButton>
-            </FeatureGroup>
+                >
+                  <div className="kizkatt-object-panel-stack">
+                    <ObjectNumberField
+                      icon={DimensionWidthIcon}
+                      label={strings.objectPanel.width}
+                      title={strings.objectPanel.tooltips.width}
+                      step={OBJECT_PANEL_UI_SETTINGS.percentStep}
+                      suffix="%"
+                      value={formatNumber(
+                        geometry.widthPercent,
+                        OBJECT_PANEL_UI_SETTINGS.percentPrecision
+                      )}
+                      onChange={(value) => updateScale("widthPercent", value)}
+                      onCommit={onGeometryChangeEnd}
+                    />
+                    <ObjectNumberField
+                      icon={DimensionHeightIcon}
+                      label={strings.objectPanel.height}
+                      title={strings.objectPanel.tooltips.height}
+                      step={OBJECT_PANEL_UI_SETTINGS.percentStep}
+                      suffix="%"
+                      value={formatNumber(
+                        geometry.heightPercent,
+                        OBJECT_PANEL_UI_SETTINGS.percentPrecision
+                      )}
+                      onChange={(value) => updateScale("heightPercent", value)}
+                      onCommit={onGeometryChangeEnd}
+                    />
+                  </div>
+                  <IconButton
+                    active={aspectLocked}
+                    title={
+                      aspectLocked
+                        ? strings.objectPanel.aspectLocked
+                        : strings.objectPanel.aspectUnlocked
+                    }
+                    onClick={() => setAspectLocked((value) => !value)}
+                  >
+                    {aspectLocked ? AspectLockIcon : AspectUnlockIcon}
+                  </IconButton>
+                </FeatureGroup>
+                <FeatureGroup
+                  className="kizkatt-object-feature--angle"
+                  label={
+                    orientation === "vertical"
+                      ? strings.objectPanel.rotation
+                      : undefined
+                  }
+                >
+                  <ObjectNumberField
+                    className="kizkatt-object-field--angle"
+                    icon={RotationAngleIcon}
+                    label={strings.objectPanel.angle}
+                    title={strings.objectPanel.tooltips.angle}
+                    step={OBJECT_PANEL_UI_SETTINGS.angleStep}
+                    suffix={OBJECT_PANEL_UI_SETTINGS.degreeSymbol}
+                    value={formatNumber(
+                      geometry.angle,
+                      OBJECT_PANEL_UI_SETTINGS.anglePrecision
+                    )}
+                    onChange={updateAngle}
+                    onCommit={onGeometryChangeEnd}
+                  />
+                </FeatureGroup>
+                <FeatureGroup
+                  className="kizkatt-object-feature--mirror"
+                  label={
+                    orientation === "vertical"
+                      ? strings.objectPanel.mirroring
+                      : undefined
+                  }
+                >
+                  <IconButton
+                    title={strings.objectPanel.tooltips.mirrorHorizontal}
+                    onClick={() => onMirror(HORIZONTAL_MIRROR_AXIS)}
+                  >
+                    {MirrorHorizontalIcon}
+                  </IconButton>
+                  <IconButton
+                    title={strings.objectPanel.tooltips.mirrorVertical}
+                    onClick={() => onMirror(VERTICAL_MIRROR_AXIS)}
+                  >
+                    {MirrorVerticalIcon}
+                  </IconButton>
+                </FeatureGroup>
+              </>
+            )}
             <FeatureGroup
               className="kizkatt-object-feature--edges"
               label={
@@ -730,28 +778,35 @@ export function ObjectPanel({
                   {PenNibIcon}
                 </IconButton>
                 <div className="kizkatt-object-panel-stack">
-                  <ObjectSelectField
-                    className="kizkatt-object-select-field--stroke-style"
-                    label={strings.objectPanel.strokeStyle}
-                    title={strings.objectPanel.tooltips.strokeStyle}
-                    value={strokeStyle}
-                    options={strokeStyleOptions}
-                    onChange={(value) => updateStyle({ strokeStyle: value })}
-                  />
+                  <div className="kizkatt-line-style-row">
+                    <ObjectSelectField
+                      className="kizkatt-object-select-field--stroke-style"
+                      label={strings.objectPanel.strokeStyle}
+                      title={strings.objectPanel.tooltips.strokeStyle}
+                      value={strokeStyleValue}
+                      options={strokeStyleOptions}
+                      onChange={updateStrokeStyle}
+                    />
+                  </div>
                   <StrokeWidthField
                     label={strings.objectPanel.strokeWidth}
                     title={strings.objectPanel.tooltips.strokeWidth}
                     step={OBJECT_PANEL_UI_SETTINGS.positionStep}
                     suffix={unit}
                     value={formatNumber(toDisplayUnit(strokeWidth), precision)}
-                    presetLabel={strings.objectPanel.strokeWidthPresetSelect}
-                    presetOptions={strokeWidthPresetOptions}
                     onChange={updateStrokeWidth}
                     onCommit={onStyleChangeEnd}
                     onPresetSelect={(value) => {
                       updateStrokeWidth(value);
                       onStyleChangeEnd();
                     }}
+                    onRemove={() => {
+                      updateStrokeWidth("0");
+                      onStyleChangeEnd();
+                    }}
+                    presetLabel={strings.objectPanel.strokeWidthPresetSelect}
+                    presetOptions={strokeWidthPresetOptions}
+                    removeLabel={strings.objectPanel.removeStroke}
                   />
                 </div>
                 {lineSettingsOpen && (
@@ -769,67 +824,62 @@ export function ObjectPanel({
                       onStyleChange(patch, { transient: true })
                     }
                     onStrokeWidthChange={updateStrokeWidth}
+                    onStrokeStyleChange={updateStrokeStyle}
                     onStyleChange={updateStyle}
                     onStyleChangeEnd={onStyleChangeEnd}
                   />
                 )}
               </div>
             </FeatureGroup>
-            <FeatureGroup
-              className="kizkatt-object-feature--sloppiness"
-              label={
-                orientation === "vertical"
-                  ? strings.objectPanel.sloppiness
-                  : undefined
-              }
-            >
-              <ObjectSelectField
-                className="kizkatt-object-select-field--sloppiness"
-                label={strings.objectPanel.sloppiness}
-                title={strings.objectPanel.tooltips.sloppiness}
-                value={sloppiness}
-                options={sloppinessOptions}
-                onChange={(value) => updateStyle({ sloppiness: value })}
-              />
-            </FeatureGroup>
-            <FeatureGroup
-              className="kizkatt-object-feature--layers"
-              label={
-                orientation === "vertical"
-                  ? strings.stylePanel.layers
-                  : undefined
-              }
-            >
-              {LAYER_ACTIONS.map(({ action, labelKey, icon }) => (
-                <IconButton
-                  key={action}
-                  ariaLabel={strings.stylePanel[labelKey]}
-                  title={strings.stylePanel.tooltips[labelKey]}
-                  onClick={() => onLayerAction(action)}
+            {selectedElements.length > 0 && (
+              <>
+                <FeatureGroup
+                  className="kizkatt-object-feature--layers"
+                  label={
+                    orientation === "vertical"
+                      ? strings.stylePanel.layers
+                      : undefined
+                  }
                 >
-                  {icon}
-                </IconButton>
-              ))}
-            </FeatureGroup>
-            <FeatureGroup
-              className="kizkatt-object-feature--actions"
-              label={
-                orientation === "vertical"
-                  ? strings.stylePanel.actions
-                  : undefined
-              }
-            >
-              {ELEMENT_ACTIONS.map(({ action, labelKey, icon }) => (
-                <IconButton
-                  key={action}
-                  ariaLabel={strings.stylePanel[labelKey]}
-                  title={strings.stylePanel.tooltips[labelKey]}
-                  onClick={() => onAction(action)}
+                  {LAYER_ACTIONS.map(({ action, labelKey, icon }) => (
+                    <IconButton
+                      key={action}
+                      ariaLabel={strings.stylePanel[labelKey]}
+                      title={strings.stylePanel.tooltips[labelKey]}
+                      onClick={() => onLayerAction(action)}
+                    >
+                      {icon}
+                    </IconButton>
+                  ))}
+                </FeatureGroup>
+                <FeatureGroup
+                  className="kizkatt-object-feature--actions"
+                  label={
+                    orientation === "vertical"
+                      ? strings.stylePanel.actions
+                      : undefined
+                  }
                 >
-                  {icon}
-                </IconButton>
-              ))}
-            </FeatureGroup>
+                  {ELEMENT_ACTIONS.map(({ action, labelKey, icon }) => (
+                    <IconButton
+                      key={action}
+                      ariaLabel={strings.stylePanel[labelKey]}
+                      title={strings.stylePanel.tooltips[labelKey]}
+                      onClick={() => onAction(action)}
+                    >
+                      {icon}
+                    </IconButton>
+                  ))}
+                  <IconButton
+                    ariaLabel={strings.stylePanel.paste}
+                    title={strings.stylePanel.tooltips.paste}
+                    onClick={() => void onPaste()}
+                  >
+                    {PasteIcon}
+                  </IconButton>
+                </FeatureGroup>
+              </>
+            )}
           </div>
           {actions}
         </div>

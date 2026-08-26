@@ -130,6 +130,136 @@ export const ShovelIcon = createIcon(
   </g>
 );
 
+export const OpacityIcon = createIcon(
+  <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <circle cx="8.5" cy="8.5" r="6" />
+    <circle cx="15.5" cy="15.5" r="6" />
+    <path d="M10.2 8.9l4.9 4.9" />
+    <path d="M8.9 10.2l4.9 4.9" />
+    <path d="M8.3 12.3l3.4 3.4" />
+    <path d="M12.3 8.3l3.4 3.4" />
+  </g>,
+);
+
+export const PolylineIcon = createIcon(
+  <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M2.5 16.5l7 1.8 1.2-5.4 5.2 2.6-3.2-7.1 3.3 3.2 4.9-6.1" />
+    <circle cx="2.5" cy="16.5" r=".9" fill="currentColor" />
+    <circle cx="9.5" cy="18.3" r=".9" fill="currentColor" />
+    <circle cx="10.7" cy="12.9" r=".9" fill="currentColor" />
+    <circle cx="15.9" cy="15.5" r=".9" fill="currentColor" />
+    <circle cx="12.7" cy="8.4" r=".9" fill="currentColor" />
+    <circle cx="16" cy="11.6" r=".9" fill="currentColor" />
+    <circle cx="20.9" cy="5.5" r=".9" fill="currentColor" />
+  </g>,
+);
+
+export const TextureIcon = createIcon(
+  <g>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path fill="currentColor" d="M4 4h3.1l.8 1.1-.7 1.4-2.9.2-.8-1.2z" />
+    <path fill="currentColor" d="M8.5 4h2.2l1 .8-.5 1.3-2.3.4-1-.9z" />
+    <path fill="currentColor" d="M12.5 4h3.7l1.1.8-.4 2-3.8.2-1.2-1.4z" />
+    <path fill="currentColor" d="M18 4h2l.7.9-.3 2.3-2.7-.1-.5-1.4z" />
+    <path fill="currentColor" d="M4 7.6h3.4l1.2 1.2-.5 2-3.6.2-1.1-1.3z" />
+    <path fill="currentColor" d="M9.1 7.3h2.8l1.2 1-.7 2.2-2.9.4-1.1-1.5z" />
+    <path fill="currentColor" d="M13.4 7.8h2.4l1.3 1.1-.5 1.7-2.7.4-1.1-1.2z" />
+    <path fill="currentColor" d="M17.6 8h2.6l.8 1-.5 2.3-3-.4-.7-1.5z" />
+    <path fill="currentColor" d="M4 11.8h2.5l1 1.1-.5 2.3-2.5.3-.9-1.5z" />
+    <path fill="currentColor" d="M8.1 11.8h3.6l1.1 1.3-.8 2.6-3.2.2-1.4-1.6z" />
+    <path fill="currentColor" d="M13.2 11.9h3.4l1.2 1.2-.7 2.4-3.3.5-1.3-1.6z" />
+    <path fill="currentColor" d="M18 12.1h2.2l.9 1-.4 2.2-2.7.3-.7-1.6z" />
+    <path fill="currentColor" d="M4 16.4h3l1.1 1.1-.4 2.5H4.6l-1-1.2z" />
+    <path fill="currentColor" d="M8.6 16.8h3l1 1.2-.5 2H8.8l-.8-1.1z" />
+    <path fill="currentColor" d="M13 16.8h3.5l1 1.2-.6 2h-3.5l-1-1.3z" />
+    <path fill="currentColor" d="M18 16.6h2.2l.8 1.2-.5 2.2h-2.7l-.6-1.3z" />
+  </g>,
+);
+
+export const SvgFillIcon = createIcon(
+  <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M6.5 4h-1a2.5 2.5 0 0 0-2.5 2.5v3a1.5 1.5 0 0 1-1.5 1.5 1.5 1.5 0 0 1 1.5 1.5v5a2.5 2.5 0 0 0 2.5 2.5h1" />
+    <path d="M17.5 4h1a2.5 2.5 0 0 1 2.5 2.5v3a1.5 1.5 0 0 0 1.5 1.5 1.5 1.5 0 0 0-1.5 1.5v5a2.5 2.5 0 0 1-2.5 2.5h-1" />
+    <path d="M6.5 7h2.5" />
+    <path d="M11 7h6.5" />
+    <path d="M6.5 11h6.5" />
+    <path d="M14.5 11h3" />
+    <path d="M6.5 15h2.5" />
+    <path d="M11 15h6.5" />
+    <path d="M6.5 19h6.5" />
+    <path d="M15 19h2.5" />
+  </g>,
+);
+
+export const GradientIcon = createIcon(
+  <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <rect x="3" y="6" width="18" height="12" rx=".5" />
+    <path d="M5.5 7.5v9" />
+    <path d="M7.5 7.5v9" />
+    <path d="M10 7.5v9" strokeWidth="2" />
+    <path d="M13.5 7.5v9" strokeWidth="3" />
+    <path d="M18 7.5v9" strokeWidth="4" />
+  </g>,
+);
+
+export const BlackWhiteTextureIcon = createIcon(
+  <>
+    <defs>
+      <mask id="black-white-icon-mask">
+        <rect width="24" height="24" fill="black" />
+        <rect x="2" y="4.5" width="20" height="15" rx="4" fill="white" />
+
+        <path
+          fill="black"
+          fillRule="evenodd"
+          d="
+            M5.2 8h3
+            c1.65 0 2.65.82 2.65 2.08
+            0 .84-.46 1.48-1.22 1.82
+            .98.3 1.57 1.08 1.57 2.08
+            0 1.52-1.13 2.52-3 2.52h-3z
+
+            M6.75 9.35v1.95h1.2
+            c.78 0 1.22-.35 1.22-.98
+            0-.62-.44-.97-1.22-.97z
+
+            M6.75 12.65v2.5h1.38
+            c.91 0 1.42-.44 1.42-1.25
+            0-.8-.51-1.25-1.42-1.25z
+          "
+        />
+
+        <path
+          d="M12.35 8.05l1.55 8.35 2.05-7.05 2.05 7.05 1.65-8.35"
+          fill="none"
+          stroke="black"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.55"
+        />
+      </mask>
+    </defs>
+
+    <rect
+      width="24"
+      height="24"
+      fill="currentColor"
+      mask="url(#black-white-icon-mask)"
+    />
+  </>,
+);
+
+export const ShapeIcon = createIcon(
+  <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M6.1 5.2c1.5-1.7 3.1-2.5 5-2.1 1.3.3 2.1 1.3 3.2 1.8 1.4.6 3 .3 4.2 1.2 1.4 1 1.7 2.5 1.3 4-.3 1.2-1.3 2.1-1.2 3.4.1 1.4 1 2.6.5 4.1-.5 1.7-2 2.4-3.6 2.2-1.3-.2-2.4-.9-3.8-.6-1.6.3-2.7 1.3-4.4.9-1.7-.4-2.5-1.8-2.4-3.4.1-1.4.8-2.5.4-3.9-.4-1.3-1.5-2.2-1.3-3.8.1-1.6 1-2.8 2.1-3.8z" />
+  </g>,
+);
+
 export const NodeEditIcon = createIcon(
   <g fill="none" stroke="currentColor" strokeLinejoin="miter" strokeWidth="1.5">
     <path d="M12 14.5 3 20" />
@@ -654,13 +784,6 @@ export const DiameterIcon = createIcon(
     <path d="M7 17 17 7" />
   </g>,
   { height: 20, width: 20 }
-);
-
-export const OpacityIcon = createIcon(
-  <g strokeWidth="1.5">
-    <circle cx="12" cy="12" r="7" />
-    <path d="M12 5a7 7 0 0 0 0 14Z" fill="currentColor" />
-  </g>
 );
 
 export const SettingsIcon = createIcon(

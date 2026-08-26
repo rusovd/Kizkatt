@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ColorPicker } from "kizkatt-graphic-editor";
+import type { ColorPickerMode } from "kizkatt-graphic-editor";
 
 import {
   COLOR_PALETTES,
@@ -8,7 +9,6 @@ import {
   DARK_THEME_BACKGROUND_COLORS,
   DARK_THEME_STROKE_COLORS,
   DEFAULT_FILL_STYLE,
-  DEFAULT_FILL_WEIGHT,
   DEFAULT_OPACITY,
   EMPTY_COLLECTION_LENGTH,
   FIRST_ARRAY_INDEX,
@@ -16,20 +16,23 @@ import {
   LIGHT_THEME_STROKE_COLORS,
   TRANSPARENT_COLOR
 } from "../../config/constants";
-import { STYLE_PANEL_MIN_SIZE } from "../../config/defaultSettings";
+import { STYLING_PANEL_MIN_SIZE } from "../../config/defaultSettings";
 import { isHexColor } from "../../geometry";
 import { canElementUseBackground } from "../../model/element";
 import { useI18n } from "../../i18n";
 import {
+  BlackWhiteTextureIcon,
   CloseIcon,
   ClosedPathIcon,
   EyedropperIcon,
-  FillCrossHatchIcon,
+  GradientIcon,
   FillHachureIcon,
   FillSolidIcon,
   OpacityIcon,
   PaletteIcon,
+  SvgFillIcon,
   StrokeStyleSolidIcon,
+  TextureIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
@@ -53,7 +56,7 @@ type EyeDropperConstructor = new () => {
   open: () => Promise<{ sRGBHex: string }>;
 };
 
-type StylePanelProps = {
+type StylingPanelProps = {
   activeTool: Tool;
   canToggleClosedPath: boolean;
   closedPath: boolean;
@@ -74,7 +77,7 @@ const COMPACT_QUICK_SWATCH_COUNT = BASE_QUICK_SWATCH_COUNT;
 const HORIZONTAL_QUICK_SWATCH_COUNT = BASE_QUICK_SWATCH_COUNT + 2;
 const QUICK_SWATCH_SIZE = 20;
 const QUICK_SWATCH_GAP = 5;
-const ADAPTIVE_SHADE_INDICES = [0, 3, 6, 10, 13] as const;
+const ADAPTIVE_SHADE_INDICES = [0, 5, 11, 17, 23] as const;
 const REDUNDANT_NEUTRAL_PALETTE_IDS = new Set(["black", "white"]);
 const COLOR_CHANNEL_RADIX = 16;
 const HEX_BYTE_LENGTH = 2;
@@ -85,8 +88,8 @@ const BLACK_HEX_COLOR = "#000000";
 const WHITE_HEX_COLOR = "#ffffff";
 const DEFAULT_POPOVER_PALETTE_ID = "violet";
 const DEFAULT_POPOVER_PALETTE_INDEX = 0;
-const DARK_BACKGROUND_SHADE_INDEX = 2;
-const LIGHT_BACKGROUND_SHADE_INDEX = 13;
+const DARK_BACKGROUND_SHADE_INDEX = 4;
+const LIGHT_BACKGROUND_SHADE_INDEX = 20;
 const STROKE_COLOR_INDEX = {
   blue: 3,
   gray: 0,
@@ -103,25 +106,53 @@ const RGB_CHANNEL = {
   redEnd: 2,
   redStart: 0
 } as const;
-const DARK_SHADE_MIXES = [0.82, 0.7, 0.58, 0.46, 0.34, 0.22, 0.1, 0];
-const LIGHT_SHADE_MIXES = [0.12, 0.24, 0.36, 0.48, 0.6, 0.72, 0.84];
+const DARK_SHADE_MIXES = [
+  0.9, 0.82, 0.74, 0.66, 0.58, 0.5, 0.42, 0.34, 0.26, 0.18, 0.1, 0
+];
+const LIGHT_SHADE_MIXES = [
+  0.08, 0.16, 0.24, 0.32, 0.4, 0.48, 0.56, 0.64, 0.72, 0.8, 0.88, 0.96
+];
 const DEFAULT_POPOVER_PALETTE =
   COLOR_PALETTES.find((palette) => palette.id === DEFAULT_POPOVER_PALETTE_ID) ??
   COLOR_PALETTES[DEFAULT_POPOVER_PALETTE_INDEX];
-const FILL_STYLE_OPTIONS = ["solid", "hachure", "crossHatch"] as const;
-const FILL_STYLE_ICONS = {
-  crossHatch: FillCrossHatchIcon,
-  hachure: FillHachureIcon,
-  solid: FillSolidIcon
-} as const;
-const FILL_STYLE_LABEL_KEYS = {
-  crossHatch: "fillCrossHatch",
-  hachure: "fillHachure",
-  solid: "fillSolid"
-} as const;
-const MIN_FILL_WEIGHT = 0.25;
-const MAX_FILL_WEIGHT = 6;
-const FILL_WEIGHT_STEP = 0.25;
+const FILL_CONTROLS = [
+  {
+    disabled: false,
+    icon: FillSolidIcon,
+    labelKey: "fillSolid",
+    style: "solid"
+  },
+  {
+    disabled: true,
+    icon: GradientIcon,
+    labelKey: "fillGradient",
+    style: undefined
+  },
+  {
+    disabled: true,
+    icon: SvgFillIcon,
+    labelKey: "fillSvg",
+    style: undefined
+  },
+  {
+    disabled: false,
+    icon: TextureIcon,
+    labelKey: "fillCrossHatch",
+    style: "crossHatch"
+  },
+  {
+    disabled: true,
+    icon: BlackWhiteTextureIcon,
+    labelKey: "fillBlackWhiteTexture",
+    style: undefined
+  },
+  {
+    disabled: false,
+    icon: FillHachureIcon,
+    labelKey: "fillHachure",
+    style: "hachure"
+  }
+] as const;
 const MIN_OPACITY = 0;
 const MAX_OPACITY = DEFAULT_OPACITY;
 const DARK_THEME_STROKE_SOURCE_BY_PALETTE_ID: Record<string, string> = {
@@ -132,7 +163,19 @@ const DARK_THEME_STROKE_SOURCE_BY_PALETTE_ID: Record<string, string> = {
   violet: DARK_THEME_STROKE_COLORS[STROKE_COLOR_INDEX.violet],
   yellow: DARK_THEME_STROKE_COLORS[STROKE_COLOR_INDEX.yellow]
 };
-const STYLE_PANEL_FLOATING_PANEL_SOURCE = "style-panel";
+const STYLING_PANEL_FLOATING_PANEL_SOURCE = "style-panel";
+const COLOR_PICKER_MODE_STORAGE_KEY =
+  "kizkatt:graphic-editor:styling:color-picker-mode";
+
+function readStoredPickerMode(): ColorPickerMode | null {
+  const storedMode = window.localStorage.getItem(
+    COLOR_PICKER_MODE_STORAGE_KEY
+  );
+
+  return storedMode === "hex" || storedMode === "rgba" || storedMode === "cmyk"
+    ? storedMode
+    : null;
+}
 
 function getPalettePrimaryColor(palette: ColorPalette): string {
   return palette.color;
@@ -326,16 +369,6 @@ function getSwatchClassName({
     .join(" ");
 }
 
-function normalizeFillWeight(value: string) {
-  const numericValue = Number(value);
-
-  if (!Number.isFinite(numericValue)) {
-    return MIN_FILL_WEIGHT;
-  }
-
-  return Math.min(MAX_FILL_WEIGHT, Math.max(MIN_FILL_WEIGHT, numericValue));
-}
-
 function normalizeOpacity(value: string) {
   const numericValue = Number(value);
 
@@ -358,11 +391,12 @@ function isBackgroundControlDisabled(
     activeTool === "arrow" ||
     activeTool === "draw" ||
     activeTool === "image" ||
-    activeTool === "line"
+    activeTool === "line" ||
+    activeTool === "polyline"
   );
 }
 
-export function StylePanel({
+export function StylingPanel({
   activeTool,
   canToggleClosedPath,
   closedPath,
@@ -373,9 +407,9 @@ export function StylePanel({
   selectedElements,
   style,
   theme
-}: StylePanelProps) {
+}: StylingPanelProps) {
   const { strings } = useI18n();
-  const { isPanelPinned } = useGraphicEditorSettings();
+  const { colorMode, isPanelPinned } = useGraphicEditorSettings();
   const tooltips = strings.stylePanel.tooltips;
   const [colorPopover, setColorPopover] = useState<ColorPopoverState | null>(
     null
@@ -387,7 +421,17 @@ export function StylePanel({
     string | null
   >(null);
   const continuousStyleChangeActiveRef = useRef(false);
+  const hasLocalPickerModeRef = useRef(readStoredPickerMode() !== null);
+  const [pickerMode, setPickerMode] = useState<ColorPickerMode>(
+    () => readStoredPickerMode() ?? colorMode
+  );
   const closeColorPopover = () => setColorPopover(null);
+
+  useEffect(() => {
+    if (!hasLocalPickerModeRef.current) {
+      setPickerMode(colorMode);
+    }
+  }, [colorMode]);
 
   const beginContinuousStyleChange = () => {
     continuousStyleChangeActiveRef.current = true;
@@ -413,7 +457,7 @@ export function StylePanel({
 
   useActiveFloatingPanel(setActiveFloatingPanelSource);
   useCloseOtherFloatingPanels(
-    STYLE_PANEL_FLOATING_PANEL_SOURCE,
+    STYLING_PANEL_FLOATING_PANEL_SOURCE,
     closeColorPopover
   );
 
@@ -470,13 +514,16 @@ export function StylePanel({
       : undefined;
 
     applyColor(target, color);
-    closeOtherFloatingPanels(STYLE_PANEL_FLOATING_PANEL_SOURCE);
+    closeOtherFloatingPanels(STYLING_PANEL_FLOATING_PANEL_SOURCE);
 
     setColorPopover({
       paletteId: palette?.id,
       shadeBaseColor:
-        paletteColor ??
-        (isHexColor(color) ? color : DEFAULT_POPOVER_PALETTE.color),
+        (paletteColor && isHexColor(paletteColor)
+          ? paletteColor
+          : isHexColor(color)
+            ? color
+            : DEFAULT_POPOVER_PALETTE.color),
       target
     });
   };
@@ -492,9 +539,6 @@ export function StylePanel({
     const result = await new EyeDropper().open();
     commitCustomColor(target, result.sRGBHex);
   };
-  const updateFillWeight = (value: string) => {
-    onStyleChange({ fillWeight: normalizeFillWeight(value) });
-  };
   const updateOpacity = (value: string) => {
     onStyleChange({ opacity: normalizeOpacity(value) });
   };
@@ -508,7 +552,7 @@ export function StylePanel({
 
   if (
     activeFloatingPanel === "toolbar" &&
-    !isPanelPinned(STYLE_PANEL_FLOATING_PANEL_SOURCE)
+    !isPanelPinned(STYLING_PANEL_FLOATING_PANEL_SOURCE)
   ) {
     return null;
   }
@@ -522,18 +566,19 @@ export function StylePanel({
       horizontalActionsLayout="column"
       maxCols={2}
       maxRows={2}
-      minSize={STYLE_PANEL_MIN_SIZE}
+      minSize={STYLING_PANEL_MIN_SIZE}
       pinnable
       reopenKey={`${activeTool}:${selectedElements
         .map((element) => element.id)
         .join(":")}`}
       resizable
-      title={strings.stylePanel.elementStyle}
+      resizeAxes={{ horizontal: "horizontal", vertical: "both" }}
+      title={strings.stylePanel.styling}
     >
       {({ actions, chrome, orientation }) => (
         <aside
           className={`kizkatt-style-panel kizkatt-style-panel--${orientation}`}
-          aria-label={strings.stylePanel.elementStyle}
+          aria-label={strings.stylePanel.styling}
         >
           {chrome}
           <FeatureGroup
@@ -606,7 +651,16 @@ export function StylePanel({
                 onClose={() => setColorPopover(null)}
                 onPickerColorChange={applyCustomColor}
                 onPickerColorCommit={commitCustomColor}
+                onPickerModeChange={(mode) => {
+                  hasLocalPickerModeRef.current = true;
+                  setPickerMode(mode);
+                  window.localStorage.setItem(
+                    COLOR_PICKER_MODE_STORAGE_KEY,
+                    mode
+                  );
+                }}
                 onPickColorFromScreen={pickColorFromScreen}
+                pickerMode={pickerMode}
               />
             )}
           <FeatureGroup
@@ -623,22 +677,28 @@ export function StylePanel({
                 .join(" ")}
             >
               <div className="kizkatt-segmented kizkatt-icon-segmented">
-                {FILL_STYLE_OPTIONS.map((value) => (
+                {FILL_CONTROLS.map((control) => (
                   <button
-                    key={value}
+                    key={control.labelKey}
                     type="button"
+                    disabled={control.disabled}
                     aria-label={
-                      strings.stylePanel[FILL_STYLE_LABEL_KEYS[value]]
+                      strings.stylePanel[control.labelKey]
                     }
-                    title={tooltips[FILL_STYLE_LABEL_KEYS[value]]}
+                    title={tooltips[control.labelKey]}
                     className={
-                      (style.fillStyle ?? DEFAULT_FILL_STYLE) === value
+                      control.style &&
+                      (style.fillStyle ?? DEFAULT_FILL_STYLE) === control.style
                         ? "is-active"
                         : undefined
                     }
-                    onClick={() => onStyleChange({ fillStyle: value })}
+                    onClick={() => {
+                      if (control.style) {
+                        onStyleChange({ fillStyle: control.style });
+                      }
+                    }}
                   >
-                    {FILL_STYLE_ICONS[value]}
+                    {control.icon}
                   </button>
                 ))}
               </div>
@@ -653,16 +713,6 @@ export function StylePanel({
                   {ClosedPathIcon}
                 </button>
               )}
-              <input
-                aria-label={strings.stylePanel.fillWeight}
-                title={tooltips.fillWeight}
-                type="number"
-                min={MIN_FILL_WEIGHT}
-                max={MAX_FILL_WEIGHT}
-                step={FILL_WEIGHT_STEP}
-                value={style.fillWeight ?? DEFAULT_FILL_WEIGHT}
-                onChange={(event) => updateFillWeight(event.target.value)}
-              />
             </div>
           </FeatureGroup>
           <FeatureGroup
@@ -853,7 +903,9 @@ function ColorPopover({
   onPaletteColorSelect,
   onPickerColorChange,
   onPickerColorCommit,
+  onPickerModeChange,
   onPickColorFromScreen,
+  pickerMode,
   shadeBaseColor,
   target,
   theme
@@ -871,7 +923,9 @@ function ColorPopover({
   ) => void;
   onPickerColorChange: (target: ColorTarget, color: string) => void;
   onPickerColorCommit: (target: ColorTarget, color: string) => void;
+  onPickerModeChange: (mode: ColorPickerMode) => void;
   onPickColorFromScreen: (target: ColorTarget) => void;
+  pickerMode: ColorPickerMode;
   shadeBaseColor?: string;
   target: ColorTarget;
   theme: KizkattTheme;
@@ -1005,9 +1059,11 @@ function ColorPopover({
         </div>
       </div>
       <ColorPicker
+        defaultMode={pickerMode}
         value={isHexColor(activeColor) ? activeColor : draftShadeBaseColor}
         onChange={(color) => onPickerColorChange(target, color)}
         onCommit={(color) => onPickerColorCommit(target, color)}
+        onModeChange={onPickerModeChange}
       />
     </div>
   );

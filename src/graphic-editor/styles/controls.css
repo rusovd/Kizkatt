@@ -649,7 +649,8 @@
   font-size: 12px;
 }
 
-.kizkatt-dpi-settings-row {
+.kizkatt-dpi-settings-row,
+.kizkatt-color-mode-settings-row {
   display: flex;
   min-height: 32px;
   align-items: center;
@@ -657,6 +658,18 @@
   gap: 12px;
   padding: 0 7px;
   color: var(--kizkatt-panel-label);
+}
+
+.kizkatt-color-mode-toggle {
+  display: grid;
+  width: 150px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.kizkatt-color-mode-toggle button {
+  min-width: 0;
+  padding-inline: 5px;
+  font-size: 10px;
 }
 
 .kizkatt-dpi-settings-row select {

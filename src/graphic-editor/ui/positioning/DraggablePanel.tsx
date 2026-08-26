@@ -23,6 +23,8 @@ type PanelSize = {
   width: number;
 };
 
+type PanelResizeAxis = "both" | "horizontal" | "vertical";
+
 export type DraggablePanelRenderState = {
   actions: ReactNode;
   chrome: ReactNode;
@@ -48,8 +50,8 @@ function getOrientationStorageKey(id: string) {
   return `${getStorageKey(id)}:orientation`;
 }
 
-function getSizeStorageKey(id: string) {
-  return `${getStorageKey(id)}:size:vertical`;
+function getSizeStorageKey(id: string, orientation: PanelOrientation) {
+  return `${getStorageKey(id)}:size:${orientation}`;
 }
 
 function readStoredPosition(id: string): PanelPosition | null {
@@ -81,8 +83,13 @@ function readStoredOrientation(
     : defaultOrientation;
 }
 
-function readStoredSize(id: string): PanelSize | null {
-  const rawSize = window.localStorage.getItem(getSizeStorageKey(id));
+function readStoredSize(
+  id: string,
+  orientation: PanelOrientation
+): PanelSize | null {
+  const rawSize = window.localStorage.getItem(
+    getSizeStorageKey(id, orientation)
+  );
 
   if (!rawSize) {
     return null;
@@ -103,8 +110,15 @@ function storePosition(id: string, position: PanelPosition) {
   window.localStorage.setItem(getStorageKey(id), JSON.stringify(position));
 }
 
-function storeSize(id: string, size: PanelSize) {
-  window.localStorage.setItem(getSizeStorageKey(id), JSON.stringify(size));
+function storeSize(
+  id: string,
+  orientation: PanelOrientation,
+  size: PanelSize
+) {
+  window.localStorage.setItem(
+    getSizeStorageKey(id, orientation),
+    JSON.stringify(size)
+  );
 }
 
 function isPanelDragHandle(target: EventTarget | null) {
@@ -183,6 +197,7 @@ export function DraggablePanel({
   pinnable = false,
   reopenKey,
   resizable = false,
+  resizeAxes,
   title,
   topDock = false
 }: {
@@ -202,6 +217,7 @@ export function DraggablePanel({
   pinnable?: boolean;
   reopenKey?: string | number;
   resizable?: boolean;
+  resizeAxes?: Partial<Record<PanelOrientation, PanelResizeAxis>>;
   title?: string;
   topDock?: boolean;
 }) {
@@ -231,15 +247,24 @@ export function DraggablePanel({
   const [position, setPosition] = useState<PanelPosition | null>(() =>
     readStoredPosition(id)
   );
-  const [orientation, setOrientation] = useState<PanelOrientation>(() =>
+  const initialOrientationRef = useRef(
     readStoredOrientation(id, defaultOrientation)
   );
-  const [size, setSize] = useState<PanelSize | null>(() => readStoredSize(id));
+  const [orientation, setOrientation] = useState<PanelOrientation>(
+    initialOrientationRef.current
+  );
+  const [size, setSize] = useState<PanelSize | null>(() =>
+    readStoredSize(id, initialOrientationRef.current)
+  );
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
   const [temporarilyClosed, setTemporarilyClosed] = useState(false);
   const pinned = pinnable && isPanelPinned(id);
-  const canResize = resizable && orientation === "vertical";
+  const resizeAxis = resizable
+    ? resizeAxes?.[orientation] ??
+      (orientation === "vertical" ? "both" : undefined)
+    : undefined;
+  const canResize = Boolean(resizeAxis);
   const labelsHidden = hideLabels?.[orientation] ?? false;
   const minimumSize = {
     height: minSize?.height ?? MIN_RESIZABLE_PANEL_HEIGHT,
@@ -372,23 +397,31 @@ export function DraggablePanel({
 
     if (resize && resize.pointerId === pointerId && panel) {
       const point = getEventPoint(event);
-      const nextSize = {
-        height: Math.min(
+      const calculatedHeight = Math.min(
           window.innerHeight / resize.scaleY,
           Math.max(
             minimumSize.height,
             resize.startSize.height +
               (point.y - resize.startedAt.y) / resize.scaleY
           )
-        ),
-        width: Math.min(
+        );
+      const calculatedWidth = Math.min(
           window.innerWidth / resize.scaleX,
           Math.max(
             minimumSize.width,
             resize.startSize.width +
               (point.x - resize.startedAt.x) / resize.scaleX
           )
-        )
+        );
+      const nextSize = {
+        height:
+          resizeAxis === "horizontal"
+            ? resize.startSize.height
+            : calculatedHeight,
+        width:
+          resizeAxis === "vertical"
+            ? resize.startSize.width
+            : calculatedWidth
       };
 
       setSize(nextSize);
@@ -445,7 +478,7 @@ export function DraggablePanel({
       }
       setResizing(false);
       if (size) {
-        storeSize(id, size);
+        storeSize(id, orientation, size);
       }
       return;
     }
@@ -504,14 +537,25 @@ export function DraggablePanel({
       orientation === "horizontal" ? "vertical" : "horizontal";
 
     setOrientation(nextOrientation);
+    setSize(readStoredSize(id, nextOrientation));
     window.localStorage.setItem(getOrientationStorageKey(id), nextOrientation);
   };
 
   const style = {
     ...(position ? { left: position.x, top: position.y } : {}),
-    ...(canResize && size ? { height: size.height, width: size.width } : {}),
+    ...(canResize && size
+      ? {
+          ...(resizeAxis !== "horizontal" ? { height: size.height } : {}),
+          ...(resizeAxis !== "vertical" ? { width: size.width } : {})
+        }
+      : {}),
     ...(canResize
-      ? { minHeight: minimumSize.height, minWidth: minimumSize.width }
+      ? {
+          ...(resizeAxis !== "horizontal"
+            ? { minHeight: minimumSize.height }
+            : {}),
+          ...(resizeAxis !== "vertical" ? { minWidth: minimumSize.width } : {})
+        }
       : {}),
     "--kizkatt-panel-max-cols": Math.max(1, Math.floor(maxCols)),
     "--kizkatt-panel-max-rows": Math.max(1, Math.floor(maxRows))
