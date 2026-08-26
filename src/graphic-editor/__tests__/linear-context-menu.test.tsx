@@ -153,6 +153,28 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(canvas.querySelector("[data-element-id] line")).toBeInTheDocument();
   });
 
+  it("inserts a movable point by double-clicking a line in node edit", () => {
+    render(<KizkattGraphicEditor />);
+
+    chooseGroupedTool("Draw", "Line");
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 50 });
+    firePointerEvent(canvas, "pointerup", { clientX: 160, clientY: 50 });
+    fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
+
+    const line = canvas.querySelector("[data-element-id] line");
+    expect(line).toBeInTheDocument();
+    fireEvent.doubleClick(line as Element, { clientX: 100, clientY: 50 });
+
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
+      .toHaveLength(1);
+    expect(canvas.querySelector(".kizkatt-bend-point-handle.is-selected"))
+      .toBeInTheDocument();
+    expect(canvas.querySelector("[data-element-id] path")).toBeInTheDocument();
+  });
+
   it("moves lines and edits only the dragged endpoint in node edit mode", () => {
     storeCanvasState({
       elements: [

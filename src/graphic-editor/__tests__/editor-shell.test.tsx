@@ -293,6 +293,21 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByLabelText("DPI")).toHaveValue("300");
   });
 
+  it("stores the global default color representation", () => {
+    render(<KizkattGraphicEditor />);
+
+    openEditorSettings();
+    fireEvent.click(screen.getByRole("button", { name: "RGB/A" }));
+
+    expect(
+      window.localStorage.getItem(
+        "kizkatt:graphic-editor:settings:color-mode"
+      )
+    ).toBe("rgba");
+    expect(screen.getByRole("button", { name: "RGB/A" }))
+      .toHaveClass("is-active");
+  });
+
   it("ignores legacy canvas background storage and applies the default color", () => {
     window.localStorage.setItem("kizkatt:canvas-background", "#121212");
 
@@ -365,7 +380,7 @@ describe("KizkattGraphicEditor shell", () => {
       .toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Library" })).not
       .toBeInTheDocument();
-    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Styling")).not.toBeInTheDocument();
   });
 
   it("exposes localized tooltips on editor controls", () => {
@@ -579,7 +594,7 @@ describe("KizkattGraphicEditor shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
 
     const stylePanel = screen
-      .getByLabelText("Element style")
+      .getByLabelText("Styling")
       .closest(".kizkatt-floating-panel") as HTMLElement;
     const resizeHandle = stylePanel.querySelector(
       "[data-panel-resize-handle]"
@@ -611,7 +626,7 @@ describe("KizkattGraphicEditor shell", () => {
     const dragHandle = stylePanel.querySelector("[data-panel-drag-handle]");
     fireEvent.doubleClick(dragHandle as Element);
 
-    expect(screen.getByLabelText("Element style")).toHaveClass(
+    expect(screen.getByLabelText("Styling")).toHaveClass(
       "kizkatt-style-panel--horizontal"
     );
     expect(
@@ -637,14 +652,34 @@ describe("KizkattGraphicEditor shell", () => {
     ).not.toHaveClass("is-active");
     expect(
       stylePanel.querySelector("[data-panel-resize-handle]")
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Close panel" })[0]);
-    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+    const horizontalResizeHandle = stylePanel.querySelector(
+      "[data-panel-resize-handle]"
+    );
+    fireEvent.mouseDown(horizontalResizeHandle as Element, {
+      button: 0,
+      clientX: 10,
+      clientY: 10
+    });
+    fireEvent.mouseMove(stylePanel, { clientX: 110, clientY: 180 });
+    fireEvent.mouseUp(stylePanel, { clientX: 110, clientY: 180 });
+
+    expect(stylePanel.style.height).toBe("");
+    expect(
+      window.localStorage.getItem(
+        "kizkatt:graphic-editor:panel:style-panel:size:horizontal"
+      )
+    ).not.toBeNull();
+
+    fireEvent.click(
+      stylePanel.querySelector("button[aria-label='Close panel']") as Element
+    );
+    expect(screen.queryByLabelText("Styling")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Text" }));
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+    expect(screen.getByLabelText("Styling")).toBeInTheDocument();
   });
 
   it("returns from the hand tool on an empty click but keeps it after panning", () => {
@@ -704,6 +739,8 @@ describe("KizkattGraphicEditor shell", () => {
     openSubmenu("Draw");
     expect(screen.queryByRole("menuitem", { name: "Diamond" })).not
       .toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Polyline" }))
+      .toBeEnabled();
     expect(screen.getByRole("menuitem", { name: "Line" })).toBeInTheDocument();
 
     openEditorSettings();
@@ -775,35 +812,35 @@ describe("KizkattGraphicEditor shell", () => {
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+    expect(screen.getByLabelText("Styling")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Text" }));
 
     expect(screen.getByRole("button", { name: "Text" })).toHaveClass(
       "is-active"
     );
-    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Styling")).not.toBeInTheDocument();
   });
 
   it("closes the current tool style panel when switching to eraser", () => {
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+    expect(screen.getByLabelText("Styling")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Eraser" }));
 
     expect(screen.getByRole("button", { name: "Eraser" })).toHaveClass(
       "is-active"
     );
-    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Styling")).not.toBeInTheDocument();
   });
 
   it("closes style-panel popovers when opening a toolbar submenu", () => {
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+    expect(screen.getByLabelText("Styling")).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "Background custom #653b00" })
     );
@@ -815,7 +852,7 @@ describe("KizkattGraphicEditor shell", () => {
 
     expect(screen.queryByRole("dialog", { name: "Background colors" })).not
       .toBeInTheDocument();
-    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+    expect(screen.getByLabelText("Styling")).toBeInTheDocument();
     expect(screen.getByRole("menuitemcheckbox", { name: /Stick panels/ }))
       .toBeInTheDocument();
   });
@@ -825,7 +862,7 @@ describe("KizkattGraphicEditor shell", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
     const stylePanel = screen
-      .getByLabelText("Element style")
+      .getByLabelText("Styling")
       .closest(".kizkatt-floating-panel") as HTMLElement;
     const stickButton = stylePanel.querySelector(
       "button[aria-label='Stick panel']"
@@ -845,13 +882,13 @@ describe("KizkattGraphicEditor shell", () => {
 
     expect(screen.getByRole("menuitem", { name: "Diamond" }))
       .toBeInTheDocument();
-    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+    expect(screen.getByLabelText("Styling")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Eraser" }));
-    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+    expect(screen.getByLabelText("Styling")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
-    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Styling")).not.toBeInTheDocument();
   });
 
   it("keeps pinned object geometry visible after the selection is cleared", () => {
@@ -1106,7 +1143,7 @@ describe("KizkattGraphicEditor shell", () => {
       screen.getByRole("button", { name: "backgroundColor palette #fbdfb8" })
     ).toHaveClass("is-active");
     expect(
-      screen.getAllByRole("button", { name: /backgroundColor shade/ })[7]
+      screen.getAllByRole("button", { name: /backgroundColor shade/ })[11]
     ).toHaveAttribute("aria-label", "backgroundColor shade #fbdfb8");
   });
 
@@ -1147,13 +1184,13 @@ describe("KizkattGraphicEditor shell", () => {
   it("shows the style panel for drawing tools without covering the main menu", () => {
     render(<KizkattGraphicEditor />);
 
-    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Styling")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
-    expect(screen.getByLabelText("Element style")).toBeInTheDocument();
+    expect(screen.getByLabelText("Styling")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
-    expect(screen.queryByLabelText("Element style")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Styling")).not.toBeInTheDocument();
   });
 
   it("keeps copied toolbar icons under the original source names", () => {

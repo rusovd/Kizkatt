@@ -40,4 +40,24 @@ describe("ColorPicker", () => {
     expect(screen.getByRole("spinbutton", { name: "K" }))
       .toBeInTheDocument();
   });
+
+  it("uses a supplied default representation and reports local changes", () => {
+    const onModeChange = vi.fn();
+
+    render(
+      <ColorPicker
+        defaultMode="cmyk"
+        value="#f08c00"
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+        onModeChange={onModeChange}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "CMYK" }))
+      .toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "RGB/A" }));
+    expect(onModeChange).toHaveBeenCalledWith("rgba");
+  });
 });

@@ -32,6 +32,63 @@ function getTranslatePoint(element: Element | null) {
 }
 
 describe("KizkattGraphicEditor drawing and style panel", () => {
+  it("draws a polyline through click and drag points until double-click", () => {
+    render(<KizkattGraphicEditor />);
+
+    chooseGroupedTool("Draw", "Polyline");
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 90, clientY: 50 });
+
+    expect(canvas.querySelector(".kizkatt-selection-overlay")).not
+      .toBeInTheDocument();
+
+    firePointerEvent(canvas, "pointerup", { clientX: 90, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 130, clientY: 90 });
+
+    const previewPath = canvas.querySelector("[data-element-id] path");
+    expect(previewPath).toBeInTheDocument();
+    expect(previewPath?.getAttribute("d")).toContain("130 90");
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 130, clientY: 90 });
+    firePointerEvent(canvas, "pointerup", { clientX: 130, clientY: 90 });
+    firePointerEvent(canvas, "pointermove", { clientX: 170, clientY: 50 });
+    firePointerEvent(canvas, "pointerdown", { clientX: 170, clientY: 50 });
+    firePointerEvent(canvas, "pointerup", { clientX: 170, clientY: 50 });
+    fireEvent.doubleClick(canvas, { clientX: 170, clientY: 50 });
+
+    expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(1);
+    expect(canvas.querySelector("[data-element-id] path")?.getAttribute("d"))
+      .toContain("170 50");
+    expect(screen.getByRole("button", { name: "Select" })).toHaveClass(
+      "is-active"
+    );
+  });
+
+  it("uses style changes made without a selection as drawing defaults", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    expect(document.querySelector(".kizkatt-object-panel"))
+      .toBeInTheDocument();
+    const strokeWidthInput = screen.getByLabelText("Line width");
+    expect(strokeWidthInput).toBeInTheDocument();
+    fireEvent.change(strokeWidthInput, { target: { value: "7" } });
+    fireEvent.blur(strokeWidthInput);
+    fireEvent.click(screen.getByRole("button", { name: "Stroke #1971c2" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    const rectangle = canvas.querySelector("[data-element-id] rect");
+    expect(rectangle).toHaveAttribute("stroke", "#1971c2");
+    expect(rectangle).toHaveAttribute("stroke-width", "7");
+  });
+
   it("creates a rectangle on the SVG canvas", () => {
     render(<KizkattGraphicEditor />);
 
@@ -176,7 +233,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       "is-active"
     );
     expect(
-      screen.getByRole("complementary", { name: "Element style" })
+      screen.getByRole("complementary", { name: "Styling" })
     ).toBeInTheDocument();
   });
 
@@ -515,7 +572,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       screen.getByRole("button", { name: "backgroundColor shade #653b00" })
     ).toHaveClass("is-active");
     expect(
-      screen.getAllByRole("button", { name: /backgroundColor shade/ })[7]
+      screen.getAllByRole("button", { name: /backgroundColor shade/ })[11]
     ).toHaveAttribute("aria-label", "backgroundColor shade #653b00");
 
     fireEvent.click(screen.getByRole("button", { name: "Stroke #1971c2" }));
@@ -536,7 +593,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       .toBeInTheDocument();
     expect(
       screen.getAllByRole("button", { name: /strokeColor shade/ })
-    ).toHaveLength(15);
+    ).toHaveLength(24);
 
     fireEvent.click(
       screen.getByRole("button", { name: "strokeColor palette #1971c2" })
@@ -544,23 +601,23 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(elementRect).toHaveAttribute("stroke", "#1971c2");
     expect(
       screen.getAllByRole("button", { name: /strokeColor shade/ })
-    ).toHaveLength(15);
+    ).toHaveLength(24);
     expect(
-      screen.getByRole("button", { name: "strokeColor shade #051423" })
+      screen.getByRole("button", { name: "strokeColor shade #030b13" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "strokeColor shade #dae8f5" })
+      screen.getByRole("button", { name: "strokeColor shade #f6f9fd" })
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "strokeColor shade #6741d9" })
     ).not.toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "strokeColor shade #051423" })
+      screen.getByRole("button", { name: "strokeColor shade #030b13" })
     );
-    expect(elementRect).toHaveAttribute("stroke", "#051423");
+    expect(elementRect).toHaveAttribute("stroke", "#030b13");
     expect(
-      screen.getByRole("button", { name: "strokeColor shade #dae8f5" })
+      screen.getByRole("button", { name: "strokeColor shade #f6f9fd" })
     ).toBeInTheDocument();
 
     fireEvent.click(
@@ -576,7 +633,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(hexInput).toHaveValue("8d8d8d");
     expect(elementRect).toHaveAttribute("stroke", "#8d8d8d");
     expect(
-      screen.getAllByRole("button", { name: /strokeColor shade/ })[7]
+      screen.getAllByRole("button", { name: /strokeColor shade/ })[11]
     ).toHaveAttribute("aria-label", "strokeColor shade #8d8d8d");
 
     fireEvent.change(hexInput, {
@@ -592,7 +649,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       screen.getByRole("button", { name: "strokeColor shade #123abc" })
     ).toBeInTheDocument();
     expect(
-      screen.getAllByRole("button", { name: /strokeColor shade/ })[7]
+      screen.getAllByRole("button", { name: /strokeColor shade/ })[11]
     ).toHaveAttribute("aria-label", "strokeColor shade #123abc");
     screen
       .getAllByRole("button", { name: /strokeColor palette/ })
@@ -600,10 +657,10 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
         expect(paletteButton).not.toHaveClass("is-active");
       });
     expect(
-      screen.getByRole("button", { name: "strokeColor shade #030a22" })
+      screen.getByRole("button", { name: "strokeColor shade #020613" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "strokeColor shade #d9dff4" })
+      screen.getByRole("button", { name: "strokeColor shade #f6f7fc" })
     ).toBeInTheDocument();
     expect(screen.queryByText("User Colors")).not.toBeInTheDocument();
     expect(
@@ -678,6 +735,28 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
         ".kizkatt-style-feature--background .kizkatt-custom-color-swatch"
       )
     ).toHaveAttribute("aria-label", `Background ${selectedColor}`);
+  });
+
+  it("remembers a Colors representation independently from the global default", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Editor settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "RGB/A" }));
+    fireEvent.click(screen.getByRole("button", { name: "Editor settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Background custom #653b00" })
+    );
+
+    expect(screen.getByRole("button", { name: "RGB/A" }))
+      .toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "HEX" }));
+    expect(
+      window.localStorage.getItem(
+        "kizkatt:graphic-editor:styling:color-picker-mode"
+      )
+    ).toBe("hex");
   });
 
   it("fills equally wide background and stroke color rows with shades", () => {
@@ -769,7 +848,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     expect(canvas.querySelector("[data-element-id] line"))
       .not.toHaveAttribute("marker-end");
-    expect(canvas.querySelector("[data-decorative-stroke='zigzag']"))
+    expect(canvas.querySelector("[data-decorative-stroke='wavy']"))
       .not.toHaveAttribute("marker-end");
     const decorativeArrowhead = canvas.querySelector(
       "[data-decorative-arrowhead]"
@@ -949,14 +1028,11 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     const strokeWidthInput = screen.getByLabelText("Line width");
     const strokeStyleSelect = screen.getByLabelText("Stroke style");
-    const sloppinessSelect = screen.getByLabelText("Sloppiness");
     const opacityRange = screen.getByLabelText("Opacity");
     const opacityInput = screen.getByLabelText("Opacity value");
-    const fillWeightInput = screen.getByLabelText("Fill weight");
 
     expect(strokeWidthInput).toHaveValue(10);
-    expect(fillWeightInput).toHaveValue(1);
-    expect(sloppinessSelect).toHaveValue("architect");
+    expect(screen.queryByLabelText("Fill weight")).not.toBeInTheDocument();
     expect(opacityInput).toHaveValue(100);
 
     fireEvent.change(strokeWidthInput, {
@@ -1011,19 +1087,19 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(elementRect).toHaveAttribute("stroke-linecap", "butt");
     fireEvent.click(screen.getByTitle("Use rounded corners"));
 
-    fireEvent.change(strokeStyleSelect, { target: { value: "wavy" } });
+    fireEvent.change(strokeStyleSelect, { target: { value: "zigzag" } });
     const wavyStroke = canvas.querySelector(
       "[data-decorative-stroke='wavy']"
     );
 
-    expect(elementRect).toHaveAttribute("data-stroke-style", "wavy");
+    expect(elementRect).toHaveAttribute("data-stroke-style", "zigzag");
     expect(elementRect).toHaveAttribute("stroke-opacity", "0");
     expect(elementRect).not.toHaveAttribute("stroke-dasharray");
     expect(wavyStroke).toHaveAttribute("fill", "none");
     expect(wavyStroke?.getAttribute("d")).toContain("L");
     const wavyPathData = wavyStroke?.getAttribute("d");
 
-    fireEvent.change(strokeStyleSelect, { target: { value: "zigzag" } });
+    fireEvent.click(screen.getByTitle("Use straight corners"));
     const zigzagStroke = canvas.querySelector(
       "[data-decorative-stroke='zigzag']"
     );
@@ -1038,13 +1114,18 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(canvas.querySelector("[data-decorative-stroke]"))
       .not.toBeInTheDocument();
 
-    const fillControls = screen
-      .getAllByRole("button", { name: /^Fill / })
-      .map((button) => button.getAttribute("aria-label"));
+    const fillControls = Array.from(
+      document.querySelectorAll(
+        ".kizkatt-style-feature--fill .kizkatt-icon-segmented button"
+      )
+    ).map((button) => button.getAttribute("aria-label"));
     expect(fillControls).toEqual([
       "Fill solid",
-      "Fill hachure",
-      "Fill crossHatch"
+      "Gradient fill",
+      "SVG fill",
+      "Texture fill",
+      "Black and white texture",
+      "Fill hachure"
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "Fill hachure" }));
@@ -1056,26 +1137,12 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       "8"
     );
 
-    fireEvent.change(fillWeightInput, {
-      target: { value: "0.5" }
-    });
-    expect(fillWeightInput).toHaveValue(0.5);
-    expect(canvas.querySelector("[data-element-id] pattern")).toHaveAttribute(
-      "width",
-      "16"
-    );
-
-    fireEvent.change(fillWeightInput, {
-      target: { value: "30" }
-    });
-    expect(fillWeightInput).toHaveValue(6);
-
-    fireEvent.click(screen.getByRole("button", { name: "Fill crossHatch" }));
+    fireEvent.click(screen.getByRole("button", { name: "Texture fill" }));
     expect(
       canvas.querySelector("[data-element-id] pattern path")?.getAttribute("d")
-    ).toBe("M 0 0 L 1.3333333333333333 1.3333333333333333 M 0 1.3333333333333333 L 1.3333333333333333 0");
+    ).toBe("M 0 0 L 8 8 M 0 8 L 8 0");
 
-    fireEvent.change(sloppinessSelect, { target: { value: "artist" } });
+    fireEvent.change(strokeStyleSelect, { target: { value: "handDrawn" } });
     expect(elementRect?.getAttribute("filter")).toMatch(
       /^url\(#kizkatt-sloppy-/
     );
@@ -1091,11 +1158,21 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       )
     ).toBeGreaterThan(7);
 
-    fireEvent.change(sloppinessSelect, { target: { value: "double" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Fine line settings" })
+    );
+    fireEvent.change(screen.getByLabelText("Lines"), {
+      target: { value: "2" }
+    });
     const elementGroup = canvas.querySelector("[data-element-id]");
     const secondaryRectStroke = elementGroup?.querySelector(
       '[data-sloppiness-stroke="secondary"]'
     );
+    expect(elementGroup).toHaveAttribute(
+      "data-kizkatt-stroke-line-count",
+      "2"
+    );
+    expect(elementRect).toHaveAttribute("data-stroke-line-count", "2");
     expect(secondaryRectStroke).toBeInTheDocument();
     expect(
       Number(secondaryRectStroke?.getAttribute("data-sloppiness-spacing"))

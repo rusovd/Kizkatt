@@ -1502,22 +1502,21 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(screen.getByLabelText("Width")).toHaveValue(100);
     expect(screen.getByLabelText("Height")).toHaveValue(100);
     const strokeStyle = screen.getByLabelText("Stroke style") as HTMLSelectElement;
-    expect(strokeStyle).toHaveValue("solid");
+    expect(strokeStyle).toHaveValue("handDrawn");
     expect(Array.from(strokeStyle.options).map((option) => option.value)).toEqual([
       "solid",
       "dashed",
       "stitched",
       "dotted",
       "dashDot",
-      "wavy",
-      "zigzag"
+      "zigzag",
+      "handDrawn"
     ]);
     const lineWidth = screen.getByLabelText("Line width");
     const lineWidthPreset = screen.getByLabelText("Line width preset");
-    const sloppiness = screen.getByLabelText("Sloppiness") as HTMLSelectElement;
     const objectPanel = lineWidth.closest(".kizkatt-floating-panel");
     expect(objectPanel?.querySelectorAll("[data-feature-group]")).toHaveLength(
-      9
+      8
     );
     expect(strokeStyle.closest(".kizkatt-object-panel-stack")).toBe(
       lineWidth.closest(".kizkatt-object-panel-stack")
@@ -1531,13 +1530,6 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       screen.getByTitle("Use rounded corners").parentElement
     ).toHaveClass("kizkatt-feature-group-content");
     expect(lineWidth).toHaveValue(10);
-    expect(sloppiness).toHaveValue("artist");
-    expect(Array.from(sloppiness.options).map((option) => option.value)).toEqual([
-      "architect",
-      "artist",
-      "cartoonist",
-      "double"
-    ]);
     expect(
       lineWidthPreset.parentElement?.querySelector(
         ".kizkatt-stroke-width-preset-chevron"
@@ -1556,7 +1548,6 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
         .filter((option) => !option.hidden)
         .map((option) => option.textContent)
     ).toEqual([
-      "None",
       "Contour",
       "1 px",
       "2 px",
@@ -1615,8 +1606,8 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(rect).toHaveAttribute("stroke-width", "2");
     expect(rect).toHaveAttribute("stroke-dasharray");
 
-    fireEvent.change(strokeStyle, { target: { value: "wavy" } });
-    expect(rect).toHaveAttribute("data-stroke-style", "wavy");
+    fireEvent.change(strokeStyle, { target: { value: "zigzag" } });
+    expect(rect).toHaveAttribute("data-stroke-style", "zigzag");
     expect(
       screen
         .getByRole("application", { name: "Drawing canvas" })
@@ -1642,7 +1633,6 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       "Mirroring",
       "Edges",
       "Line",
-      "Sloppiness",
       "Layers",
       "Actions"
     ]);
