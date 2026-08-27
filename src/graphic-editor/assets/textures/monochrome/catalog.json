@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "collections": [
+    {
+      "id": "monochrome",
+      "name": "Monochrome",
+      "categories": [
+        {
+          "id": "abstract",
+          "name": "Abstract",
+          "textures": [
+            {
+              "file": "Abstract/Abstract_001.jpg",
+              "id": "monochrome.abstract.abstract-001",
+              "name": "Abstract 001",
+              "thumbnail": "Abstract/thumbnails/Abstract_001.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_002.jpg",
+              "id": "monochrome.abstract.abstract-002",
+              "name": "Abstract 002",
+              "thumbnail": "Abstract/thumbnails/Abstract_002.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_003.jpg",
+              "id": "monochrome.abstract.abstract-003",
+              "name": "Abstract 003",
+              "thumbnail": "Abstract/thumbnails/Abstract_003.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_004.jpg",
+              "id": "monochrome.abstract.abstract-004",
+              "name": "Abstract 004",
+              "thumbnail": "Abstract/thumbnails/Abstract_004.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_005.jpg",
+              "id": "monochrome.abstract.abstract-005",
+              "name": "Abstract 005",
+              "thumbnail": "Abstract/thumbnails/Abstract_005.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_006.jpg",
+              "id": "monochrome.abstract.abstract-006",
+              "name": "Abstract 006",
+              "thumbnail": "Abstract/thumbnails/Abstract_006.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_007.jpg",
+              "id": "monochrome.abstract.abstract-007",
+              "name": "Abstract 007",
+              "thumbnail": "Abstract/thumbnails/Abstract_007.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_008.jpg",
+              "id": "monochrome.abstract.abstract-008",
+              "name": "Abstract 008",
+              "thumbnail": "Abstract/thumbnails/Abstract_008.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_009.jpg",
+              "id": "monochrome.abstract.abstract-009",
+              "name": "Abstract 009",
+              "thumbnail": "Abstract/thumbnails/Abstract_009.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_010.jpg",
+              "id": "monochrome.abstract.abstract-010",
+              "name": "Abstract 010",
+              "thumbnail": "Abstract/thumbnails/Abstract_010.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_011.jpg",
+              "id": "monochrome.abstract.abstract-011",
+              "name": "Abstract 011",
+              "thumbnail": "Abstract/thumbnails/Abstract_011.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_012.jpg",
+              "id": "monochrome.abstract.abstract-012",
+              "name": "Abstract 012",
+              "thumbnail": "Abstract/thumbnails/Abstract_012.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_013.jpg",
+              "id": "monochrome.abstract.abstract-013",
+              "name": "Abstract 013",
+              "thumbnail": "Abstract/thumbnails/Abstract_013.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_014.jpg",
+              "id": "monochrome.abstract.abstract-014",
+              "name": "Abstract 014",
+              "thumbnail": "Abstract/thumbnails/Abstract_014.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_015.jpg",
+              "id": "monochrome.abstract.abstract-015",
+              "name": "Abstract 015",
+              "thumbnail": "Abstract/thumbnails/Abstract_015.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_016.jpg",
+              "id": "monochrome.abstract.abstract-016",
+              "name": "Abstract 016",
+              "thumbnail": "Abstract/thumbnails/Abstract_016.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_017.jpg",
+              "id": "monochrome.abstract.abstract-017",
+              "name": "Abstract 017",
+              "thumbnail": "Abstract/thumbnails/Abstract_017.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_018.jpg",
+              "id": "monochrome.abstract.abstract-018",
+              "name": "Abstract 018",
+              "thumbnail": "Abstract/thumbnails/Abstract_018.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_019.jpg",
+              "id": "monochrome.abstract.abstract-019",
+              "name": "Abstract 019",
+              "thumbnail": "Abstract/thumbnails/Abstract_019.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_020.jpg",
+              "id": "monochrome.abstract.abstract-020",
+              "name": "Abstract 020",
+              "thumbnail": "Abstract/thumbnails/Abstract_020.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_021.jpg",
+              "id": "monochrome.abstract.abstract-021",
+              "name": "Abstract 021",
+              "thumbnail": "Abstract/thumbnails/Abstract_021.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_022.jpg",
+              "id": "monochrome.abstract.abstract-022",
+              "name": "Abstract 022",
+              "thumbnail": "Abstract/thumbnails/Abstract_022.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_023.jpg",
+              "id": "monochrome.abstract.abstract-023",
+              "name": "Abstract 023",
+              "thumbnail": "Abstract/thumbnails/Abstract_023.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_024.jpg",
+              "id": "monochrome.abstract.abstract-024",
+              "name": "Abstract 024",
+              "thumbnail": "Abstract/thumbnails/Abstract_024.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_025.jpg",
+              "id": "monochrome.abstract.abstract-025",
+              "name": "Abstract 025",
+              "thumbnail": "Abstract/thumbnails/Abstract_025.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_026.jpg",
+              "id": "monochrome.abstract.abstract-026",
+              "name": "Abstract 026",
+              "thumbnail": "Abstract/thumbnails/Abstract_026.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_027.jpg",
+              "id": "monochrome.abstract.abstract-027",
+              "name": "Abstract 027",
+              "thumbnail": "Abstract/thumbnails/Abstract_027.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_028.jpg",
+              "id": "monochrome.abstract.abstract-028",
+              "name": "Abstract 028",
+              "thumbnail": "Abstract/thumbnails/Abstract_028.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_029.jpg",
+              "id": "monochrome.abstract.abstract-029",
+              "name": "Abstract 029",
+              "thumbnail": "Abstract/thumbnails/Abstract_029.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_030.jpg",
+              "id": "monochrome.abstract.abstract-030",
+              "name": "Abstract 030",
+              "thumbnail": "Abstract/thumbnails/Abstract_030.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_031.jpg",
+              "id": "monochrome.abstract.abstract-031",
+              "name": "Abstract 031",
+              "thumbnail": "Abstract/thumbnails/Abstract_031.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_032.jpg",
+              "id": "monochrome.abstract.abstract-032",
+              "name": "Abstract 032",
+              "thumbnail": "Abstract/thumbnails/Abstract_032.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_033.jpg",
+              "id": "monochrome.abstract.abstract-033",
+              "name": "Abstract 033",
+              "thumbnail": "Abstract/thumbnails/Abstract_033.jpg"
+            },
+            {
+              "file": "Abstract/Abstract_034.jpg",
+              "id": "monochrome.abstract.abstract-034",
+              "name": "Abstract 034",
+              "thumbnail": "Abstract/thumbnails/Abstract_034.jpg"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
