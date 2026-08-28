@@ -5,6 +5,18 @@ export {
   getElementTransformedBounds,
   selectionBounds
 } from "./bounds";
+export {
+  createBitmapTextureFill,
+  getBitmapTextureAdjustments,
+  getBitmapTexturePlacement,
+  getBitmapTextureRgbChannels,
+  getBitmapTextureTransparencyTable,
+  getCoveredBitmapSourcePoint,
+  getInitialBitmapTextureSize,
+  getResizedBitmapTextureSize,
+  type BitmapTexturePlacement,
+  type BitmapTextureSize
+} from "./bitmapTextures";
 export { isHexColor } from "./colors";
 export {
   findElementAtPoint,

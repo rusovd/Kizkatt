@@ -48,6 +48,47 @@ export type ArrowheadStyle =
   | "circle"
   | "square";
 
+export type BitmapTextureBlendMode = "multiply" | "normal";
+export type BitmapTextureOffsetMode = "column" | "row";
+export type FillStyle =
+  | "monochromeTexture"
+  | "hachure"
+  | "crossHatch"
+  | "solid";
+
+export type BitmapTextureFill = {
+  blendAmount: number;
+  blendMode: BitmapTextureBlendMode;
+  brightness: number;
+  brightnessEnabled: boolean;
+  color: number;
+  colorEnabled: boolean;
+  desaturate: number;
+  desaturateEnabled: boolean;
+  edgeMatch: number;
+  edgeMatchEnabled: boolean;
+  height: number;
+  luminance: number;
+  luminanceEnabled: boolean;
+  mirrorX: boolean;
+  mirrorY: boolean;
+  name: string;
+  offset: number;
+  offsetMode: BitmapTextureOffsetMode;
+  offsetX: number;
+  offsetY: number;
+  rotation: number;
+  scaleLocked: boolean;
+  skew: number;
+  source?: string;
+  textureId: string;
+  transformWithObject: boolean;
+  transparencyColor: string;
+  transparencyEnabled: boolean;
+  transparencyTolerance: number;
+  width: number;
+};
+
 export type GridSettings = {
   unit: GridUnit;
   metricScale: number;
@@ -75,7 +116,8 @@ export type KizkattElement = {
   skewY?: number;
   strokeColor: string;
   backgroundColor: string;
-  fillStyle?: "hachure" | "crossHatch" | "solid";
+  bitmapTexture?: BitmapTextureFill;
+  fillStyle?: FillStyle;
   fillWeight?: number;
   strokeWidth: number;
   strokeLineCount?: number;
@@ -250,6 +292,7 @@ export type StyleState = Pick<
   KizkattElement,
   | "arrowheadScale"
   | "backgroundColor"
+  | "bitmapTexture"
   | "calligraphy"
   | "calligraphyStretch"
   | "edgeStyle"

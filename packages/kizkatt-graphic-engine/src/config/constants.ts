@@ -133,6 +133,37 @@ export const TRANSPARENT_COLOR = "transparent";
 export const DEFAULT_EDGE_STYLE = "round";
 export const DEFAULT_FILL_STYLE = "solid";
 export const DEFAULT_FILL_WEIGHT = 1;
+export const DEFAULT_BITMAP_TEXTURE_FILL = {
+  blendAmount: 100,
+  blendMode: "normal",
+  brightness: 0,
+  brightnessEnabled: false,
+  color: 0,
+  colorEnabled: false,
+  desaturate: 100,
+  desaturateEnabled: true,
+  edgeMatch: 50,
+  edgeMatchEnabled: false,
+  height: 100,
+  luminance: 0,
+  luminanceEnabled: false,
+  mirrorX: false,
+  mirrorY: false,
+  name: "",
+  offset: 0,
+  offsetMode: "row",
+  offsetX: 0,
+  offsetY: 0,
+  rotation: 0,
+  scaleLocked: true,
+  skew: 0,
+  textureId: "",
+  transformWithObject: true,
+  transparencyColor: "#ffffff",
+  transparencyEnabled: true,
+  transparencyTolerance: 100,
+  width: 100
+} as const;
 export const DEFAULT_SLOPPINESS = "architect";
 export const DEFAULT_SELECTED_SLOPPINESS = "artist";
 export const DEFAULT_SLOPPINESS_GAP = 16;

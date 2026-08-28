@@ -10,6 +10,7 @@ import {
 } from "../config/constants";
 import type {
   ElementType,
+  FillStyle,
   KizkattElement,
   ObjectBase,
   Point,
@@ -17,6 +18,24 @@ import type {
 } from "./types";
 import { createElementName } from "./naming";
 import type { ElementNamingConfig } from "./naming";
+
+const FILL_STYLES = new Set<FillStyle>([
+  "monochromeTexture",
+  "crossHatch",
+  "hachure",
+  "solid"
+]);
+const LEGACY_MONOCHROME_FILL_STYLE = "blackWhiteTexture";
+
+export function normalizeFillStyle(value: unknown): FillStyle | undefined {
+  if (value === LEGACY_MONOCHROME_FILL_STYLE) {
+    return "monochromeTexture";
+  }
+
+  return typeof value === "string" && FILL_STYLES.has(value as FillStyle)
+    ? (value as FillStyle)
+    : undefined;
+}
 
 export function createId() {
   return (
@@ -54,6 +73,13 @@ export function createElement(
 
 export function normalizeElement(element: KizkattElement): KizkattElement {
   const next = { ...element };
+  const fillStyle = normalizeFillStyle(
+    (element as KizkattElement & { fillStyle?: unknown }).fillStyle
+  );
+
+  if (fillStyle) {
+    next.fillStyle = fillStyle;
+  }
 
   if (next.type === "line" || next.type === "arrow") {
     return next;

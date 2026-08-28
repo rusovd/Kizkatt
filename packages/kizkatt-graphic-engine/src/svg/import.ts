@@ -1,4 +1,5 @@
 import {
+  DEFAULT_BITMAP_TEXTURE_FILL,
   MIN_ELEMENT_SIZE,
   PERCENT_MAX_VALUE,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
@@ -9,6 +10,7 @@ import {
 import { transformSvgPathData } from "../geometry";
 import {
   createId,
+  normalizeFillStyle,
   normalizeElement,
   withUpdatedObjectBase
 } from "../model/element";
@@ -16,6 +18,7 @@ import { createElementName as buildElementName } from "../model/naming";
 import type { ElementNamingConfig } from "../model/naming";
 import type {
   ArrowheadStyle,
+  BitmapTextureFill,
   Bounds,
   KizkattElement,
   Point,
@@ -1231,6 +1234,150 @@ type ImportedElementSettings = Partial<
   StyleState & Pick<KizkattElement, "flipX" | "flipY">
 >;
 
+function getKizkattMetadata(group: Element) {
+  const metadata = Array.from(group.children).find(
+    (child) => child.localName === "metadata"
+  );
+
+  if (!metadata?.textContent) {
+    return null;
+  }
+
+  try {
+    const value: unknown = JSON.parse(metadata.textContent);
+    return value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function getFiniteNumber(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function getBoolean(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function getImportedBitmapTexture(value: unknown): BitmapTextureFill | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const texture = value as Record<string, unknown>;
+  const textureId =
+    typeof texture.textureId === "string" ? texture.textureId : "";
+  const source = typeof texture.source === "string" ? texture.source : undefined;
+
+  if (!textureId && !source) {
+    return null;
+  }
+
+  return {
+    blendAmount: getFiniteNumber(
+      texture.blendAmount,
+      DEFAULT_BITMAP_TEXTURE_FILL.blendAmount
+    ),
+    blendMode: texture.blendMode === "multiply" ? "multiply" : "normal",
+    brightness: getFiniteNumber(
+      texture.brightness,
+      DEFAULT_BITMAP_TEXTURE_FILL.brightness
+    ),
+    brightnessEnabled: getBoolean(
+      texture.brightnessEnabled,
+      DEFAULT_BITMAP_TEXTURE_FILL.brightnessEnabled
+    ),
+    color: getFiniteNumber(texture.color, DEFAULT_BITMAP_TEXTURE_FILL.color),
+    colorEnabled: getBoolean(
+      texture.colorEnabled,
+      DEFAULT_BITMAP_TEXTURE_FILL.colorEnabled
+    ),
+    desaturate: getFiniteNumber(
+      texture.desaturate,
+      DEFAULT_BITMAP_TEXTURE_FILL.desaturate
+    ),
+    desaturateEnabled: getBoolean(
+      texture.desaturateEnabled,
+      DEFAULT_BITMAP_TEXTURE_FILL.desaturateEnabled
+    ),
+    edgeMatch: getFiniteNumber(
+      texture.edgeMatch,
+      DEFAULT_BITMAP_TEXTURE_FILL.edgeMatch
+    ),
+    edgeMatchEnabled: getBoolean(
+      texture.edgeMatchEnabled,
+      DEFAULT_BITMAP_TEXTURE_FILL.edgeMatchEnabled
+    ),
+    height: Math.max(
+      MIN_ELEMENT_SIZE,
+      getFiniteNumber(texture.height, DEFAULT_BITMAP_TEXTURE_FILL.height)
+    ),
+    luminance: getFiniteNumber(
+      texture.luminance,
+      DEFAULT_BITMAP_TEXTURE_FILL.luminance
+    ),
+    luminanceEnabled: getBoolean(
+      texture.luminanceEnabled,
+      DEFAULT_BITMAP_TEXTURE_FILL.luminanceEnabled
+    ),
+    mirrorX: getBoolean(
+      texture.mirrorX,
+      DEFAULT_BITMAP_TEXTURE_FILL.mirrorX
+    ),
+    mirrorY: getBoolean(
+      texture.mirrorY,
+      DEFAULT_BITMAP_TEXTURE_FILL.mirrorY
+    ),
+    name: typeof texture.name === "string" ? texture.name : "",
+    offset: getFiniteNumber(
+      texture.offset,
+      DEFAULT_BITMAP_TEXTURE_FILL.offset
+    ),
+    offsetMode: texture.offsetMode === "column" ? "column" : "row",
+    offsetX: getFiniteNumber(
+      texture.offsetX,
+      DEFAULT_BITMAP_TEXTURE_FILL.offsetX
+    ),
+    offsetY: getFiniteNumber(
+      texture.offsetY,
+      DEFAULT_BITMAP_TEXTURE_FILL.offsetY
+    ),
+    rotation: getFiniteNumber(
+      texture.rotation,
+      DEFAULT_BITMAP_TEXTURE_FILL.rotation
+    ),
+    scaleLocked: getBoolean(
+      texture.scaleLocked,
+      DEFAULT_BITMAP_TEXTURE_FILL.scaleLocked
+    ),
+    skew: getFiniteNumber(texture.skew, DEFAULT_BITMAP_TEXTURE_FILL.skew),
+    source,
+    textureId,
+    transformWithObject: getBoolean(
+      texture.transformWithObject,
+      DEFAULT_BITMAP_TEXTURE_FILL.transformWithObject
+    ),
+    transparencyColor:
+      typeof texture.transparencyColor === "string"
+        ? texture.transparencyColor
+        : DEFAULT_BITMAP_TEXTURE_FILL.transparencyColor,
+    transparencyEnabled: getBoolean(
+      texture.transparencyEnabled,
+      DEFAULT_BITMAP_TEXTURE_FILL.transparencyEnabled
+    ),
+    transparencyTolerance: getFiniteNumber(
+      texture.transparencyTolerance,
+      DEFAULT_BITMAP_TEXTURE_FILL.transparencyTolerance
+    ),
+    width: Math.max(
+      MIN_ELEMENT_SIZE,
+      getFiniteNumber(texture.width, DEFAULT_BITMAP_TEXTURE_FILL.width)
+    )
+  };
+}
+
 function getImportedOutlineSettings(group: Element): ImportedElementSettings {
   const startArrowhead = group.getAttribute("data-kizkatt-start-arrowhead");
   const endArrowhead = group.getAttribute("data-kizkatt-end-arrowhead");
@@ -1256,7 +1403,26 @@ function getImportedOutlineSettings(group: Element): ImportedElementSettings {
   );
   const flipX = group.getAttribute("data-kizkatt-flip-x");
   const flipY = group.getAttribute("data-kizkatt-flip-y");
+  const metadata = getKizkattMetadata(group);
   const settings: ImportedElementSettings = {};
+
+  if (typeof metadata?.backgroundColor === "string") {
+    settings.backgroundColor = metadata.backgroundColor;
+  }
+  const bitmapTexture = getImportedBitmapTexture(metadata?.bitmapTexture);
+  if (bitmapTexture) {
+    settings.bitmapTexture = bitmapTexture;
+  }
+  const fillStyle = normalizeFillStyle(metadata?.fillStyle);
+  if (fillStyle) {
+    settings.fillStyle = fillStyle;
+  }
+  if (
+    typeof metadata?.fillWeight === "number" &&
+    Number.isFinite(metadata.fillWeight)
+  ) {
+    settings.fillWeight = metadata.fillWeight;
+  }
 
   if (arrowheadScale !== null) {
     settings.arrowheadScale = arrowheadScale;
