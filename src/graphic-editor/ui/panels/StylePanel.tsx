@@ -21,7 +21,7 @@ import { isHexColor } from "../../geometry";
 import { canElementUseBackground } from "../../model/element";
 import { useI18n } from "../../i18n";
 import {
-  BlackWhiteTextureIcon,
+  MonochromeTextureIcon,
   CloseIcon,
   ClosedPathIcon,
   EyedropperIcon,
@@ -62,6 +62,7 @@ type StylingPanelProps = {
   closedPath: boolean;
   colorColumnCount?: number;
   onClosedPathChange: (closed: boolean) => void;
+  onTextureLibraryOpen: () => void;
   onStyleChange: (
     patch: Partial<StyleState>,
     options?: { transient?: boolean }
@@ -120,36 +121,42 @@ const FILL_CONTROLS = [
     disabled: false,
     icon: FillSolidIcon,
     labelKey: "fillSolid",
+    opensTextureLibrary: false,
     style: "solid"
   },
   {
     disabled: true,
     icon: GradientIcon,
     labelKey: "fillGradient",
+    opensTextureLibrary: false,
     style: undefined
   },
   {
     disabled: true,
     icon: SvgFillIcon,
     labelKey: "fillSvg",
+    opensTextureLibrary: false,
     style: undefined
   },
   {
     disabled: false,
     icon: TextureIcon,
     labelKey: "fillCrossHatch",
+    opensTextureLibrary: false,
     style: "crossHatch"
   },
   {
-    disabled: true,
-    icon: BlackWhiteTextureIcon,
-    labelKey: "fillBlackWhiteTexture",
-    style: undefined
+    disabled: false,
+    icon: MonochromeTextureIcon,
+    labelKey: "fillMonochromeTexture",
+    opensTextureLibrary: true,
+    style: "monochromeTexture"
   },
   {
     disabled: false,
     icon: FillHachureIcon,
     labelKey: "fillHachure",
+    opensTextureLibrary: false,
     style: "hachure"
   }
 ] as const;
@@ -402,6 +409,7 @@ export function StylingPanel({
   closedPath,
   colorColumnCount = COLOR_PANEL_COLUMN_COUNT,
   onClosedPathChange,
+  onTextureLibraryOpen,
   onStyleChange,
   onStyleChangeEnd,
   selectedElements,
@@ -693,6 +701,11 @@ export function StylingPanel({
                         : undefined
                     }
                     onClick={() => {
+                      if (control.opensTextureLibrary) {
+                        onTextureLibraryOpen();
+                        return;
+                      }
+
                       if (control.style) {
                         onStyleChange({ fillStyle: control.style });
                       }

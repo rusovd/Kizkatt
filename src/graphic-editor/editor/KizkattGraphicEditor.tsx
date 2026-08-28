@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
 import {
@@ -70,6 +70,8 @@ import { FooterControls } from "../ui/controls/FooterControls";
 import { MainMenu } from "../ui/menus/MainMenu";
 import { ObjectPanel } from "../ui/panels/ObjectPanel";
 import { StylingPanel } from "../ui/panels/StylePanel";
+import { BitmapPatternFillPanel } from "../ui/panels/BitmapPatternFillPanel";
+import { TextureLibraryPopover } from "../ui/panels/TextureLibraryPopover";
 import {
   ELEMENT_NAMING,
   ELEMENT_TOOL_BY_TYPE,
@@ -144,7 +146,9 @@ function TextEditor({
   );
 }
 
-function AppStylingPanel(props: StylingPanelProps) {
+function AppStylingPanel(
+  props: StylingPanelProps & { onTextureLibraryOpen: () => void }
+) {
   return (
     <StylingPanel
       {...props}
@@ -325,6 +329,13 @@ function KizkattGraphicEditorView({
   } = viewModel;
   const previewMode = state.activeDisplayMode === "preview";
   const objectPanelPinned = isPanelPinned("object-panel");
+  const bitmapPatternPanelPinned = isPanelPinned("bitmap-pattern-fill");
+  const textureLibraryPinned = isPanelPinned("texture-library");
+  const [textureLibraryOpen, setTextureLibraryOpen] = useState(false);
+  const [textureLibraryReopenKey, setTextureLibraryReopenKey] = useState(0);
+  const [bitmapPatternPanelOpen, setBitmapPatternPanelOpen] = useState(false);
+  const [bitmapPatternPanelReopenKey, setBitmapPatternPanelReopenKey] =
+    useState(0);
   const lastSelectionGeometryControlsRef = useRef(selectionGeometryControls);
 
   if (selectionGeometryControls) {
@@ -347,6 +358,37 @@ function KizkattGraphicEditorView({
     !previewMode &&
     ((!state.menuOpen && stylingPanelIsRelevant) ||
       isPanelPinned("style-panel"));
+  const bitmapTextureTargetSize = stylingControls.selectedElements.reduce(
+    (size, element) => ({
+      height: Math.max(size.height, Math.abs(element.height)),
+      width: Math.max(size.width, Math.abs(element.width))
+    }),
+    { height: 0, width: 0 }
+  );
+  const openBitmapPatternPanel = () => {
+    setBitmapPatternPanelOpen(true);
+    setBitmapPatternPanelReopenKey((value) => value + 1);
+  };
+  const openTextureLibrary = () => {
+    setTextureLibraryOpen(true);
+    setTextureLibraryReopenKey((value) => value + 1);
+
+    if (stylingControls.style.bitmapTexture) {
+      openBitmapPatternPanel();
+    }
+  };
+  const applyBitmapTexture = (
+    texture: NonNullable<StylingPanelProps["style"]["bitmapTexture"]>,
+    options?: { transient?: boolean }
+  ) => {
+    stylingControls.onStyleChange(
+      {
+        bitmapTexture: texture,
+        fillStyle: "monochromeTexture"
+      },
+      options
+    );
+  };
 
   return (
     <section
@@ -382,7 +424,38 @@ function KizkattGraphicEditorView({
       {showObjectPanel && visibleSelectionGeometryControls && (
         <AppObjectPanel {...visibleSelectionGeometryControls} />
       )}
-      {showStylingPanel && <AppStylingPanel {...stylingControls} />}
+      {showStylingPanel && (
+        <AppStylingPanel
+          {...stylingControls}
+          onTextureLibraryOpen={openTextureLibrary}
+        />
+      )}
+      {!previewMode && (textureLibraryOpen || textureLibraryPinned) && (
+        <TextureLibraryPopover
+          activeTexture={stylingControls.style.bitmapTexture}
+          onClose={() => setTextureLibraryOpen(false)}
+          onTextureChange={(texture) => {
+            applyBitmapTexture(texture);
+            stylingControls.onStyleChangeEnd();
+          }}
+          onTextureSettingsOpen={openBitmapPatternPanel}
+          reopenKey={textureLibraryReopenKey}
+          targetSize={bitmapTextureTargetSize}
+        />
+      )}
+      {!previewMode &&
+        (bitmapPatternPanelOpen || bitmapPatternPanelPinned) && (
+          <BitmapPatternFillPanel
+            gridSettings={workspaceControls.gridSettings}
+            onChange={applyBitmapTexture}
+            onChangeEnd={stylingControls.onStyleChangeEnd}
+            onClose={() => setBitmapPatternPanelOpen(false)}
+            onOpenLibrary={openTextureLibrary}
+            reopenKey={bitmapPatternPanelReopenKey}
+            targetSize={bitmapTextureTargetSize}
+            texture={stylingControls.style.bitmapTexture}
+          />
+        )}
       {textEditing && <TextEditor {...textEditing} />}
 
       {canvas}

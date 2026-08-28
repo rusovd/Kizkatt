@@ -29,7 +29,8 @@
 }
 
 .kizkatt-floating-panel.is-dragging,
-.kizkatt-floating-panel.is-dragging .kizkatt-panel-drag-handle {
+.kizkatt-floating-panel.is-dragging .kizkatt-panel-drag-handle,
+.kizkatt-floating-panel.is-dragging [data-panel-title-drag-handle] {
   cursor: grabbing;
 }
 
@@ -233,6 +234,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: none;
+}
+
+.kizkatt-panel-title[data-panel-title-drag-handle] {
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
 }
 
 .kizkatt-panel-actions {

@@ -40,6 +40,7 @@ const DRAG_CLICK_THRESHOLD = 4;
 const MIN_RESIZABLE_PANEL_WIDTH = 160;
 const MIN_RESIZABLE_PANEL_HEIGHT = 80;
 const PANEL_DRAG_HANDLE_SELECTOR = "[data-panel-drag-handle]";
+const PANEL_TITLE_DRAG_HANDLE_SELECTOR = "[data-panel-title-drag-handle]";
 const PANEL_RESIZE_HANDLE_SELECTOR = "[data-panel-resize-handle]";
 
 function getStorageKey(id: string) {
@@ -135,6 +136,13 @@ function isPanelResizeHandle(target: EventTarget | null) {
   );
 }
 
+function isPanelTitleDragHandle(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest(PANEL_TITLE_DRAG_HANDLE_SELECTOR))
+  );
+}
+
 function blocksPanelDrag(target: EventTarget | null) {
   return (
     target instanceof Element &&
@@ -188,12 +196,15 @@ export function DraggablePanel({
   closable = false,
   defaultOrientation = "horizontal",
   draggable = true,
+  dragByTitle = true,
   hideLabels,
   horizontalActionsLayout = "row",
   id,
   maxCols = 1,
   maxRows = 1,
   minSize,
+  onClose,
+  orientationChangeable = true,
   pinnable = false,
   reopenKey,
   resizable = false,
@@ -208,12 +219,15 @@ export function DraggablePanel({
   closable?: boolean;
   defaultOrientation?: PanelOrientation;
   draggable?: boolean;
+  dragByTitle?: boolean;
   hideLabels?: Partial<Record<PanelOrientation, boolean>>;
   id: string;
   horizontalActionsLayout?: "column" | "row";
   maxCols?: number;
   maxRows?: number;
   minSize?: Partial<PanelSize>;
+  onClose?: () => void;
+  orientationChangeable?: boolean;
   pinnable?: boolean;
   reopenKey?: string | number;
   resizable?: boolean;
@@ -248,7 +262,9 @@ export function DraggablePanel({
     readStoredPosition(id)
   );
   const initialOrientationRef = useRef(
-    readStoredOrientation(id, defaultOrientation)
+    orientationChangeable
+      ? readStoredOrientation(id, defaultOrientation)
+      : defaultOrientation
   );
   const [orientation, setOrientation] = useState<PanelOrientation>(
     initialOrientationRef.current
@@ -315,12 +331,18 @@ export function DraggablePanel({
     event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>,
     pointerId: number | "mouse"
   ) => {
+    const hasDragTarget =
+      isPanelDragHandle(event.target) ||
+      (dragByTitle &&
+        orientation === "vertical" &&
+        isPanelTitleDragHandle(event.target));
+
     if (
       !draggable ||
       dragRef.current ||
       resizeRef.current ||
       event.button > 0 ||
-      !isPanelDragHandle(event.target) ||
+      !hasDragTarget ||
       blocksPanelDrag(event.target)
     ) {
       return false;
@@ -533,6 +555,10 @@ export function DraggablePanel({
   };
 
   const toggleOrientation = () => {
+    if (!orientationChangeable) {
+      return;
+    }
+
     const nextOrientation =
       orientation === "horizontal" ? "vertical" : "horizontal";
 
@@ -606,6 +632,7 @@ export function DraggablePanel({
             }
 
             setTemporarilyClosed(true);
+            onClose?.();
           }}
         >
           {CloseIcon}
@@ -620,10 +647,17 @@ export function DraggablePanel({
       <PanelDragHandle
         placement={orientation === "vertical" ? "top" : "left"}
         title={strings.settings.tooltips.panelDragHandle}
-        onDoubleClick={toggleOrientation}
+        onDoubleClick={orientationChangeable ? toggleOrientation : undefined}
       />
       {orientation === "vertical" && title && (
-        <strong className="kizkatt-panel-title">{title}</strong>
+        <strong
+          className="kizkatt-panel-title"
+          data-panel-title-drag-handle={
+            draggable && dragByTitle ? "true" : undefined
+          }
+        >
+          {title}
+        </strong>
       )}
       {orientation === "vertical" && panelActions}
     </div>
@@ -668,6 +702,7 @@ export function DraggablePanel({
 
         if (
           !isPanelDragHandle(event.target) &&
+          !isPanelTitleDragHandle(event.target) &&
           !isPanelResizeHandle(event.target)
         ) {
           return;

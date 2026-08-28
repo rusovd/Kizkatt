@@ -206,51 +206,45 @@ export const GradientIcon = createIcon(
   </g>,
 );
 
-export const BlackWhiteTextureIcon = createIcon(
-  <>
-    <defs>
-      <mask id="black-white-icon-mask">
-        <rect width="24" height="24" fill="black" />
-        <rect x="2" y="4.5" width="20" height="15" rx="4" fill="white" />
+export const MonochromeTextureIcon = createIcon(
+  <g>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
 
-        <path
-          fill="black"
-          fillRule="evenodd"
-          d="
-            M5.2 8h3
-            c1.65 0 2.65.82 2.65 2.08
-            0 .84-.46 1.48-1.22 1.82
-            .98.3 1.57 1.08 1.57 2.08
-            0 1.52-1.13 2.52-3 2.52h-3z
-
-            M6.75 9.35v1.95h1.2
-            c.78 0 1.22-.35 1.22-.98
-            0-.62-.44-.97-1.22-.97z
-
-            M6.75 12.65v2.5h1.38
-            c.91 0 1.42-.44 1.42-1.25
-            0-.8-.51-1.25-1.42-1.25z
-          "
-        />
-
-        <path
-          d="M12.35 8.05l1.55 8.35 2.05-7.05 2.05 7.05 1.65-8.35"
-          fill="none"
-          stroke="black"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.55"
-        />
-      </mask>
-    </defs>
-
-    <rect
-      width="24"
-      height="24"
+    <path
       fill="currentColor"
-      mask="url(#black-white-icon-mask)"
+      opacity=".35"
+      d="M4.5 2.5h3v15h-3a2.5 2.5 0 1 0 0 5h15.5V5.5H7.5v-3z"
     />
-  </>,
+
+    <path
+      fill="currentColor"
+      d="M8.5 8h2.8v1.4H8.5z"
+    />
+    <path
+      fill="currentColor"
+      d="M12.7 8h2.8v1.4h-2.8z"
+    />
+    <path
+      fill="currentColor"
+      d="M16.9 8h2.8v1.4h-2.8z"
+    />
+
+    <circle
+      cx="12"
+      cy="15"
+      r="4"
+      fill="currentColor"
+      opacity=".12"
+    />
+
+    <circle
+      cx="16.2"
+      cy="15"
+      r="4"
+      fill="currentColor"
+      opacity=".65"
+    />
+  </g>,
 );
 
 export const ShapeIcon = createIcon(
@@ -284,6 +278,14 @@ export const ImageIcon = createIcon(
     <path d="m11.667 11.667.833-.834c.774-.744 1.726-.744 2.5 0l1.667 1.667" />
   </g>,
   { height: 20, width: 20 }
+);
+
+export const UploadIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M12 16V4" />
+    <path d="m7.5 8.5 4.5-4.5 4.5 4.5" />
+    <path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" />
+  </g>
 );
 
 export const EraserIcon = createIcon(
