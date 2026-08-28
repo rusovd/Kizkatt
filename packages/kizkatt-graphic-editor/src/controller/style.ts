@@ -1,4 +1,7 @@
-import type { StyleState } from "kizkatt-graphic-engine";
+import {
+  TRANSPARENT_COLOR,
+  type StyleState
+} from "kizkatt-graphic-engine";
 
 const IMAGE_BORDER_STYLE_KEYS: ReadonlyArray<keyof StyleState> = [
   "calligraphy",
@@ -27,6 +30,46 @@ export function changesImageBorderStyle(patch: Partial<StyleState>) {
   );
 }
 
+export function getExclusiveFillStylePatch(
+  patch: Partial<StyleState>
+): Partial<StyleState> {
+  const nextPatch = { ...patch };
+
+  if (patch.bitmapTexture) {
+    nextPatch.backgroundColor = TRANSPARENT_COLOR;
+    nextPatch.fillStyle = "monochromeTexture";
+    return nextPatch;
+  }
+
+  if (hasOwnStyleProperty(patch, "backgroundColor")) {
+    nextPatch.bitmapTexture = undefined;
+    nextPatch.fillStyle = "solid";
+  } else if (
+    hasOwnStyleProperty(patch, "fillStyle") &&
+    patch.fillStyle !== "monochromeTexture"
+  ) {
+    nextPatch.bitmapTexture = undefined;
+  }
+
+  return nextPatch;
+}
+
+export function applyStylePatch<T extends StyleState>(
+  style: T,
+  patch: Partial<StyleState>
+): T {
+  const nextStyle = { ...style, ...patch };
+
+  if (
+    hasOwnStyleProperty(patch, "bitmapTexture") &&
+    patch.bitmapTexture === undefined
+  ) {
+    delete nextStyle.bitmapTexture;
+  }
+
+  return nextStyle;
+}
+
 export function isSameStyle(
   firstStyle: StyleState,
   secondStyle: StyleState
@@ -34,6 +77,7 @@ export function isSameStyle(
   return (
     firstStyle.arrowheadScale === secondStyle.arrowheadScale &&
     firstStyle.backgroundColor === secondStyle.backgroundColor &&
+    firstStyle.bitmapTexture === secondStyle.bitmapTexture &&
     firstStyle.calligraphy === secondStyle.calligraphy &&
     firstStyle.calligraphyStretch === secondStyle.calligraphyStretch &&
     firstStyle.edgeStyle === secondStyle.edgeStyle &&

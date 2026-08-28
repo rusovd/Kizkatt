@@ -27,7 +27,10 @@ import {
   UI_SCALE_STORAGE_KEY
 } from "kizkatt-graphic-engine";
 import { getElementBends } from "kizkatt-graphic-engine";
-import { normalizeElementNames } from "kizkatt-graphic-engine";
+import {
+  normalizeElementNames,
+  normalizeFillStyle
+} from "kizkatt-graphic-engine";
 import type {
   CanvasState,
   Dpi,
@@ -441,7 +444,15 @@ function normalizeStoredCanvasState(value: unknown): CanvasState | null {
     return null;
   }
 
-  const elements = normalizeElementNames(state.elements.filter(isStoredElement));
+  const elements = normalizeElementNames(
+    state.elements.filter(isStoredElement).map((element) => {
+      const fillStyle = normalizeFillStyle(
+        (element as KizkattElement & { fillStyle?: unknown }).fillStyle
+      );
+
+      return fillStyle ? { ...element, fillStyle } : element;
+    })
+  );
   const elementIds = new Set(elements.map((element) => element.id));
   const selectedBendElement =
     state.selectedBend &&
