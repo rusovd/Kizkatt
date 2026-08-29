@@ -16,6 +16,7 @@ import {
   reorderElementsByLayerAction,
   resizeElementFromHandle,
   screen,
+  waitFor,
   vi,
   type KizkattElement
 } from "./testUtils";
@@ -87,6 +88,298 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     const rectangle = canvas.querySelector("[data-element-id] rect");
     expect(rectangle).toHaveAttribute("stroke", "#1971c2");
     expect(rectangle).toHaveAttribute("stroke-width", "7");
+  });
+
+  it("imports a monochrome bitmap texture and applies its fine settings", async () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Monochrome texture" })
+    );
+
+    const library = screen.getByRole("dialog", { name: "Textures" });
+    const thumbnailColumns = screen.getByRole("slider", {
+      name: "Textures per row"
+    });
+    const fileInput = library.querySelector<HTMLInputElement>(
+      "input[type='file']"
+    );
+    const catalogTextures = screen.getAllByRole("button", {
+      name: /^Abstract \d{3}$/
+    });
+    const textureFile = new File(
+      [
+        '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><path d="M0 0L8 8" stroke="black"/></svg>'
+      ],
+      "Abstract Lines.svg",
+      { lastModified: 1, type: "image/svg+xml" }
+    );
+
+    expect(fileInput).not.toBeNull();
+    expect(catalogTextures).toHaveLength(34);
+    expect(screen.queryByText("No textures found")).not.toBeInTheDocument();
+    expect(thumbnailColumns).toHaveValue("2");
+    fireEvent.change(thumbnailColumns, { target: { value: "3" } });
+    expect(
+      library.querySelector(".kizkatt-texture-library-groups")
+    ).toHaveStyle({ "--kizkatt-texture-columns": "3" });
+    expect(
+      library.closest(".kizkatt-floating-panel--texture-library")
+    ).toHaveStyle({ minHeight: "420px" });
+    expect(
+      library.querySelector("button[aria-label='Stick panel']")
+    ).toBeInTheDocument();
+    const texturePanel = library.closest(
+      ".kizkatt-floating-panel--texture-library"
+    ) as HTMLElement;
+    const textureResizeHandle = texturePanel.querySelector(
+      "[data-panel-resize-handle]"
+    );
+
+    expect(texturePanel.querySelector("[data-panel-drag-handle]"))
+      .toBeInTheDocument();
+    expect(textureResizeHandle).toBeInTheDocument();
+    fireEvent.mouseDown(textureResizeHandle as Element, {
+      button: 0,
+      clientX: 10,
+      clientY: 10
+    });
+    fireEvent.mouseMove(texturePanel, { clientX: 210, clientY: 160 });
+    fireEvent.mouseUp(texturePanel, { clientX: 210, clientY: 160 });
+    expect(texturePanel).toHaveStyle({ height: "570px" });
+    expect(texturePanel.style.width).toBe("");
+    fireEvent.click(catalogTextures[0]);
+    await waitFor(() => {
+      expect(canvas.querySelector("[data-bitmap-texture]"))
+        .toHaveAttribute(
+          "data-bitmap-texture",
+          "monochrome.abstract.abstract-001"
+        );
+    });
+    const catalogPattern = canvas.querySelector("[data-bitmap-texture]");
+    const catalogPatternImages = catalogPattern?.querySelectorAll("image");
+
+    expect(catalogPattern).toHaveAttribute("data-bitmap-repeat", "none");
+    expect(catalogPatternImages).toHaveLength(1);
+    expect(catalogPatternImages?.[0]).toHaveAttribute("width", "7360");
+    expect(catalogPatternImages?.[0]).toHaveAttribute("height", "4912");
+    expect(catalogPattern?.querySelector("rect")).not.toBeInTheDocument();
+    expect(
+      canvas.querySelector("[data-element-id] metadata")?.textContent
+    ).toContain('"backgroundColor":"transparent"');
+    fireEvent.change(fileInput as HTMLInputElement, {
+      target: { files: [textureFile] }
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
+        .toBeInTheDocument();
+      expect(
+        canvas
+          .querySelector("[data-bitmap-texture] image")
+          ?.getAttribute("href")
+      ).toMatch(/^data:image\/svg\+xml/);
+    });
+
+    const pattern = canvas.querySelector("[data-bitmap-texture]");
+    const patternImage = pattern?.querySelector("image");
+    const bitmapPanel = document.querySelector(
+      ".kizkatt-floating-panel--bitmap-pattern-fill"
+    ) as HTMLElement;
+    const bitmapDragHandle = bitmapPanel.querySelector(
+      "[data-panel-drag-handle]"
+    );
+    const bitmapResizeHandle = bitmapPanel.querySelector(
+      "[data-panel-resize-handle]"
+    );
+
+    expect(patternImage?.getAttribute("href")).toMatch(
+      /^data:image\/svg\+xml/
+    );
+    expect(pattern).toHaveAttribute("data-texture-anchor", "center");
+    expect(pattern).toHaveAttribute("x", "40");
+    expect(pattern).toHaveAttribute("y", "50");
+    expect(pattern).toHaveAttribute("width", "120");
+    expect(pattern).toHaveAttribute("height", "70");
+    expect(pattern?.querySelector("[data-texture-transform]")).toHaveAttribute(
+      "transform",
+      expect.stringContaining("translate(100 85)")
+    );
+    expect(patternImage).toHaveAttribute("x", "-3680");
+    expect(patternImage).toHaveAttribute("y", "-2456");
+    expect(bitmapPanel).toHaveClass("kizkatt-floating-panel--vertical");
+    expect(
+      bitmapPanel.querySelector(".kizkatt-bitmap-pattern-fill-button")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Upload texture" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Transparency" })
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Desaturate" })
+    ).toBeChecked();
+    expect(
+      screen.getByRole("slider", { name: "Desaturate value" })
+    ).toHaveValue("100");
+    expect(
+      canvas.querySelector("[data-bitmap-texture-filter]")
+    ).toHaveAttribute("data-saturation", "0");
+    expect(
+      screen.getByRole("slider", { name: "Shade range" })
+    ).toHaveValue("100");
+    expect(pattern?.querySelector("g[filter]")).toHaveAttribute(
+      "filter",
+      expect.stringContaining("texture-filter")
+    );
+    fireEvent.doubleClick(bitmapDragHandle as Element);
+    expect(bitmapPanel).toHaveClass("kizkatt-floating-panel--vertical");
+    fireEvent.mouseDown(bitmapResizeHandle as Element, {
+      button: 0,
+      clientX: 10,
+      clientY: 10
+    });
+    fireEvent.mouseMove(bitmapPanel, { clientX: 210, clientY: 160 });
+    fireEvent.mouseUp(bitmapPanel, { clientX: 210, clientY: 160 });
+    expect(bitmapPanel).toHaveStyle({ width: "820px" });
+    expect(bitmapPanel.style.height).toBe("");
+    expect(
+      canvas.querySelector("[data-element-id] metadata")?.textContent
+    ).toContain('"fillStyle":"monochromeTexture"');
+    expect(
+      canvas.querySelector("[data-element-id] metadata")?.textContent
+    ).toContain('"name":"Abstract Lines"');
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Luminance" }));
+    const applyTextureSettings = screen.getByRole("button", { name: "Apply" });
+    const luminanceSlider = screen.getByRole("slider", {
+      name: "Luminance value"
+    });
+
+    luminanceSlider.focus();
+    fireEvent.change(luminanceSlider, { target: { value: "-25" } });
+    expect(document.activeElement).toBe(luminanceSlider);
+    expect(
+      screen.getByRole("slider", { name: "Luminance value" })
+    ).toBe(luminanceSlider);
+    expect(
+      canvas.querySelector("[data-bitmap-texture-filter]")
+    ).toHaveAttribute("data-contrast", "75");
+    fireEvent.change(luminanceSlider, { target: { value: "10" } });
+    expect(document.activeElement).toBe(luminanceSlider);
+    expect(
+      canvas.querySelector("[data-bitmap-texture-filter]")
+    ).toHaveAttribute("data-contrast", "110");
+    fireEvent.click(applyTextureSettings);
+    await waitFor(() => {
+      expect(
+        canvas.querySelector("[data-bitmap-texture-filter]")
+      ).toHaveAttribute("data-contrast", "110");
+    });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Brightness" }));
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Brightness value" }),
+      { target: { value: "-20" } }
+    );
+    expect(
+      canvas.querySelector("[data-bitmap-texture-filter]")
+    ).toHaveAttribute("data-brightness", "80");
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Edge match" }));
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Edge match value" }),
+      { target: { value: "75" } }
+    );
+    expect(
+      canvas.querySelector("[data-bitmap-texture-filter]")
+    ).toHaveAttribute("data-edge-match", "0.75");
+    expect(
+      canvas.querySelector("[data-bitmap-texture-filter] feGaussianBlur")
+    ).toHaveAttribute("stdDeviation", "0.75");
+
+    const rotationInput = screen.getByLabelText("Rotation");
+
+    fireEvent.change(rotationInput, { target: { value: "" } });
+    expect(rotationInput).toHaveValue("");
+    fireEvent.change(rotationInput, { target: { value: "-15.5" } });
+    fireEvent.blur(rotationInput);
+    expect(rotationInput).toHaveValue("-15.5");
+    expect(canvas.querySelector("[data-texture-transform]")).toHaveAttribute(
+      "transform",
+      expect.stringContaining("rotate(-15.5)")
+    );
+    fireEvent.click(applyTextureSettings);
+    await waitFor(() => {
+      expect(canvas.querySelector("[data-texture-transform]")).toHaveAttribute(
+        "transform",
+        expect.stringContaining("rotate(-15.5)")
+      );
+    });
+    fireEvent.change(rotationInput, { target: { value: "" } });
+    fireEvent.change(rotationInput, { target: { value: "30" } });
+    fireEvent.blur(rotationInput);
+    expect(canvas.querySelector("[data-texture-transform]")).toHaveAttribute(
+      "transform",
+      expect.stringContaining("rotate(30)")
+    );
+    fireEvent.click(applyTextureSettings);
+    await waitFor(() => {
+      expect(canvas.querySelector("[data-texture-transform]")).toHaveAttribute(
+        "transform",
+        expect.stringContaining("rotate(30)")
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Mirror horizontally" }));
+    expect(
+      canvas.querySelector("[data-texture-transform]")
+        ?.getAttribute("transform")
+    ).toContain("scale(-1 1)");
+    fireEvent.click(applyTextureSettings);
+    await waitFor(() => {
+      expect(
+        canvas.querySelector("[data-texture-transform]")
+          ?.getAttribute("transform")
+      ).toContain("scale(-1 1)");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Mirror vertically" }));
+    expect(
+      canvas.querySelector("[data-texture-transform]")
+        ?.getAttribute("transform")
+    ).toContain("scale(-1 -1)");
+    fireEvent.click(
+      bitmapPanel.querySelector("button[aria-label='Close panel']") as Element
+    );
+    await waitFor(() => {
+      expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
+        .not.toBeInTheDocument();
+      expect(
+        canvas.querySelector("[data-texture-transform]")
+          ?.getAttribute("transform")
+      ).toContain("scale(-1 1)");
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Background #653b00" })
+    );
+    expect(canvas.querySelector("[data-bitmap-texture]"))
+      .not.toBeInTheDocument();
+    expect(
+      canvas.querySelector("[data-element-id] metadata")?.textContent
+    ).toContain('"fillStyle":"solid"');
+    expect(
+      canvas.querySelector("[data-element-id] metadata")?.textContent
+    ).not.toContain('"bitmapTexture"');
   });
 
   it("creates a rectangle on the SVG canvas", () => {
@@ -1124,7 +1417,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       "Gradient fill",
       "SVG fill",
       "Texture fill",
-      "Black and white texture",
+      "Monochrome texture",
       "Fill hachure"
     ]);
 

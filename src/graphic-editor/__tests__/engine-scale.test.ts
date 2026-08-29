@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  breakApartSvgElement,
+  createBitmapTextureFill,
+  DEFAULT_BITMAP_TEXTURE_FILL,
   findElementAtPoint,
+  getBitmapTextureAdjustments,
+  getBitmapTexturePlacement,
+  getCoveredBitmapSourcePoint,
   getDpiPixelRatio,
   getElementIndicesInBounds,
   getElementLocalPoint,
   getResizeAnchorPoint,
+  getInitialBitmapTextureSize,
+  getResizedBitmapTextureSize,
   isExpectedCopiedPngSize,
   resizeElementFromHandle,
   observeHitTesting,
@@ -184,6 +192,131 @@ describe("engine scale safeguards", () => {
     expect(transformElementPoint(resized, { x: 0, y: -32 })).toEqual({
       x: 64,
       y: -32
+    });
+  });
+
+  it("restores bitmap texture settings from Kizkatt SVG metadata", () => {
+    const bitmapTexture = {
+      ...DEFAULT_BITMAP_TEXTURE_FILL,
+      mirrorX: true,
+      name: "Abstract Lines",
+      rotation: 25,
+      source: "data:image/png;base64,AA==",
+      textureId: "custom:abstract-lines"
+    };
+    const metadata = JSON.stringify({
+      backgroundColor: "#eeeeee",
+      bitmapTexture,
+      fillStyle: "blackWhiteTexture",
+      fillWeight: 2
+    });
+    const sourceElement: KizkattElement = {
+      ...createRectangle(0),
+      svgContent: `<g data-element-id="texture-rectangle" data-element-type="rectangle"><metadata>${metadata}</metadata><rect x="0" y="0" width="32" height="32" fill="url(#texture)" stroke="#000000"/></g>`,
+      svgViewBox: "0 0 32 32",
+      type: "image"
+    };
+
+    const [imported] = breakApartSvgElement(
+      sourceElement,
+      [],
+      sourceElement
+    );
+
+    expect(imported).toMatchObject({
+      backgroundColor: "#eeeeee",
+      bitmapTexture,
+      fillStyle: "monochromeTexture",
+      fillWeight: 2,
+      type: "rectangle"
+    });
+  });
+
+  it("keeps bitmap texture sizing and centered crop geometry in the engine", () => {
+    expect(
+      createBitmapTextureFill({
+        name: "Abstract 001",
+        naturalSize: { height: 80, width: 200 },
+        targetSize: { height: 120, width: 100 },
+        textureId: "monochrome.abstract.001"
+      })
+    ).toMatchObject({
+      height: 120,
+      name: "Abstract 001",
+      textureId: "monochrome.abstract.001",
+      width: 200
+    });
+    expect(
+      getInitialBitmapTextureSize(
+        { height: 80, width: 200 },
+        { height: 120, width: 100 }
+      )
+    ).toEqual({ height: 120, width: 200 });
+    expect(
+      getResizedBitmapTextureSize(
+        { height: 100, width: 200 },
+        "width",
+        300,
+        { locked: true }
+      )
+    ).toEqual({ height: 150, width: 300 });
+
+    const rectangle = {
+      ...createRectangle(0),
+      height: 70,
+      width: 120,
+      x: 40,
+      y: 50
+    };
+    const placement = getBitmapTexturePlacement(rectangle, {
+      ...DEFAULT_BITMAP_TEXTURE_FILL,
+      height: 4912,
+      width: 7360
+    });
+
+    expect(placement).toEqual({
+      bounds: { height: 70, width: 120, x: 40, y: 50 },
+      image: { height: 4912, width: 7360, x: -3680, y: -2456 },
+      transform: {
+        centerX: 100,
+        centerY: 85,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        skewX: 0
+      }
+    });
+  });
+
+  it("maps a cover preview point and texture adjustments without UI state", () => {
+    expect(
+      getCoveredBitmapSourcePoint(
+        { height: 200, width: 400 },
+        { height: 100, width: 100 },
+        { x: 50, y: 50 }
+      )
+    ).toEqual({ x: 200, y: 100 });
+
+    expect(
+      getBitmapTextureAdjustments({
+        ...DEFAULT_BITMAP_TEXTURE_FILL,
+        blendAmount: 75,
+        brightness: -20,
+        brightnessEnabled: true,
+        color: 30,
+        colorEnabled: true,
+        edgeMatch: 50,
+        edgeMatchEnabled: true,
+        luminance: 15,
+        luminanceEnabled: true
+      })
+    ).toEqual({
+      blendMode: "normal",
+      blur: 0.5,
+      brightness: 80,
+      contrast: 115,
+      opacity: 0.75,
+      saturation: 0
     });
   });
 });

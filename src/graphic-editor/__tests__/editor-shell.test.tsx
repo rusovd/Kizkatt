@@ -608,6 +608,22 @@ describe("KizkattGraphicEditor shell", () => {
     expect(stylePanel.style.getPropertyValue("--kizkatt-panel-max-cols")).toBe(
       "2"
     );
+    const panelTitle = stylePanel.querySelector(
+      "[data-panel-title-drag-handle]"
+    );
+
+    expect(panelTitle).toHaveTextContent("Styling");
+    fireEvent.mouseDown(panelTitle as Element, {
+      button: 0,
+      clientX: 100,
+      clientY: 80
+    });
+    fireEvent.mouseMove(stylePanel, { clientX: 180, clientY: 140 });
+    fireEvent.mouseUp(stylePanel, { clientX: 180, clientY: 140 });
+    expect(
+      window.localStorage.getItem("kizkatt:graphic-editor:panel:style-panel")
+    ).toBe(JSON.stringify({ x: 80, y: 60 }));
+
     fireEvent.mouseDown(resizeHandle as Element, {
       button: 0,
       clientX: 10,
