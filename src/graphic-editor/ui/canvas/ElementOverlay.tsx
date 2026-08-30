@@ -4,6 +4,7 @@ import {
   getElementCenter,
   getElementLocalPoint,
   getResizeCursor,
+  getSelectionTransformHandleLayout,
   rotatePointAroundPoint,
   selectionBounds,
   transformElementPoint
@@ -369,66 +370,21 @@ export function WorldSkewOverlay({
   }
 
   const { maxX, maxY, minX, minY } = pointBounds;
-  const edgeHandles = [
+  const handleLayout = getSelectionTransformHandleLayout(
     {
-      handle: "top" as const,
-      point: {
-        x: (minX + maxX) / HALF_DIVISOR,
-        y: minY - CORNER_ROTATE_HANDLE_OFFSET
-      }
+      height: maxY - minY,
+      width: maxX - minX,
+      x: minX,
+      y: minY
     },
-    {
-      handle: "right" as const,
-      point: {
-        x: maxX + CORNER_ROTATE_HANDLE_OFFSET,
-        y: (minY + maxY) / HALF_DIVISOR
-      }
-    },
-    {
-      handle: "bottom" as const,
-      point: {
-        x: (minX + maxX) / HALF_DIVISOR,
-        y: maxY + CORNER_ROTATE_HANDLE_OFFSET
-      }
-    },
-    {
-      handle: "left" as const,
-      point: {
-        x: minX - CORNER_ROTATE_HANDLE_OFFSET,
-        y: (minY + maxY) / HALF_DIVISOR
-      }
-    }
-  ];
-  const cornerHandles = [
-    {
-      corner: "nw" as const,
-      point: {
-        x: minX - CORNER_ROTATE_HANDLE_OFFSET,
-        y: minY - CORNER_ROTATE_HANDLE_OFFSET
-      }
-    },
-    {
-      corner: "ne" as const,
-      point: {
-        x: maxX + CORNER_ROTATE_HANDLE_OFFSET,
-        y: minY - CORNER_ROTATE_HANDLE_OFFSET
-      }
-    },
-    {
-      corner: "se" as const,
-      point: {
-        x: maxX + CORNER_ROTATE_HANDLE_OFFSET,
-        y: maxY + CORNER_ROTATE_HANDLE_OFFSET
-      }
-    },
-    {
-      corner: "sw" as const,
-      point: {
-        x: minX - CORNER_ROTATE_HANDLE_OFFSET,
-        y: maxY + CORNER_ROTATE_HANDLE_OFFSET
-      }
-    }
-  ];
+    CORNER_ROTATE_HANDLE_OFFSET
+  );
+  const edgeHandles = (["top", "right", "bottom", "left"] as const).map(
+    (handle) => ({ handle, point: handleLayout.edges[handle] })
+  );
+  const cornerHandles = (["nw", "ne", "se", "sw"] as const).map(
+    (corner) => ({ corner, point: handleLayout.corners[corner] })
+  );
 
   return (
     <g className="kizkatt-selection-overlay kizkatt-selection-overlay--world">

@@ -337,14 +337,22 @@ function KizkattGraphicEditorView({
   const [bitmapPatternPanelReopenKey, setBitmapPatternPanelReopenKey] =
     useState(0);
   const lastSelectionGeometryControlsRef = useRef(selectionGeometryControls);
+  const lastBitmapTextureRef = useRef(stylingControls.style.bitmapTexture);
 
   if (selectionGeometryControls) {
     lastSelectionGeometryControlsRef.current = selectionGeometryControls;
   }
 
+  if (stylingControls.style.bitmapTexture) {
+    lastBitmapTextureRef.current = stylingControls.style.bitmapTexture;
+  }
+
   const visibleSelectionGeometryControls =
     selectionGeometryControls ??
     (objectPanelPinned ? lastSelectionGeometryControlsRef.current : null);
+  const visibleBitmapTexture =
+    stylingControls.style.bitmapTexture ??
+    (bitmapPatternPanelPinned ? lastBitmapTextureRef.current : undefined);
   const showObjectPanel =
     !previewMode &&
     (!state.menuOpen || objectPanelPinned) &&
@@ -358,6 +366,11 @@ function KizkattGraphicEditorView({
     !previewMode &&
     ((!state.menuOpen && stylingPanelIsRelevant) ||
       isPanelPinned("style-panel"));
+  const showBitmapPatternPanel =
+    !previewMode &&
+    (bitmapPatternPanelPinned ||
+      (bitmapPatternPanelOpen &&
+        Boolean(stylingControls.style.bitmapTexture)));
   const bitmapTextureTargetSize = stylingControls.selectedElements.reduce(
     (size, element) => ({
       height: Math.max(size.height, Math.abs(element.height)),
@@ -443,19 +456,17 @@ function KizkattGraphicEditorView({
           targetSize={bitmapTextureTargetSize}
         />
       )}
-      {!previewMode &&
-        (bitmapPatternPanelOpen || bitmapPatternPanelPinned) && (
-          <BitmapPatternFillPanel
-            gridSettings={workspaceControls.gridSettings}
-            onChange={applyBitmapTexture}
-            onChangeEnd={stylingControls.onStyleChangeEnd}
-            onClose={() => setBitmapPatternPanelOpen(false)}
-            onOpenLibrary={openTextureLibrary}
-            reopenKey={bitmapPatternPanelReopenKey}
-            targetSize={bitmapTextureTargetSize}
-            texture={stylingControls.style.bitmapTexture}
-          />
-        )}
+      {showBitmapPatternPanel && (
+        <BitmapPatternFillPanel
+          onChange={applyBitmapTexture}
+          onChangeEnd={stylingControls.onStyleChangeEnd}
+          onClose={() => setBitmapPatternPanelOpen(false)}
+          onOpenLibrary={openTextureLibrary}
+          reopenKey={bitmapPatternPanelReopenKey}
+          targetSize={bitmapTextureTargetSize}
+          texture={visibleBitmapTexture}
+        />
+      )}
       {textEditing && <TextEditor {...textEditing} />}
 
       {canvas}

@@ -2,13 +2,13 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import {
   createBitmapTextureFill,
-  getCalibratedMillimetersWorldSize,
-  getResizedBitmapTextureSize,
+  getBitmapTexturePreviewGeometry,
+  getResetBitmapTextureTransform,
   type BitmapTextureFill,
-  type BitmapTextureSize,
-  type GridSettings
+  type BitmapTextureSize
 } from "kizkatt-graphic-engine";
 import {
+  BitmapTextureCropPreview,
   getCoveredImagePixelColor,
   getImageFileSize,
   readFileAsDataUrl,
@@ -18,15 +18,13 @@ import {
 } from "kizkatt-graphic-editor";
 
 import { getTextureSource } from "../../assets/textures/monochrome/textureCatalog";
-import { OBJECT_PANEL_UI_SETTINGS } from "../../config/defaultSettings";
 import { useI18n } from "../../i18n";
 import {
-  AspectLockIcon,
-  AspectUnlockIcon,
   EyedropperIcon,
-  ImageIcon,
   MirrorHorizontalIcon,
   MirrorVerticalIcon,
+  ResetIcon,
+  TileIcon,
   UploadIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
@@ -34,8 +32,6 @@ import { DraggablePanel } from "../positioning/DraggablePanel";
 const PANEL_ID = "bitmap-pattern-fill";
 const MIN_ADJUSTMENT = -100;
 const MAX_ADJUSTMENT = 100;
-const MIN_SIZE = 1;
-const MAX_SIZE = 10000;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -44,10 +40,6 @@ function clamp(value: number, min: number, max: number) {
 function parseNumber(value: string, fallback: number) {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function formatNumber(value: number, precision = 2) {
-  return `${Number(value.toFixed(precision))}`;
 }
 
 function parseEditableNumber(value: string) {
@@ -129,42 +121,6 @@ function EditableNumberInput({
   );
 }
 
-function NumberField({
-  label,
-  max,
-  min,
-  onBlur,
-  onChange,
-  suffix,
-  value
-}: {
-  label: string;
-  max?: number;
-  min?: number;
-  onBlur: () => void;
-  onChange: (value: string) => void;
-  suffix?: string;
-  value: string;
-}) {
-  return (
-    <label className="kizkatt-texture-number-field">
-      <span>{label}</span>
-      <span>
-        <EditableNumberInput
-          ariaLabel={label}
-          min={min}
-          max={max}
-          step={0.1}
-          value={value}
-          onChangeEnd={onBlur}
-          onValueChange={onChange}
-        />
-        {suffix && <small>{suffix}</small>}
-      </span>
-    </label>
-  );
-}
-
 function AdjustmentField({
   checked,
   label,
@@ -237,7 +193,6 @@ function ToggleButton({
 }
 
 export function BitmapPatternFillPanel({
-  gridSettings,
   onChange,
   onChangeEnd: commitAppliedChange,
   onClose,
@@ -246,7 +201,6 @@ export function BitmapPatternFillPanel({
   targetSize,
   texture: textureValue
 }: {
-  gridSettings: GridSettings;
   onChange: (
     texture: BitmapTextureFill,
     options?: { transient?: boolean }
@@ -261,15 +215,14 @@ export function BitmapPatternFillPanel({
   const { strings } = useI18n();
   const previewImageRef = useRef<HTMLImageElement | null>(null);
   const sourceInputRef = useRef<HTMLInputElement | null>(null);
+  const [sourceNaturalSize, setSourceNaturalSize] =
+    useState<BitmapTextureSize>({
+      height: Math.max(1, textureValue?.height ?? targetSize.height),
+      width: Math.max(1, textureValue?.width ?? targetSize.width)
+    });
   const [pickingTransparencyColor, setPickingTransparencyColor] =
     useState(false);
-  const {
-    apply,
-    dirty,
-    discard,
-    texture,
-    update
-  } = useBitmapTextureDraft({
+  const { apply, texture, update } = useBitmapTextureDraft({
     onCommit: commitAppliedChange,
     onPreview: onChange,
     reopenKey,
@@ -280,26 +233,35 @@ export function BitmapPatternFillPanel({
     setPickingTransparencyColor(false);
   }, [reopenKey, textureValue?.textureId]);
 
-  const onChangeEnd = () => undefined;
+  const onChangeEnd = apply;
   const source = texture.source ?? getTextureSource(texture.textureId);
-  const unitSettings = useMemo(() => {
-    const worldUnitsPerDisplayUnit =
-      gridSettings.unit === "mm"
-        ? getCalibratedMillimetersWorldSize(
-            OBJECT_PANEL_UI_SETTINGS.gridMillimeterReference,
-            gridSettings
-          )
-        : 1;
+  const hasTarget = targetSize.width > 0 && targetSize.height > 0;
 
-    return {
-      fromDisplay: (value: number) => value * worldUnitsPerDisplayUnit,
-      toDisplay: (value: number) => value / worldUnitsPerDisplayUnit,
-      unit: gridSettings.unit
-    };
-  }, [gridSettings]);
+  useEffect(() => {
+    setSourceNaturalSize({
+      height: Math.max(1, texture.height),
+      width: Math.max(1, texture.width)
+    });
+  }, [source, texture.textureId]);
+
+  const previewGeometry = useMemo(
+    () =>
+      getBitmapTexturePreviewGeometry(
+        texture,
+        sourceNaturalSize,
+        targetSize
+      ),
+    [sourceNaturalSize, targetSize, texture]
+  );
+
+  useEffect(() => {
+    if (texture.tile && !previewGeometry.tileAvailable) {
+      update({ tile: false }, { transient: true });
+    }
+  }, [previewGeometry.tileAvailable, texture.tile, update]);
 
   const close = () => {
-    discard();
+    apply();
     onClose();
   };
   const updateNumber = (
@@ -314,21 +276,6 @@ export function BitmapPatternFillPanel({
       { [property]: clamp(parseNumber(value, fallback), min, max) },
       { transient: true }
     );
-  };
-  const updateSize = (property: "height" | "width", value: string) => {
-    const nextValue = clamp(
-      unitSettings.fromDisplay(parseNumber(value, texture[property])),
-      MIN_SIZE,
-      MAX_SIZE
-    );
-    const nextSize = getResizedBitmapTextureSize(
-      { height: texture.height, width: texture.width },
-      property,
-      nextValue,
-      { locked: texture.scaleLocked, max: MAX_SIZE, min: MIN_SIZE }
-    );
-
-    update(nextSize, { transient: true });
   };
   const chooseSource = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -368,7 +315,7 @@ export function BitmapPatternFillPanel({
       return;
     }
 
-    const bounds = event.currentTarget.getBoundingClientRect();
+    const bounds = image.getBoundingClientRect();
     const color = getCoveredImagePixelColor(image, bounds, {
       x: event.clientX,
       y: event.clientY
@@ -435,23 +382,32 @@ export function BitmapPatternFillPanel({
                 </div>
               </div>
 
-              <div
-                className={`kizkatt-bitmap-pattern-preview${
-                  pickingTransparencyColor ? " is-picking-color" : ""
-                }`}
+              <BitmapTextureCropPreview
+                cropEnabled={hasTarget}
+                imageRef={previewImageRef}
+                labels={{
+                  crop: strings.bitmapPattern.crop,
+                  move: strings.bitmapPattern.moveCrop,
+                  resize: strings.bitmapPattern.resizeCrop,
+                  rotate: strings.bitmapPattern.rotateCrop,
+                  skew: strings.bitmapPattern.skewCrop
+                }}
+                source={source ?? undefined}
+                targetSize={targetSize}
+                texture={texture}
+                pickingColor={pickingTransparencyColor}
                 onClick={pickTransparencyColor}
-              >
-                {source ? (
-                  <img ref={previewImageRef} src={source} alt="" />
-                ) : (
-                  ImageIcon
-                )}
-              </div>
+                onNaturalSizeChange={setSourceNaturalSize}
+                onTextureChange={(change) =>
+                  update(change, { transient: true })
+                }
+                onTextureChangeEnd={onChangeEnd}
+              />
 
               <div className="kizkatt-bitmap-pattern-source">
                 <strong>{strings.bitmapPattern.source}</strong>
                 <div>
-                  {source ? <img src={source} alt="" /> : ImageIcon}
+                  {source ? <img src={source} alt="" /> : null}
                   <button
                     type="button"
                     aria-label={strings.bitmapPattern.choose}
@@ -629,6 +585,66 @@ export function BitmapPatternFillPanel({
                 />
               </div>
 
+              <div className="kizkatt-bitmap-pattern-layout-controls">
+                <label
+                  className="kizkatt-bitmap-pattern-tile-control"
+                  title={strings.bitmapPattern.tile}
+                >
+                  <input
+                    aria-label={strings.bitmapPattern.tile}
+                    type="checkbox"
+                    checked={texture.tile && previewGeometry.tileAvailable}
+                    disabled={!previewGeometry.tileAvailable}
+                    onChange={(event) => {
+                      update({
+                        fitToObject: false,
+                        tile: event.target.checked
+                      });
+                      onChangeEnd();
+                    }}
+                  />
+                  {TileIcon}
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={texture.fitToObject}
+                    disabled={!hasTarget}
+                    onChange={(event) => {
+                      const fitToObject = event.target.checked;
+                      update({
+                        fitToObject,
+                        height: fitToObject
+                          ? targetSize.height
+                          : sourceNaturalSize.height,
+                        offsetX: 0,
+                        offsetY: 0,
+                        tile: false,
+                        width: fitToObject
+                          ? targetSize.width
+                          : sourceNaturalSize.width
+                      });
+                      onChangeEnd();
+                    }}
+                  />
+                  {strings.bitmapPattern.fitToObjectSize}
+                </label>
+                <button
+                  type="button"
+                  className="kizkatt-bitmap-pattern-reset-control"
+                  aria-label={strings.bitmapPattern.resetTransformations}
+                  title={strings.bitmapPattern.resetTransformations}
+                  onClick={() => {
+                    update(
+                      getResetBitmapTextureTransform(sourceNaturalSize)
+                    );
+                    onChangeEnd();
+                  }}
+                >
+                  {ResetIcon}
+                </button>
+              </div>
+
               <fieldset className="kizkatt-bitmap-pattern-transparency">
                 <legend>{strings.bitmapPattern.transparency}</legend>
                 <div>
@@ -695,99 +711,8 @@ export function BitmapPatternFillPanel({
                 </div>
               </fieldset>
 
-              <fieldset className="kizkatt-bitmap-pattern-transformations">
-                <legend>{strings.bitmapPattern.transformations}</legend>
-                <div className="kizkatt-bitmap-pattern-transform-grid">
-                  <NumberField
-                    label={strings.bitmapPattern.width}
-                    min={MIN_SIZE}
-                    max={MAX_SIZE}
-                    suffix={unitSettings.unit}
-                    value={formatNumber(unitSettings.toDisplay(texture.width))}
-                    onBlur={onChangeEnd}
-                    onChange={(value) => updateSize("width", value)}
-                  />
-                  <NumberField
-                    label={strings.bitmapPattern.offsetX}
-                    suffix={unitSettings.unit}
-                    value={formatNumber(unitSettings.toDisplay(texture.offsetX))}
-                    onBlur={onChangeEnd}
-                    onChange={(value) =>
-                      updateNumber(
-                        "offsetX",
-                        `${unitSettings.fromDisplay(parseNumber(value, 0))}`
-                      )
-                    }
-                  />
-                  <NumberField
-                    label={strings.bitmapPattern.height}
-                    min={MIN_SIZE}
-                    max={MAX_SIZE}
-                    suffix={unitSettings.unit}
-                    value={formatNumber(unitSettings.toDisplay(texture.height))}
-                    onBlur={onChangeEnd}
-                    onChange={(value) => updateSize("height", value)}
-                  />
-                  <NumberField
-                    label={strings.bitmapPattern.offsetY}
-                    suffix={unitSettings.unit}
-                    value={formatNumber(unitSettings.toDisplay(texture.offsetY))}
-                    onBlur={onChangeEnd}
-                    onChange={(value) =>
-                      updateNumber(
-                        "offsetY",
-                        `${unitSettings.fromDisplay(parseNumber(value, 0))}`
-                      )
-                    }
-                  />
-                  <button
-                    type="button"
-                    className={texture.scaleLocked ? "is-active" : undefined}
-                    aria-label={strings.bitmapPattern.lockScale}
-                    title={strings.bitmapPattern.lockScale}
-                    onClick={() => {
-                      update({ scaleLocked: !texture.scaleLocked });
-                      onChangeEnd();
-                    }}
-                  >
-                    {texture.scaleLocked ? AspectLockIcon : AspectUnlockIcon}
-                  </button>
-                  <NumberField
-                    label={strings.bitmapPattern.skew}
-                    suffix="°"
-                    value={formatNumber(texture.skew, 1)}
-                    onBlur={onChangeEnd}
-                    onChange={(value) => updateNumber("skew", value, -89, 89)}
-                  />
-                  <NumberField
-                    label={strings.bitmapPattern.rotation}
-                    suffix="°"
-                    value={formatNumber(texture.rotation, 1)}
-                    onBlur={onChangeEnd}
-                    onChange={(value) =>
-                      updateNumber("rotation", value, -360, 360)
-                    }
-                  />
-                </div>
-                <label className="kizkatt-bitmap-pattern-transform-object">
-                  <input
-                    type="checkbox"
-                    checked={texture.transformWithObject}
-                    onChange={(event) => {
-                      update({ transformWithObject: event.target.checked });
-                      onChangeEnd();
-                    }}
-                  />
-                  {strings.bitmapPattern.transformWithObject}
-                </label>
-              </fieldset>
             </div>
           </div>
-          <footer className="kizkatt-bitmap-pattern-footer">
-            <button type="button" disabled={!dirty} onClick={apply}>
-              {strings.bitmapPattern.apply}
-            </button>
-          </footer>
           {actions}
         </section>
       )}
