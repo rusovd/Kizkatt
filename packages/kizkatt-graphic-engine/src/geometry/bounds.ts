@@ -120,6 +120,33 @@ export function getElementTransformedCorners(
   return corners.map((point) => transformElementPoint(element, point));
 }
 
+export function getSelectionTransformHandleLayout(
+  bounds: { height: number; width: number; x: number; y: number },
+  offset: number
+) {
+  const left = bounds.x;
+  const top = bounds.y;
+  const right = bounds.x + bounds.width;
+  const bottom = bounds.y + bounds.height;
+  const centerX = left + bounds.width / 2;
+  const centerY = top + bounds.height / 2;
+
+  return {
+    corners: {
+      ne: { x: right + offset, y: top - offset },
+      nw: { x: left - offset, y: top - offset },
+      se: { x: right + offset, y: bottom + offset },
+      sw: { x: left - offset, y: bottom + offset }
+    },
+    edges: {
+      bottom: { x: centerX, y: bottom + offset },
+      left: { x: left - offset, y: centerY },
+      right: { x: right + offset, y: centerY },
+      top: { x: centerX, y: top - offset }
+    }
+  };
+}
+
 export function selectionBounds(
   elements: KizkattElement[],
   options: { includeRotation?: boolean } = {}

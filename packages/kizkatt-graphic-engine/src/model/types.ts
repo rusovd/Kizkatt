@@ -67,6 +67,7 @@ export type BitmapTextureFill = {
   desaturateEnabled: boolean;
   edgeMatch: number;
   edgeMatchEnabled: boolean;
+  fitToObject: boolean;
   height: number;
   luminance: number;
   luminanceEnabled: boolean;
@@ -80,8 +81,10 @@ export type BitmapTextureFill = {
   rotation: number;
   scaleLocked: boolean;
   skew: number;
+  skewY: number;
   source?: string;
   textureId: string;
+  tile: boolean;
   transformWithObject: boolean;
   transparencyColor: string;
   transparencyEnabled: boolean;

@@ -1310,6 +1310,10 @@ function getImportedBitmapTexture(value: unknown): BitmapTextureFill | null {
       texture.edgeMatchEnabled,
       DEFAULT_BITMAP_TEXTURE_FILL.edgeMatchEnabled
     ),
+    fitToObject: getBoolean(
+      texture.fitToObject,
+      DEFAULT_BITMAP_TEXTURE_FILL.fitToObject
+    ),
     height: Math.max(
       MIN_ELEMENT_SIZE,
       getFiniteNumber(texture.height, DEFAULT_BITMAP_TEXTURE_FILL.height)
@@ -1353,8 +1357,10 @@ function getImportedBitmapTexture(value: unknown): BitmapTextureFill | null {
       DEFAULT_BITMAP_TEXTURE_FILL.scaleLocked
     ),
     skew: getFiniteNumber(texture.skew, DEFAULT_BITMAP_TEXTURE_FILL.skew),
+    skewY: getFiniteNumber(texture.skewY, DEFAULT_BITMAP_TEXTURE_FILL.skewY),
     source,
     textureId,
+    tile: getBoolean(texture.tile, DEFAULT_BITMAP_TEXTURE_FILL.tile),
     transformWithObject: getBoolean(
       texture.transformWithObject,
       DEFAULT_BITMAP_TEXTURE_FILL.transformWithObject

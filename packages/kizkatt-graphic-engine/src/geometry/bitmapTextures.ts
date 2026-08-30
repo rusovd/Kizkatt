@@ -37,15 +37,136 @@ export type BitmapTexturePlacement = {
     scaleX: number;
     scaleY: number;
     skewX: number;
+    skewY: number;
   };
 };
+
+export type BitmapTexturePreviewGeometry = {
+  crop: {
+    centerX: number;
+    centerY: number;
+    height: number;
+    rotation: number;
+    skew: number;
+    skewY: number;
+    width: number;
+  };
+  tileAvailable: boolean;
+};
+
+export function getBitmapTexturePreviewGeometry(
+  texture: BitmapTextureFill,
+  sourceSize: BitmapTextureSize,
+  targetSize: BitmapTextureSize
+): BitmapTexturePreviewGeometry {
+  const sourceWidth = Math.max(MIN_PIXEL_SIZE, sourceSize.width);
+  const sourceHeight = Math.max(MIN_PIXEL_SIZE, sourceSize.height);
+  const targetWidth = Math.max(MIN_PIXEL_SIZE, targetSize.width);
+  const targetHeight = Math.max(MIN_PIXEL_SIZE, targetSize.height);
+  const textureWidth = texture.fitToObject
+    ? targetWidth
+    : Math.max(MIN_PIXEL_SIZE, Math.abs(texture.width));
+  const textureHeight = texture.fitToObject
+    ? targetHeight
+    : Math.max(MIN_PIXEL_SIZE, Math.abs(texture.height));
+
+  return {
+    crop: {
+      centerX:
+        sourceWidth / 2 - (texture.offsetX * sourceWidth) / textureWidth,
+      centerY:
+        sourceHeight / 2 - (texture.offsetY * sourceHeight) / textureHeight,
+      height: (targetHeight * sourceHeight) / textureHeight,
+      rotation: -texture.rotation,
+      skew: -texture.skew,
+      skewY: texture.skewY === 0 ? 0 : -texture.skewY,
+      width: (targetWidth * sourceWidth) / textureWidth
+    },
+    tileAvailable:
+      targetWidth > textureWidth || targetHeight > textureHeight
+  };
+}
+
+export function moveBitmapTextureCrop(
+  texture: BitmapTextureFill,
+  sourceSize: BitmapTextureSize,
+  sourceDelta: Point
+): Pick<BitmapTextureFill, "offsetX" | "offsetY"> {
+  const sourceWidth = Math.max(MIN_PIXEL_SIZE, sourceSize.width);
+  const sourceHeight = Math.max(MIN_PIXEL_SIZE, sourceSize.height);
+
+  return {
+    offsetX: texture.offsetX - (sourceDelta.x * texture.width) / sourceWidth,
+    offsetY: texture.offsetY - (sourceDelta.y * texture.height) / sourceHeight
+  };
+}
+
+export function scaleBitmapTextureCrop(
+  texture: BitmapTextureFill,
+  scale: number,
+  min = MIN_PIXEL_SIZE,
+  max = Number.POSITIVE_INFINITY
+): Pick<BitmapTextureFill, "height" | "offsetX" | "offsetY" | "width"> {
+  const safeScale = Math.max(MIN_PIXEL_SIZE, scale);
+  const nextWidth = Math.min(
+    max,
+    Math.max(min, texture.width / safeScale)
+  );
+  const nextHeight = Math.min(
+    max,
+    Math.max(min, texture.height / safeScale)
+  );
+
+  return {
+    height: nextHeight,
+    offsetX: texture.offsetX * (nextWidth / texture.width),
+    offsetY: texture.offsetY * (nextHeight / texture.height),
+    width: nextWidth
+  };
+}
+
+export function getBitmapTextureTransformFromPreviewCrop(
+  texture: BitmapTextureFill,
+  sourceSize: BitmapTextureSize,
+  targetSize: BitmapTextureSize,
+  crop: BitmapTexturePreviewGeometry["crop"]
+): Pick<
+  BitmapTextureFill,
+  | "fitToObject"
+  | "height"
+  | "offsetX"
+  | "offsetY"
+  | "rotation"
+  | "skew"
+  | "skewY"
+  | "width"
+> {
+  const sourceWidth = Math.max(MIN_PIXEL_SIZE, sourceSize.width);
+  const sourceHeight = Math.max(MIN_PIXEL_SIZE, sourceSize.height);
+  const targetWidth = Math.max(MIN_PIXEL_SIZE, targetSize.width);
+  const targetHeight = Math.max(MIN_PIXEL_SIZE, targetSize.height);
+  const cropWidth = Math.max(MIN_PIXEL_SIZE, Math.abs(crop.width));
+  const cropHeight = Math.max(MIN_PIXEL_SIZE, Math.abs(crop.height));
+  const width = (targetWidth * sourceWidth) / cropWidth;
+  const height = (targetHeight * sourceHeight) / cropHeight;
+
+  return {
+    fitToObject: false,
+    height,
+    offsetX: ((sourceWidth / 2 - crop.centerX) * width) / sourceWidth,
+    offsetY: ((sourceHeight / 2 - crop.centerY) * height) / sourceHeight,
+    rotation: -crop.rotation,
+    skew: -crop.skew,
+    skewY: -crop.skewY,
+    width
+  };
+}
 
 export function createBitmapTextureFill({
   base,
   name,
   naturalSize,
   source,
-  targetSize,
   textureId
 }: {
   base?: Partial<BitmapTextureFill>;
@@ -58,7 +179,7 @@ export function createBitmapTextureFill({
   return {
     ...DEFAULT_BITMAP_TEXTURE_FILL,
     ...base,
-    ...getInitialBitmapTextureSize(naturalSize, targetSize),
+    ...getResetBitmapTextureTransform(naturalSize),
     name,
     source,
     textureId
@@ -131,11 +252,33 @@ export function getCoveredBitmapSourcePoint(
 
 export function getInitialBitmapTextureSize(
   naturalSize: BitmapTextureSize,
-  targetSize: BitmapTextureSize
+  _targetSize?: BitmapTextureSize
 ): BitmapTextureSize {
   return {
-    height: Math.max(MIN_PIXEL_SIZE, naturalSize.height, targetSize.height),
-    width: Math.max(MIN_PIXEL_SIZE, naturalSize.width, targetSize.width)
+    height: Math.max(MIN_PIXEL_SIZE, naturalSize.height),
+    width: Math.max(MIN_PIXEL_SIZE, naturalSize.width)
+  };
+}
+
+export function getResetBitmapTextureTransform(
+  sourceSize: BitmapTextureSize
+) {
+  return {
+    fitToObject: DEFAULT_BITMAP_TEXTURE_FILL.fitToObject,
+    height: Math.max(MIN_PIXEL_SIZE, sourceSize.height),
+    mirrorX: DEFAULT_BITMAP_TEXTURE_FILL.mirrorX,
+    mirrorY: DEFAULT_BITMAP_TEXTURE_FILL.mirrorY,
+    offset: DEFAULT_BITMAP_TEXTURE_FILL.offset,
+    offsetMode: DEFAULT_BITMAP_TEXTURE_FILL.offsetMode,
+    offsetX: DEFAULT_BITMAP_TEXTURE_FILL.offsetX,
+    offsetY: DEFAULT_BITMAP_TEXTURE_FILL.offsetY,
+    rotation: DEFAULT_BITMAP_TEXTURE_FILL.rotation,
+    scaleLocked: DEFAULT_BITMAP_TEXTURE_FILL.scaleLocked,
+    skew: DEFAULT_BITMAP_TEXTURE_FILL.skew,
+    skewY: DEFAULT_BITMAP_TEXTURE_FILL.skewY,
+    tile: DEFAULT_BITMAP_TEXTURE_FILL.tile,
+    transformWithObject: DEFAULT_BITMAP_TEXTURE_FILL.transformWithObject,
+    width: Math.max(MIN_PIXEL_SIZE, sourceSize.width)
   };
 }
 
@@ -150,14 +293,14 @@ export function getBitmapTexturePlacement(
     x: elementBounds.x,
     y: elementBounds.y
   };
-  const width = Math.max(MIN_PIXEL_SIZE, Math.abs(texture.width));
-  const height = Math.max(MIN_PIXEL_SIZE, Math.abs(texture.height));
-  const centerX = texture.transformWithObject
-    ? bounds.x + bounds.width / 2 + texture.offsetX
-    : width / 2 + texture.offsetX;
-  const centerY = texture.transformWithObject
-    ? bounds.y + bounds.height / 2 + texture.offsetY
-    : height / 2 + texture.offsetY;
+  const width = texture.fitToObject
+    ? bounds.width
+    : Math.max(MIN_PIXEL_SIZE, Math.abs(texture.width));
+  const height = texture.fitToObject
+    ? bounds.height
+    : Math.max(MIN_PIXEL_SIZE, Math.abs(texture.height));
+  const centerX = bounds.x + bounds.width / 2 + texture.offsetX;
+  const centerY = bounds.y + bounds.height / 2 + texture.offsetY;
 
   return {
     bounds,
@@ -173,7 +316,8 @@ export function getBitmapTexturePlacement(
       rotation: texture.rotation,
       scaleX: texture.mirrorX ? -1 : 1,
       scaleY: texture.mirrorY ? -1 : 1,
-      skewX: texture.skew
+      skewX: texture.skew,
+      skewY: texture.skewY
     }
   };
 }

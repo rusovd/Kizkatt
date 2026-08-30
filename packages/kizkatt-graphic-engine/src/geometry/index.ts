@@ -3,18 +3,25 @@ export {
   getElementBounds,
   getElementTransformedCorners,
   getElementTransformedBounds,
+  getSelectionTransformHandleLayout,
   selectionBounds
 } from "./bounds";
 export {
   createBitmapTextureFill,
   getBitmapTextureAdjustments,
   getBitmapTexturePlacement,
+  getBitmapTexturePreviewGeometry,
+  getBitmapTextureTransformFromPreviewCrop,
   getBitmapTextureRgbChannels,
   getBitmapTextureTransparencyTable,
   getCoveredBitmapSourcePoint,
   getInitialBitmapTextureSize,
+  getResetBitmapTextureTransform,
   getResizedBitmapTextureSize,
+  moveBitmapTextureCrop,
+  scaleBitmapTextureCrop,
   type BitmapTexturePlacement,
+  type BitmapTexturePreviewGeometry,
   type BitmapTextureSize
 } from "./bitmapTextures";
 export { isHexColor } from "./colors";
