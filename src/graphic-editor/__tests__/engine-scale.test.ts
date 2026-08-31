@@ -7,15 +7,21 @@ import {
   findElementAtPoint,
   getBitmapTextureAdjustments,
   getBitmapTexturePlacement,
+  getBitmapTexturePreviewGeometry,
+  getBitmapTextureTransformFromPreviewCrop,
   getCoveredBitmapSourcePoint,
   getDpiPixelRatio,
   getElementIndicesInBounds,
   getElementLocalPoint,
   getResizeAnchorPoint,
   getInitialBitmapTextureSize,
+  getResetBitmapTextureTransform,
   getResizedBitmapTextureSize,
+  getSelectionTransformHandleLayout,
+  moveBitmapTextureCrop,
   isExpectedCopiedPngSize,
   resizeElementFromHandle,
+  scaleBitmapTextureCrop,
   observeHitTesting,
   simplifyPolyline,
   snapPointToElements,
@@ -235,15 +241,40 @@ describe("engine scale safeguards", () => {
   it("keeps bitmap texture sizing and centered crop geometry in the engine", () => {
     expect(
       createBitmapTextureFill({
+        base: {
+          ...DEFAULT_BITMAP_TEXTURE_FILL,
+          brightness: -20,
+          brightnessEnabled: true,
+          fitToObject: true,
+          height: 999,
+          mirrorX: true,
+          offsetX: 500,
+          offsetY: -300,
+          rotation: 30,
+          skew: 12,
+          skewY: -4,
+          tile: true,
+          width: 888
+        },
         name: "Abstract 001",
         naturalSize: { height: 80, width: 200 },
         targetSize: { height: 120, width: 100 },
         textureId: "monochrome.abstract.001"
       })
     ).toMatchObject({
-      height: 120,
+      brightness: -20,
+      brightnessEnabled: true,
+      fitToObject: false,
+      height: 80,
+      mirrorX: false,
       name: "Abstract 001",
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      skew: 0,
+      skewY: 0,
       textureId: "monochrome.abstract.001",
+      tile: false,
       width: 200
     });
     expect(
@@ -251,7 +282,7 @@ describe("engine scale safeguards", () => {
         { height: 80, width: 200 },
         { height: 120, width: 100 }
       )
-    ).toEqual({ height: 120, width: 200 });
+    ).toEqual({ height: 80, width: 200 });
     expect(
       getResizedBitmapTextureSize(
         { height: 100, width: 200 },
@@ -283,7 +314,124 @@ describe("engine scale safeguards", () => {
         rotation: 0,
         scaleX: 1,
         scaleY: 1,
-        skewX: 0
+        skewX: 0,
+        skewY: 0
+      }
+    });
+    expect(
+      getBitmapTexturePlacement(rectangle, {
+        ...DEFAULT_BITMAP_TEXTURE_FILL,
+        height: 4912,
+        transformWithObject: false,
+        width: 7360
+      }).transform
+    ).toMatchObject({ centerX: 100, centerY: 85 });
+
+    const texture = {
+      ...DEFAULT_BITMAP_TEXTURE_FILL,
+      height: 80,
+      offsetX: 10,
+      offsetY: -5,
+      rotation: 15,
+      skew: 8,
+      width: 200
+    };
+
+    expect(
+      getBitmapTexturePreviewGeometry(
+        texture,
+        { height: 80, width: 200 },
+        { height: 120, width: 100 }
+      )
+    ).toEqual({
+      crop: {
+        centerX: 90,
+        centerY: 45,
+        height: 120,
+        rotation: -15,
+        skew: -8,
+        skewY: 0,
+        width: 100
+      },
+      tileAvailable: true
+    });
+    expect(
+      moveBitmapTextureCrop(
+        texture,
+        { height: 80, width: 200 },
+        { x: 20, y: 8 }
+      )
+    ).toEqual({ offsetX: -10, offsetY: -13 });
+    expect(scaleBitmapTextureCrop(texture, 2)).toEqual({
+      height: 40,
+      offsetX: 5,
+      offsetY: -2.5,
+      width: 100
+    });
+    expect(
+      getBitmapTextureTransformFromPreviewCrop(
+        texture,
+        { height: 80, width: 200 },
+        { height: 120, width: 100 },
+        {
+          centerX: 80,
+          centerY: 50,
+          height: 60,
+          rotation: 30,
+          skew: 10,
+          skewY: -5,
+          width: 50
+        }
+      )
+    ).toEqual({
+      fitToObject: false,
+      height: 160,
+      offsetX: 40,
+      offsetY: -20,
+      rotation: -30,
+      skew: -10,
+      skewY: 5,
+      width: 400
+    });
+    expect(
+      getResetBitmapTextureTransform({ height: 7360, width: 4912 })
+    ).toEqual({
+      fitToObject: false,
+      height: 7360,
+      mirrorX: false,
+      mirrorY: false,
+      offset: 0,
+      offsetMode: "row",
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      scaleLocked: true,
+      skew: 0,
+      skewY: 0,
+      tile: false,
+      transformWithObject: true,
+      width: 4912
+    });
+  });
+
+  it("uses one bounding-box layout for canvas and texture transform handles", () => {
+    expect(
+      getSelectionTransformHandleLayout(
+        { height: 80, width: 120, x: 40, y: 60 },
+        20
+      )
+    ).toEqual({
+      corners: {
+        ne: { x: 180, y: 40 },
+        nw: { x: 20, y: 40 },
+        se: { x: 180, y: 160 },
+        sw: { x: 20, y: 160 }
+      },
+      edges: {
+        bottom: { x: 100, y: 160 },
+        left: { x: 20, y: 100 },
+        right: { x: 180, y: 100 },
+        top: { x: 100, y: 40 }
       }
     });
   });

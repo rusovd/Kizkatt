@@ -204,13 +204,16 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       /^data:image\/svg\+xml/
     );
     expect(pattern).toHaveAttribute("data-texture-anchor", "center");
-    expect(pattern).toHaveAttribute("x", "40");
-    expect(pattern).toHaveAttribute("y", "50");
-    expect(pattern).toHaveAttribute("width", "120");
-    expect(pattern).toHaveAttribute("height", "70");
+    expect(pattern).toHaveAttribute("data-texture-coordinate-space", "object");
+    expect(pattern).toHaveAttribute("patternUnits", "objectBoundingBox");
+    expect(pattern).toHaveAttribute("x", "0");
+    expect(pattern).toHaveAttribute("y", "0");
+    expect(pattern).toHaveAttribute("width", "1");
+    expect(pattern).toHaveAttribute("height", "1");
+    expect(pattern).toHaveAttribute("viewBox", "0 0 120 70");
     expect(pattern?.querySelector("[data-texture-transform]")).toHaveAttribute(
       "transform",
-      expect.stringContaining("translate(100 85)")
+      expect.stringContaining("translate(60 35)")
     );
     expect(patternImage).toHaveAttribute("x", "-3680");
     expect(patternImage).toHaveAttribute("y", "-2456");
@@ -259,7 +262,9 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     ).toContain('"name":"Abstract Lines"');
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Luminance" }));
-    const applyTextureSettings = screen.getByRole("button", { name: "Apply" });
+    expect(
+      screen.queryByRole("button", { name: "Apply" })
+    ).not.toBeInTheDocument();
     const luminanceSlider = screen.getByRole("slider", {
       name: "Luminance value"
     });
@@ -278,7 +283,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(
       canvas.querySelector("[data-bitmap-texture-filter]")
     ).toHaveAttribute("data-contrast", "110");
-    fireEvent.click(applyTextureSettings);
+    fireEvent.pointerUp(luminanceSlider);
     await waitFor(() => {
       expect(
         canvas.querySelector("[data-bitmap-texture-filter]")
@@ -306,36 +311,63 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       canvas.querySelector("[data-bitmap-texture-filter] feGaussianBlur")
     ).toHaveAttribute("stdDeviation", "0.75");
 
-    const rotationInput = screen.getByLabelText("Rotation");
+    expect(screen.queryByText("Transformations")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Tile texture" }))
+      .toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Fit to object size" }))
+      .not.toBeChecked();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Fit to object size" })
+    );
+    expect(patternImage).toHaveAttribute("width", "120");
+    expect(patternImage).toHaveAttribute("height", "70");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Reset texture transformations" })
+    );
+    expect(screen.getByRole("checkbox", { name: "Fit to object size" }))
+      .not.toBeChecked();
+    expect(patternImage).toHaveAttribute("width", "7360");
+    expect(patternImage).toHaveAttribute("height", "4912");
 
-    fireEvent.change(rotationInput, { target: { value: "" } });
-    expect(rotationInput).toHaveValue("");
-    fireEvent.change(rotationInput, { target: { value: "-15.5" } });
-    fireEvent.blur(rotationInput);
-    expect(rotationInput).toHaveValue("-15.5");
-    expect(canvas.querySelector("[data-texture-transform]")).toHaveAttribute(
-      "transform",
-      expect.stringContaining("rotate(-15.5)")
-    );
-    fireEvent.click(applyTextureSettings);
-    await waitFor(() => {
-      expect(canvas.querySelector("[data-texture-transform]")).toHaveAttribute(
-        "transform",
-        expect.stringContaining("rotate(-15.5)")
-      );
+    const crop = screen.getByLabelText("Object crop on texture");
+    const cropStage = crop.parentElement as HTMLElement;
+    vi.spyOn(crop, "getBoundingClientRect").mockReturnValue({
+      bottom: 170,
+      height: 70,
+      left: 100,
+      right: 220,
+      top: 100,
+      width: 120,
+      x: 100,
+      y: 100,
+      toJSON: () => ({})
     });
-    fireEvent.change(rotationInput, { target: { value: "" } });
-    fireEvent.change(rotationInput, { target: { value: "30" } });
-    fireEvent.blur(rotationInput);
+    expect(
+      cropStage.querySelectorAll('[aria-label="Resize texture crop"]')
+    ).toHaveLength(8);
+    firePointerEvent(crop, "pointerdown", { clientX: 160, clientY: 135 });
+    firePointerEvent(crop, "pointerup", { clientX: 160, clientY: 135 });
+    expect(
+      cropStage.querySelectorAll('[aria-label="Skew texture crop"]')
+    ).toHaveLength(4);
+    expect(
+      cropStage.querySelectorAll('[aria-label="Rotate texture crop"]')
+    ).toHaveLength(4);
+    firePointerEvent(
+      screen.getAllByRole("button", { name: "Rotate texture crop" })[0],
+      "pointerdown",
+      { clientX: 160, clientY: 85 }
+    );
+    firePointerEvent(crop, "pointermove", { clientX: 210, clientY: 135 });
+    firePointerEvent(crop, "pointerup", { clientX: 210, clientY: 135 });
     expect(canvas.querySelector("[data-texture-transform]")).toHaveAttribute(
       "transform",
-      expect.stringContaining("rotate(30)")
+      expect.stringContaining("rotate(-90)")
     );
-    fireEvent.click(applyTextureSettings);
     await waitFor(() => {
       expect(canvas.querySelector("[data-texture-transform]")).toHaveAttribute(
         "transform",
-        expect.stringContaining("rotate(30)")
+        expect.stringContaining("rotate(-90)")
       );
     });
 
@@ -344,7 +376,6 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       canvas.querySelector("[data-texture-transform]")
         ?.getAttribute("transform")
     ).toContain("scale(-1 1)");
-    fireEvent.click(applyTextureSettings);
     await waitFor(() => {
       expect(
         canvas.querySelector("[data-texture-transform]")
@@ -366,7 +397,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       expect(
         canvas.querySelector("[data-texture-transform]")
           ?.getAttribute("transform")
-      ).toContain("scale(-1 1)");
+      ).toContain("scale(-1 -1)");
     });
 
     fireEvent.click(
@@ -380,6 +411,50 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(
       canvas.querySelector("[data-element-id] metadata")?.textContent
     ).not.toContain('"bitmapTexture"');
+  });
+
+  it("keeps Monochrome Texture visible only while it is stuck", async () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    const canvas = screen.getByRole("application", {
+      name: "Drawing canvas"
+    });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Monochrome texture" })
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /^Abstract \d{3}$/ })[0]
+    );
+
+    const bitmapPanel = document.querySelector(
+      ".kizkatt-floating-panel--bitmap-pattern-fill"
+    ) as HTMLElement;
+    const stickButton = bitmapPanel.querySelector(
+      "button[aria-label='Stick panel']"
+    );
+
+    fireEvent.click(stickButton as Element);
+    expect(bitmapPanel).toHaveClass("is-pinned");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Background #653b00" })
+    );
+    expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
+      .toBeInTheDocument();
+
+    fireEvent.click(
+      bitmapPanel.querySelector(
+        "button[aria-label='Unstick panel']"
+      ) as Element
+    );
+    await waitFor(() => {
+      expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
+        .not.toBeInTheDocument();
+    });
   });
 
   it("creates a rectangle on the SVG canvas", () => {
