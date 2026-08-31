@@ -518,6 +518,31 @@ export function ObjectPanel({
       { transient: true }
     );
   };
+  const updateDimension = (
+    axis: "widthPercent" | "heightPercent",
+    value: string
+  ) => {
+    const parsedValue = parseFiniteNumber(value);
+
+    if (parsedValue === null || !geometry) {
+      return;
+    }
+
+    const baseDimension =
+      axis === "widthPercent"
+        ? geometry.baseBounds.width
+        : geometry.baseBounds.height;
+    const worldValue = fromDisplayUnit(parsedValue);
+
+    updateScale(
+      axis,
+      `${
+        (Math.max(0, worldValue) /
+          Math.max(Number.EPSILON, baseDimension)) *
+        OBJECT_PANEL_UI_SETTINGS.defaultScalePercent
+      }`
+    );
+  };
   const updateAngle = (value: string) => {
     const parsedValue = parseFiniteNumber(value);
 
@@ -642,6 +667,56 @@ export function ObjectPanel({
                   >
                     {GlobeIcon}
                   </IconButton>
+                </FeatureGroup>
+                <FeatureGroup
+                  className="kizkatt-object-feature--dimensions"
+                  label={
+                    orientation === "vertical"
+                      ? strings.objectPanel.dimensions
+                      : undefined
+                  }
+                >
+                  <div className="kizkatt-object-panel-stack">
+                    <ObjectNumberField
+                      className="kizkatt-object-field--dimension"
+                      icon="W:"
+                      label={strings.objectPanel.objectWidth}
+                      title={strings.objectPanel.tooltips.dimensionsWidth}
+                      step={OBJECT_PANEL_UI_SETTINGS.positionStep}
+                      suffix={unit}
+                      value={formatNumber(
+                        toDisplayUnit(
+                          (geometry.baseBounds.width * geometry.widthPercent) /
+                            OBJECT_PANEL_UI_SETTINGS.defaultScalePercent
+                        ),
+                        precision
+                      )}
+                      onChange={(value) =>
+                        updateDimension("widthPercent", value)
+                      }
+                      onCommit={onGeometryChangeEnd}
+                    />
+                    <ObjectNumberField
+                      className="kizkatt-object-field--dimension"
+                      icon="H:"
+                      label={strings.objectPanel.objectHeight}
+                      title={strings.objectPanel.tooltips.dimensionsHeight}
+                      step={OBJECT_PANEL_UI_SETTINGS.positionStep}
+                      suffix={unit}
+                      value={formatNumber(
+                        toDisplayUnit(
+                          (geometry.baseBounds.height *
+                            geometry.heightPercent) /
+                            OBJECT_PANEL_UI_SETTINGS.defaultScalePercent
+                        ),
+                        precision
+                      )}
+                      onChange={(value) =>
+                        updateDimension("heightPercent", value)
+                      }
+                      onCommit={onGeometryChangeEnd}
+                    />
+                  </div>
                 </FeatureGroup>
                 <FeatureGroup
                   className="kizkatt-object-feature--scale"

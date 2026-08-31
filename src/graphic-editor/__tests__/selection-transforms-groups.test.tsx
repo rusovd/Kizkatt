@@ -1501,6 +1501,8 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(screen.queryByText("Line width")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Width")).toHaveValue(100);
     expect(screen.getByLabelText("Height")).toHaveValue(100);
+    expect(screen.getByLabelText("Object width")).toHaveValue(100);
+    expect(screen.getByLabelText("Object height")).toHaveValue(50);
     const strokeStyle = screen.getByLabelText("Stroke style") as HTMLSelectElement;
     expect(strokeStyle).toHaveValue("handDrawn");
     expect(Array.from(strokeStyle.options).map((option) => option.value)).toEqual([
@@ -1516,7 +1518,7 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     const lineWidthPreset = screen.getByLabelText("Line width preset");
     const objectPanel = lineWidth.closest(".kizkatt-floating-panel");
     expect(objectPanel?.querySelectorAll("[data-feature-group]")).toHaveLength(
-      8
+      9
     );
     expect(strokeStyle.closest(".kizkatt-object-panel-stack")).toBe(
       lineWidth.closest(".kizkatt-object-panel-stack")
@@ -1628,6 +1630,7 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       ).map((label) => label.textContent)
     ).toEqual([
       "Position",
+      "Dimensions",
       "Size",
       "Rotation",
       "Mirroring",
@@ -1636,6 +1639,48 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       "Layers",
       "Actions"
     ]);
+  });
+
+  it("edits absolute object dimensions from the common object panel", () => {
+    storeCanvasState({
+      elements: [
+        withUpdatedObjectBase({
+          angle: 0,
+          backgroundColor: "#653b00",
+          height: 50,
+          id: "rectangle",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 2,
+          type: "rectangle",
+          width: 100,
+          x: 100,
+          y: 80
+        })
+      ],
+      selectedIds: ["rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const objectWidth = screen.getByLabelText("Object width");
+    const objectHeight = screen.getByLabelText("Object height");
+    const rectangle = screen
+      .getByRole("application", { name: "Drawing canvas" })
+      .querySelector("[data-element-id='rectangle'] rect");
+
+    fireEvent.change(objectWidth, { target: { value: "150" } });
+    fireEvent.blur(objectWidth);
+    expect(rectangle).toHaveAttribute("width", "150");
+    expect(rectangle).toHaveAttribute("height", "75");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Unlock linked width and height" })
+    );
+    fireEvent.change(objectHeight, { target: { value: "80" } });
+    fireEvent.blur(objectHeight);
+    expect(rectangle).toHaveAttribute("width", "150");
+    expect(rectangle).toHaveAttribute("height", "80");
   });
 
   it("changes a manually entered angle without resizing the object", () => {

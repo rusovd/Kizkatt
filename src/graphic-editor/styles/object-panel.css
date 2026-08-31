@@ -141,6 +141,10 @@
   width: 73px;
 }
 
+.kizkatt-object-field--dimension input {
+  width: 73px;
+}
+
 .kizkatt-object-field--position {
   grid-template-columns: 18px minmax(0, 1fr);
 }
@@ -529,24 +533,32 @@
 }
 
 .kizkatt-object-panel--vertical .kizkatt-object-feature--position .kizkatt-feature-group-content,
+.kizkatt-object-panel--vertical .kizkatt-object-feature--dimensions .kizkatt-feature-group-content,
 .kizkatt-object-panel--vertical .kizkatt-object-feature--scale .kizkatt-feature-group-content {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 28px;
 }
 
+.kizkatt-object-panel--vertical .kizkatt-object-feature--dimensions .kizkatt-feature-group-content {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .kizkatt-object-panel--vertical .kizkatt-object-feature--position .kizkatt-object-panel-stack,
+.kizkatt-object-panel--vertical .kizkatt-object-feature--dimensions .kizkatt-object-panel-stack,
 .kizkatt-object-panel--vertical .kizkatt-object-feature--scale .kizkatt-object-panel-stack,
 .kizkatt-object-panel--vertical .kizkatt-object-feature--angle .kizkatt-object-field {
   width: 100%;
 }
 
 .kizkatt-object-panel--vertical .kizkatt-object-feature--position .kizkatt-object-field-control,
+.kizkatt-object-panel--vertical .kizkatt-object-feature--dimensions .kizkatt-object-field-control,
 .kizkatt-object-panel--vertical .kizkatt-object-feature--scale .kizkatt-object-field-control,
 .kizkatt-object-panel--vertical .kizkatt-object-feature--angle .kizkatt-object-field-control {
   min-width: 0;
 }
 
 .kizkatt-object-panel--vertical .kizkatt-object-feature--position .kizkatt-object-field input,
+.kizkatt-object-panel--vertical .kizkatt-object-feature--dimensions .kizkatt-object-field input,
 .kizkatt-object-panel--vertical .kizkatt-object-feature--scale .kizkatt-object-field input,
 .kizkatt-object-panel--vertical .kizkatt-object-feature--angle .kizkatt-object-field input {
   width: 100%;
