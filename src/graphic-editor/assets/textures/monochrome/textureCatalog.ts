@@ -14,10 +14,10 @@ export type {
 
 const textureAssetUrls = import.meta.glob(
   [
-    "./Abstract/*.{avif,bmp,gif,jpeg,jpg,png,svg,webp}",
-    "./Abstract/*.{AVIF,BMP,GIF,JPEG,JPG,PNG,SVG,WEBP}",
-    "./Abstract/thumbnails/*.{avif,bmp,gif,jpeg,jpg,png,svg,webp}",
-    "./Abstract/thumbnails/*.{AVIF,BMP,GIF,JPEG,JPG,PNG,SVG,WEBP}"
+    "./*/*.{avif,bmp,gif,jpeg,jpg,png,svg,webp}",
+    "./*/*.{AVIF,BMP,GIF,JPEG,JPG,PNG,SVG,WEBP}",
+    "./*/thumbnails/*.{avif,bmp,gif,jpeg,jpg,png,svg,webp}",
+    "./*/thumbnails/*.{AVIF,BMP,GIF,JPEG,JPG,PNG,SVG,WEBP}"
   ],
   {
     eager: true,
@@ -26,18 +26,9 @@ const textureAssetUrls = import.meta.glob(
   }
 ) as Record<string, string>;
 
-const PORTRAIT_ABSTRACT_TEXTURES = new Set([
-  "002",
-  "003",
-  "007",
-  "011",
-  "026",
-  "027",
-  "028",
-  "034"
-]);
 const LEGACY_MONOCHROME_TEXTURE_ID_PREFIX = "bw.abstract.";
 const MONOCHROME_TEXTURE_ID_PREFIX = "monochrome.abstract.";
+export const MONOCHROME_TEXTURE_COLLECTION_ID = "monochrome";
 
 export function normalizeMonochromeTextureId(textureId: string) {
   return textureId.startsWith(LEGACY_MONOCHROME_TEXTURE_ID_PREFIX)
@@ -48,88 +39,7 @@ export function normalizeMonochromeTextureId(textureId: string) {
     : textureId;
 }
 
-function getKnownTextureSize(file: string) {
-  const abstractMatch = /Abstract_(\d{3})\.jpg$/i.exec(file);
-
-  if (!abstractMatch) {
-    return {};
-  }
-
-  return PORTRAIT_ABSTRACT_TEXTURES.has(abstractMatch[1])
-    ? { height: 7360, width: 4912 }
-    : { height: 4912, width: 7360 };
-}
-
-function getDiscoveredTextureName(file: string) {
-  const filename = file.split("/").at(-1) ?? file;
-
-  return filename
-    .replace(/\.[^.]+$/, "")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function getDiscoveredTextureId(file: string) {
-  return `${MONOCHROME_TEXTURE_ID_PREFIX}${file
-    .toLocaleLowerCase()
-    .replace(/^abstract\//, "")
-    .replace(/\.[^.]+$/, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")}`;
-}
-
-function addDiscoveredAbstractTextures(catalog: TextureCatalog) {
-  const discoveredTextures = Object.keys(textureAssetUrls)
-    .map((path) => path.replace(/^\.\//, ""))
-    .filter((path) => !path.startsWith("Abstract/thumbnails/"))
-    .sort((left, right) => left.localeCompare(right));
-
-  if (discoveredTextures.length === 0) {
-    return catalog;
-  }
-
-  return {
-    ...catalog,
-    collections: catalog.collections.map((collection) => ({
-      ...collection,
-      categories: collection.categories.map((category) => {
-        if (collection.id !== "monochrome" || category.id !== "abstract") {
-          return category;
-        }
-
-        const catalogFiles = new Set(
-          category.textures.map((texture) => texture.file)
-        );
-        const discoveredEntries = discoveredTextures
-          .filter((file) => !catalogFiles.has(file))
-          .map((file) => ({
-            file,
-            id: getDiscoveredTextureId(file),
-            name: getDiscoveredTextureName(file),
-            thumbnail: file.replace(
-              /^Abstract\//,
-              "Abstract/thumbnails/"
-            )
-          }));
-
-        return {
-          ...category,
-          textures: [...category.textures, ...discoveredEntries].map(
-            (texture) => ({
-              ...texture,
-              ...getKnownTextureSize(texture.file)
-            })
-          )
-        };
-      })
-    }))
-  };
-}
-
-export const textureCatalog = addDiscoveredAbstractTextures(
-  catalogJson as TextureCatalog
-);
+export const textureCatalog = catalogJson as TextureCatalog;
 
 export function getTextureAssetUrl(texture: TextureCatalogTexture) {
   return textureAssetUrls[`./${texture.file}`] ?? null;
