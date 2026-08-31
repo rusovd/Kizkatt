@@ -62,7 +62,7 @@ type StylingPanelProps = {
   closedPath: boolean;
   colorColumnCount?: number;
   onClosedPathChange: (closed: boolean) => void;
-  onTextureLibraryOpen: () => void;
+  onMonochromeTextureOpen: () => void;
   onStyleChange: (
     patch: Partial<StyleState>,
     options?: { transient?: boolean }
@@ -121,42 +121,42 @@ const FILL_CONTROLS = [
     disabled: false,
     icon: FillSolidIcon,
     labelKey: "fillSolid",
-    opensTextureLibrary: false,
+    opensMonochromeTexture: false,
     style: "solid"
   },
   {
     disabled: true,
     icon: GradientIcon,
     labelKey: "fillGradient",
-    opensTextureLibrary: false,
+    opensMonochromeTexture: false,
     style: undefined
   },
   {
     disabled: true,
     icon: SvgFillIcon,
     labelKey: "fillSvg",
-    opensTextureLibrary: false,
+    opensMonochromeTexture: false,
     style: undefined
   },
   {
     disabled: false,
     icon: TextureIcon,
     labelKey: "fillCrossHatch",
-    opensTextureLibrary: false,
+    opensMonochromeTexture: false,
     style: "crossHatch"
   },
   {
     disabled: false,
     icon: MonochromeTextureIcon,
     labelKey: "fillMonochromeTexture",
-    opensTextureLibrary: true,
+    opensMonochromeTexture: true,
     style: "monochromeTexture"
   },
   {
     disabled: false,
     icon: FillHachureIcon,
     labelKey: "fillHachure",
-    opensTextureLibrary: false,
+    opensMonochromeTexture: false,
     style: "hachure"
   }
 ] as const;
@@ -409,7 +409,7 @@ export function StylingPanel({
   closedPath,
   colorColumnCount = COLOR_PANEL_COLUMN_COUNT,
   onClosedPathChange,
-  onTextureLibraryOpen,
+  onMonochromeTextureOpen,
   onStyleChange,
   onStyleChangeEnd,
   selectedElements,
@@ -701,8 +701,8 @@ export function StylingPanel({
                         : undefined
                     }
                     onClick={() => {
-                      if (control.opensTextureLibrary) {
-                        onTextureLibraryOpen();
+                      if (control.opensMonochromeTexture) {
+                        onMonochromeTextureOpen();
                         return;
                       }
 

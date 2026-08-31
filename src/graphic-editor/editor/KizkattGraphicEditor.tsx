@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
 import {
@@ -147,7 +147,7 @@ function TextEditor({
 }
 
 function AppStylingPanel(
-  props: StylingPanelProps & { onTextureLibraryOpen: () => void }
+  props: StylingPanelProps & { onMonochromeTextureOpen: () => void }
 ) {
   return (
     <StylingPanel
@@ -338,6 +338,20 @@ function KizkattGraphicEditorView({
     useState(0);
   const lastSelectionGeometryControlsRef = useRef(selectionGeometryControls);
   const lastBitmapTextureRef = useRef(stylingControls.style.bitmapTexture);
+  const previousBitmapTextureRef = useRef(
+    stylingControls.style.bitmapTexture
+  );
+
+  useEffect(() => {
+    if (
+      previousBitmapTextureRef.current &&
+      !stylingControls.style.bitmapTexture
+    ) {
+      setBitmapPatternPanelOpen(false);
+    }
+
+    previousBitmapTextureRef.current = stylingControls.style.bitmapTexture;
+  }, [stylingControls.style.bitmapTexture]);
 
   if (selectionGeometryControls) {
     lastSelectionGeometryControlsRef.current = selectionGeometryControls;
@@ -352,7 +366,7 @@ function KizkattGraphicEditorView({
     (objectPanelPinned ? lastSelectionGeometryControlsRef.current : null);
   const visibleBitmapTexture =
     stylingControls.style.bitmapTexture ??
-    (bitmapPatternPanelPinned ? lastBitmapTextureRef.current : undefined);
+    lastBitmapTextureRef.current;
   const showObjectPanel =
     !previewMode &&
     (!state.menuOpen || objectPanelPinned) &&
@@ -368,9 +382,7 @@ function KizkattGraphicEditorView({
       isPanelPinned("style-panel"));
   const showBitmapPatternPanel =
     !previewMode &&
-    (bitmapPatternPanelPinned ||
-      (bitmapPatternPanelOpen &&
-        Boolean(stylingControls.style.bitmapTexture)));
+    (bitmapPatternPanelPinned || bitmapPatternPanelOpen);
   const bitmapTextureTargetSize = stylingControls.selectedElements.reduce(
     (size, element) => ({
       height: Math.max(size.height, Math.abs(element.height)),
@@ -385,10 +397,6 @@ function KizkattGraphicEditorView({
   const openTextureLibrary = () => {
     setTextureLibraryOpen(true);
     setTextureLibraryReopenKey((value) => value + 1);
-
-    if (stylingControls.style.bitmapTexture) {
-      openBitmapPatternPanel();
-    }
   };
   const applyBitmapTexture = (
     texture: NonNullable<StylingPanelProps["style"]["bitmapTexture"]>,
@@ -440,7 +448,7 @@ function KizkattGraphicEditorView({
       {showStylingPanel && (
         <AppStylingPanel
           {...stylingControls}
-          onTextureLibraryOpen={openTextureLibrary}
+          onMonochromeTextureOpen={openBitmapPatternPanel}
         />
       )}
       {!previewMode && (textureLibraryOpen || textureLibraryPinned) && (
@@ -450,8 +458,10 @@ function KizkattGraphicEditorView({
           onTextureChange={(texture) => {
             applyBitmapTexture(texture);
             stylingControls.onStyleChangeEnd();
+            if (!textureLibraryPinned) {
+              setTextureLibraryOpen(false);
+            }
           }}
-          onTextureSettingsOpen={openBitmapPatternPanel}
           reopenKey={textureLibraryReopenKey}
           targetSize={bitmapTextureTargetSize}
         />

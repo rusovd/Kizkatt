@@ -104,11 +104,24 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       screen.getByRole("button", { name: "Monochrome texture" })
     );
 
+    const bitmapPanel = document.querySelector(
+      ".kizkatt-floating-panel--bitmap-pattern-fill"
+    ) as HTMLElement;
+
+    expect(bitmapPanel).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Textures" }))
+      .not.toBeInTheDocument();
+    fireEvent.click(
+      bitmapPanel.querySelector(
+        "button[aria-label='Choose texture']"
+      ) as Element
+    );
+
     const library = screen.getByRole("dialog", { name: "Textures" });
     const thumbnailColumns = screen.getByRole("slider", {
       name: "Textures per row"
     });
-    const fileInput = library.querySelector<HTMLInputElement>(
+    const fileInput = bitmapPanel.querySelector<HTMLInputElement>(
       "input[type='file']"
     );
     const catalogTextures = screen.getAllByRole("button", {
@@ -123,6 +136,8 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     );
 
     expect(fileInput).not.toBeNull();
+    expect(library.querySelector(".kizkatt-texture-library-current"))
+      .not.toBeInTheDocument();
     expect(catalogTextures).toHaveLength(34);
     expect(screen.queryByText("No textures found")).not.toBeInTheDocument();
     expect(thumbnailColumns).toHaveValue("2");
@@ -162,6 +177,8 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
           "data-bitmap-texture",
           "monochrome.abstract.abstract-001"
         );
+      expect(screen.queryByRole("dialog", { name: "Textures" }))
+        .not.toBeInTheDocument();
     });
     const catalogPattern = canvas.querySelector("[data-bitmap-texture]");
     const catalogPatternImages = catalogPattern?.querySelectorAll("image");
@@ -190,9 +207,6 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     const pattern = canvas.querySelector("[data-bitmap-texture]");
     const patternImage = pattern?.querySelector("image");
-    const bitmapPanel = document.querySelector(
-      ".kizkatt-floating-panel--bitmap-pattern-fill"
-    ) as HTMLElement;
     const bitmapDragHandle = bitmapPanel.querySelector(
       "[data-panel-drag-handle]"
     );
@@ -220,7 +234,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(bitmapPanel).toHaveClass("kizkatt-floating-panel--vertical");
     expect(
       bitmapPanel.querySelector(".kizkatt-bitmap-pattern-fill-button")
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Upload texture" })
     ).toBeInTheDocument();
@@ -426,6 +440,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Monochrome texture" })
     );
+    fireEvent.click(screen.getByRole("button", { name: "Choose texture" }));
     fireEvent.click(
       screen.getAllByRole("button", { name: /^Abstract \d{3}$/ })[0]
     );
@@ -454,6 +469,35 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     await waitFor(() => {
       expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
         .not.toBeInTheDocument();
+    });
+  });
+
+  it("keeps the texture library open after selection only while it is stuck", async () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Monochrome texture" })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Choose texture" }));
+
+    const library = screen.getByRole("dialog", { name: "Textures" });
+    const libraryPanel = library.closest(
+      ".kizkatt-floating-panel--texture-library"
+    ) as HTMLElement;
+
+    fireEvent.click(
+      libraryPanel.querySelector(
+        "button[aria-label='Stick panel']"
+      ) as Element
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /^Abstract \d{3}$/ })[0]
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: "Textures" }))
+        .toBeInTheDocument();
     });
   });
 

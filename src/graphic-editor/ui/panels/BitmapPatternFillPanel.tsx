@@ -20,7 +20,9 @@ import {
 import { getTextureSource } from "../../assets/textures/monochrome/textureCatalog";
 import { useI18n } from "../../i18n";
 import {
+  ChevronDownIcon,
   EyedropperIcon,
+  ImageIcon,
   MirrorHorizontalIcon,
   MirrorVerticalIcon,
   ResetIcon,
@@ -359,6 +361,16 @@ export function BitmapPatternFillPanel({
                 <div className="kizkatt-bitmap-pattern-name">
                   <span>{strings.bitmapPattern.name}</span>
                   <span>
+                    <button
+                      type="button"
+                      className="kizkatt-bitmap-pattern-fill-button"
+                      aria-label={strings.textureLibrary.chooseTexture}
+                      title={strings.textureLibrary.chooseTexture}
+                      onClick={onOpenLibrary}
+                    >
+                      {source ? <img src={source} alt="" /> : ImageIcon}
+                      {ChevronDownIcon}
+                    </button>
                     <input
                       aria-label={strings.bitmapPattern.name}
                       value={texture.name}
@@ -370,14 +382,6 @@ export function BitmapPatternFillPanel({
                         )
                       }
                     />
-                    <button
-                      type="button"
-                      aria-label={strings.bitmapPattern.addTexture}
-                      title={strings.bitmapPattern.addTexture}
-                      onClick={onOpenLibrary}
-                    >
-                      +
-                    </button>
                   </span>
                 </div>
               </div>

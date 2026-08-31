@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import type { ChangeEvent, CSSProperties } from "react";
+import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import {
   createBitmapTextureFill,
   DEFAULT_BITMAP_TEXTURE_FILL,
@@ -10,9 +10,6 @@ import {
   filterTextureCatalogEntries,
   getTextureCatalogEntries,
   groupTextureCatalogEntries,
-  getImageFileSize,
-  readFileAsDataUrl,
-  STANDARD_IMAGE_FILE_ACCEPT,
   type TextureCatalogEntry
 } from "kizkatt-graphic-editor";
 
@@ -22,7 +19,7 @@ import {
   textureCatalog
 } from "../../assets/textures/monochrome/textureCatalog";
 import { useI18n } from "../../i18n";
-import { ChevronDownIcon, ImageIcon } from "../icons";
+import { ImageIcon } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
 
 const PANEL_ID = "texture-library";
@@ -31,19 +28,16 @@ export function TextureLibraryPopover({
   activeTexture,
   onClose,
   onTextureChange,
-  onTextureSettingsOpen,
   reopenKey,
   targetSize
 }: {
   activeTexture?: BitmapTextureFill;
   onClose: () => void;
   onTextureChange: (texture: BitmapTextureFill) => void;
-  onTextureSettingsOpen: () => void;
   reopenKey: number;
   targetSize: BitmapTextureSize;
 }) {
   const { strings } = useI18n();
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const entries = useMemo(
     () => getTextureCatalogEntries(textureCatalog),
     []
@@ -61,13 +55,6 @@ export function TextureLibraryPopover({
   const activeCatalogTexture = activeTexture
     ? getTextureById(activeTexture.textureId)
     : null;
-  const activeEntry = entries.find(
-    (entry) => entry.texture.id === activeCatalogTexture?.id
-  );
-  const activeSource =
-    activeTexture?.source ??
-    (activeEntry ? getTextureThumbnailUrl(activeEntry.texture) : null);
-
   const selectCatalogTexture = (entry: TextureCatalogEntry) => {
     onTextureChange(
       createBitmapTextureFill({
@@ -83,34 +70,6 @@ export function TextureLibraryPopover({
         textureId: entry.texture.id
       })
     );
-    onTextureSettingsOpen();
-  };
-
-  const importTexture = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    const source = await readFileAsDataUrl(file);
-    const name = file.name.replace(/\.[^.]+$/, "");
-    const naturalSize = await getImageFileSize(file, {
-      height: activeTexture?.height ?? DEFAULT_BITMAP_TEXTURE_FILL.height,
-      width: activeTexture?.width ?? DEFAULT_BITMAP_TEXTURE_FILL.width
-    });
-    onTextureChange(
-      createBitmapTextureFill({
-        base: activeTexture,
-        name,
-        naturalSize,
-        source,
-        targetSize,
-        textureId: `custom:${file.name}:${file.lastModified}`
-      })
-    );
-    onTextureSettingsOpen();
   };
 
   return (
@@ -133,46 +92,6 @@ export function TextureLibraryPopover({
           aria-label={strings.textureLibrary.title}
         >
           {chrome}
-
-          <div className="kizkatt-texture-library-current">
-            <button
-              type="button"
-              className="kizkatt-texture-current-button"
-              title={strings.textureLibrary.chooseTexture}
-            >
-              {activeSource ? <img src={activeSource} alt="" /> : ImageIcon}
-              {ChevronDownIcon}
-            </button>
-            <button
-              type="button"
-              className="kizkatt-texture-import-button"
-              aria-label={strings.textureLibrary.importTexture}
-              title={strings.textureLibrary.importTexture}
-              onClick={() => inputRef.current?.click()}
-            >
-              {ImageIcon}
-            </button>
-            <input
-              aria-label={strings.textureLibrary.name}
-              placeholder={strings.textureLibrary.name}
-              value={activeTexture?.name ?? ""}
-              onChange={(event) => {
-                if (activeTexture) {
-                  onTextureChange({
-                    ...activeTexture,
-                    name: event.target.value
-                  });
-                }
-              }}
-            />
-            <input
-              ref={inputRef}
-              className="kizkatt-file-input"
-              type="file"
-              accept={STANDARD_IMAGE_FILE_ACCEPT}
-              onChange={(event) => void importTexture(event)}
-            />
-          </div>
 
           <input
             className="kizkatt-texture-search"
