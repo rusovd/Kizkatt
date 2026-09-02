@@ -11,9 +11,11 @@ import {
   getBitmapTextureTransformFromPreviewCrop,
   getCoveredBitmapSourcePoint,
   getDpiPixelRatio,
+  getDimensionFromScalePercent,
   getElementIndicesInBounds,
   getElementLocalPoint,
   getResizeAnchorPoint,
+  getScalePercentFromDimension,
   getInitialBitmapTextureSize,
   getResetBitmapTextureTransform,
   getResizedBitmapTextureSize,
@@ -52,6 +54,12 @@ function createRectangle(index: number): KizkattElement {
 }
 
 describe("engine scale safeguards", () => {
+  it("converts absolute dimensions and scale percentages consistently", () => {
+    expect(getDimensionFromScalePercent(120, 150)).toBe(180);
+    expect(getScalePercentFromDimension(120, 180)).toBe(150);
+    expect(getScalePercentFromDimension(120, -20)).toBe(0);
+  });
+
   it("uses document DPI for raster quality and copied image sizing", () => {
     expect(getDpiPixelRatio()).toBeCloseTo(150 / 96);
     expect(getDpiPixelRatio(300)).toBeCloseTo(300 / 96);
@@ -463,6 +471,8 @@ describe("engine scale safeguards", () => {
       blur: 0.5,
       brightness: 80,
       contrast: 115,
+      destinationOut: 0,
+      multiply: 0,
       opacity: 0.75,
       saturation: 0
     });

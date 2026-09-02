@@ -136,4 +136,38 @@ describe("BitmapTextureFillPattern", () => {
       "translate(68 31) rotate(0) skewX(0) skewY(0) scale(1 1)"
     );
   });
+
+  it("mixes multiply continuously and exposes destination-out masking", () => {
+    const { container } = render(
+      <svg>
+        <BitmapTextureFillPattern
+          element={rectangle}
+          patternId="texture"
+          source="texture.png"
+          texture={{
+            ...DEFAULT_BITMAP_TEXTURE_FILL,
+            destinationOutAmount: 75,
+            multiplyAmount: 40,
+            textureId: "monochrome.abstract.001"
+          }}
+        />
+      </svg>
+    );
+    const normalImage = container.querySelector(
+      'image[data-texture-blend="normal"]'
+    );
+    const multiplyImage = container.querySelector(
+      'image[data-texture-blend="multiply"]'
+    );
+
+    expect(normalImage).toHaveAttribute("opacity", "1");
+    expect(multiplyImage).toHaveAttribute("opacity", "0.4");
+    expect(multiplyImage).toHaveStyle({ mixBlendMode: "multiply" });
+    expect(
+      container.querySelector("[data-bitmap-texture-filter]")
+    ).toHaveAttribute("data-destination-out", "0.75");
+    expect(
+      container.querySelector('feComponentTransfer[result="compositeMask"] feFuncA')
+    ).toHaveAttribute("slope", "-0.5");
+  });
 });

@@ -248,11 +248,56 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       screen.getByRole("slider", { name: "Desaturate value" })
     ).toHaveValue("100");
     expect(
+      screen.getByRole("checkbox", { name: "Color" })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("slider", { name: "Color value" })
+    ).toBeDisabled();
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Desaturate value" }),
+      { target: { value: "50" } }
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Color" })
+    ).toBeEnabled();
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Desaturate value" }),
+      { target: { value: "100" } }
+    );
+    expect(
       canvas.querySelector("[data-bitmap-texture-filter]")
     ).toHaveAttribute("data-saturation", "0");
     expect(
       screen.getByRole("slider", { name: "Shade range" })
     ).toHaveValue("100");
+    const normalBlendButton = screen.getByRole("button", {
+      name: "Normal"
+    });
+
+    expect(normalBlendButton).toHaveAttribute("aria-pressed", "true");
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Multiply value" }),
+      { target: { value: "40" } }
+    );
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Cutout value" }),
+      { target: { value: "75" } }
+    );
+    expect(normalBlendButton).toHaveAttribute("aria-pressed", "false");
+    expect(
+      canvas.querySelector("[data-bitmap-texture-filter]")
+    ).toHaveAttribute("data-destination-out", "0.75");
+    expect(
+      canvas.querySelector('image[data-texture-blend="multiply"]')
+    ).toHaveAttribute("opacity", "0.4");
+    fireEvent.click(normalBlendButton);
+    expect(
+      screen.getByRole("slider", { name: "Multiply value" })
+    ).toHaveValue("0");
+    expect(
+      screen.getByRole("slider", { name: "Cutout value" })
+    ).toHaveValue("0");
+    expect(normalBlendButton).toHaveAttribute("aria-pressed", "true");
     expect(pattern?.querySelector("g[filter]")).toHaveAttribute(
       "filter",
       expect.stringContaining("texture-filter")
@@ -425,6 +470,15 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(
       canvas.querySelector("[data-element-id] metadata")?.textContent
     ).not.toContain('"bitmapTexture"');
+    fireEvent.click(
+      screen.getByRole("button", { name: "Monochrome texture" })
+    );
+    await waitFor(() => {
+      expect(canvas.querySelector("[data-bitmap-texture]")).toHaveAttribute(
+        "data-bitmap-texture",
+        "monochrome.abstract.abstract-001"
+      );
+    });
   });
 
   it("keeps Monochrome Texture visible only while it is stuck", async () => {
@@ -481,10 +535,29 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Choose texture" }));
 
-    const library = screen.getByRole("dialog", { name: "Textures" });
-    const libraryPanel = library.closest(
+    let library = screen.getByRole("dialog", { name: "Textures" });
+    let libraryPanel = library.closest(
       ".kizkatt-floating-panel--texture-library"
     ) as HTMLElement;
+    const categorySelect = library.querySelector(
+      'select[aria-label="Texture category"]'
+    ) as HTMLSelectElement;
+
+    fireEvent.change(categorySelect, { target: { value: "stone" } });
+    expect(categorySelect).toHaveValue("stone");
+    fireEvent.click(
+      libraryPanel.querySelector(
+        "button[aria-label='Close panel']"
+      ) as Element
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Choose texture" }));
+    library = screen.getByRole("dialog", { name: "Textures" });
+    libraryPanel = library.closest(
+      ".kizkatt-floating-panel--texture-library"
+    ) as HTMLElement;
+    expect(
+      library.querySelector('select[aria-label="Texture category"]')
+    ).toHaveValue("stone");
 
     fireEvent.click(
       libraryPanel.querySelector(
@@ -492,7 +565,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       ) as Element
     );
     fireEvent.click(
-      screen.getAllByRole("button", { name: /^Abstract \d{3}$/ })[0]
+      screen.getAllByRole("button", { name: /^Stone \d{3}$/ })[0]
     );
 
     await waitFor(() => {
