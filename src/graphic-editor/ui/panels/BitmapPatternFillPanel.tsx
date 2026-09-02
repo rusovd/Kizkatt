@@ -125,6 +125,7 @@ function EditableNumberInput({
 
 function AdjustmentField({
   checked,
+  disabled = false,
   label,
   max = MAX_ADJUSTMENT,
   min = MIN_ADJUSTMENT,
@@ -134,6 +135,7 @@ function AdjustmentField({
   value
 }: {
   checked: boolean;
+  disabled?: boolean;
   label: string;
   max?: number;
   min?: number;
@@ -145,11 +147,14 @@ function AdjustmentField({
   const checkboxId = useId();
 
   return (
-    <div className="kizkatt-texture-adjustment">
+    <div
+      className={`kizkatt-texture-adjustment${disabled ? " is-disabled" : ""}`}
+    >
       <input
         id={checkboxId}
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(event) => onCheckedChange(event.target.checked)}
       />
       <label htmlFor={checkboxId}>{label}</label>
@@ -159,7 +164,7 @@ function AdjustmentField({
         min={min}
         max={max}
         step="1"
-        disabled={!checked}
+        disabled={disabled || !checked}
         value={value}
         onBlur={onBlur}
         onChange={(event) => onValueChange(event.target.value)}
@@ -167,6 +172,36 @@ function AdjustmentField({
       />
       <output>{value}</output>
     </div>
+  );
+}
+
+function BlendAmountSlider({
+  label,
+  onBlur,
+  onValueChange,
+  value
+}: {
+  label: string;
+  onBlur: () => void;
+  onValueChange: (value: string) => void;
+  value: number;
+}) {
+  return (
+    <label className="kizkatt-bitmap-blend-adjustment">
+      <span>{label}</span>
+      <input
+        aria-label={`${label} value`}
+        type="range"
+        min="0"
+        max="100"
+        step="1"
+        value={value}
+        onBlur={onBlur}
+        onChange={(event) => onValueChange(event.target.value)}
+        onPointerUp={onBlur}
+      />
+      <output>{value}</output>
+    </label>
   );
 }
 
@@ -238,6 +273,8 @@ export function BitmapPatternFillPanel({
   const onChangeEnd = apply;
   const source = texture.source ?? getTextureSource(texture.textureId);
   const hasTarget = targetSize.width > 0 && targetSize.height > 0;
+  const colorDisabled =
+    texture.desaturateEnabled && texture.desaturate >= MAX_ADJUSTMENT;
 
   useEffect(() => {
     setSourceNaturalSize({
@@ -435,43 +472,64 @@ export function BitmapPatternFillPanel({
               <div className="kizkatt-bitmap-pattern-top-settings">
                 <fieldset>
                   <legend>{strings.bitmapPattern.blendType}</legend>
-                  <div className="kizkatt-bitmap-pattern-button-row">
-                    <ToggleButton
-                      active={texture.blendMode === "normal"}
-                      label={strings.bitmapPattern.blendNormal}
+                  <div className="kizkatt-bitmap-blend-controls">
+                    <button
+                      type="button"
+                      aria-pressed={
+                        texture.multiplyAmount === 0 &&
+                        texture.destinationOutAmount === 0
+                      }
+                      className={`kizkatt-bitmap-blend-normal${
+                        texture.multiplyAmount === 0 &&
+                        texture.destinationOutAmount === 0
+                          ? " is-active"
+                          : ""
+                      }`}
                       onClick={() => {
-                        update({ blendMode: "normal" });
+                        update({
+                          blendMode: "normal",
+                          destinationOutAmount: 0,
+                          multiplyAmount: 0
+                        });
                         onChangeEnd();
                       }}
                     >
-                      ◎
-                    </ToggleButton>
-                    <ToggleButton
-                      active={texture.blendMode === "multiply"}
+                      {strings.bitmapPattern.blendNormal}
+                    </button>
+                    <BlendAmountSlider
                       label={strings.bitmapPattern.blendMultiply}
-                      onClick={() => {
-                        update({ blendMode: "multiply" });
-                        onChangeEnd();
+                      value={texture.multiplyAmount}
+                      onBlur={onChangeEnd}
+                      onValueChange={(value) => {
+                        const multiplyAmount = clamp(
+                          parseNumber(value, texture.multiplyAmount),
+                          0,
+                          100
+                        );
+
+                        update(
+                          {
+                            blendMode:
+                              multiplyAmount > 0 ? "multiply" : "normal",
+                            multiplyAmount
+                          },
+                          { transient: true }
+                        );
                       }}
-                    >
-                      ▤
-                    </ToggleButton>
-                    <EditableNumberInput
-                      ariaLabel={strings.bitmapPattern.blendAmount}
-                      min={0}
-                      max={100}
-                      value={texture.blendAmount}
-                      onChangeEnd={onChangeEnd}
+                    />
+                    <BlendAmountSlider
+                      label={strings.bitmapPattern.cutout}
+                      value={texture.destinationOutAmount}
+                      onBlur={onChangeEnd}
                       onValueChange={(value) =>
                         updateNumber(
-                          "blendAmount",
+                          "destinationOutAmount",
                           value,
                           0,
                           100
                         )
                       }
                     />
-                    <small>%</small>
                   </div>
                 </fieldset>
 
@@ -556,6 +614,7 @@ export function BitmapPatternFillPanel({
                 />
                 <AdjustmentField
                   checked={texture.colorEnabled}
+                  disabled={colorDisabled}
                   label={strings.bitmapPattern.color}
                   value={texture.color}
                   onBlur={onChangeEnd}

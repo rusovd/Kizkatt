@@ -32,6 +32,28 @@ export type TextureCatalogEntry = {
   texture: TextureCatalogTexture;
 };
 
+export function createBitmapTextureFillFromCatalogTexture({
+  base,
+  targetSize,
+  texture
+}: {
+  base?: BitmapTextureFill;
+  targetSize: BitmapTextureSize;
+  texture: TextureCatalogTexture;
+}) {
+  return createBitmapTextureFill({
+    base,
+    name: texture.name,
+    naturalSize: {
+      height: texture.height ?? DEFAULT_BITMAP_TEXTURE_FILL.height,
+      width: texture.width ?? DEFAULT_BITMAP_TEXTURE_FILL.width
+    },
+    source: undefined,
+    targetSize,
+    textureId: texture.id
+  });
+}
+
 export function getTextureCatalogEntries(
   catalog: TextureCatalog
 ): TextureCatalogEntry[] {
@@ -100,3 +122,9 @@ export function findTextureCatalogTexture(
 
   return null;
 }
+import {
+  createBitmapTextureFill,
+  DEFAULT_BITMAP_TEXTURE_FILL,
+  type BitmapTextureFill,
+  type BitmapTextureSize
+} from "kizkatt-graphic-engine";

@@ -1,6 +1,7 @@
 import {
   DEFAULT_SKEW_ANGLE,
   MIN_ELEMENT_SIZE,
+  PERCENT_MAX_VALUE,
   RESIZE_HANDLES,
   SKEW_TRANSFORM_MIN_DENOMINATOR
 } from "../config/constants";
@@ -47,6 +48,27 @@ const CURSOR_STOPS = [
   { angle: 135, cursor: "nesw-resize" },
   { angle: 180, cursor: "ew-resize" }
 ] as const;
+
+export function getDimensionFromScalePercent(
+  baseDimension: number,
+  scalePercent: number
+) {
+  return (
+    (Math.max(MIN_ELEMENT_SIZE, Math.abs(baseDimension)) *
+      Math.max(0, scalePercent)) /
+    PERCENT_MAX_VALUE
+  );
+}
+
+export function getScalePercentFromDimension(
+  baseDimension: number,
+  dimension: number
+) {
+  return (
+    (Math.max(0, dimension) * PERCENT_MAX_VALUE) /
+    Math.max(MIN_ELEMENT_SIZE, Math.abs(baseDimension))
+  );
+}
 
 function getResizeHandle(handle: ResizeHandle) {
   return RESIZE_HANDLE_BY_ID[handle] ?? DEFAULT_RESIZE_HANDLE;

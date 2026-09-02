@@ -65,6 +65,7 @@ export type BitmapTextureFill = {
   colorEnabled: boolean;
   desaturate: number;
   desaturateEnabled: boolean;
+  destinationOutAmount: number;
   edgeMatch: number;
   edgeMatchEnabled: boolean;
   fitToObject: boolean;
@@ -73,6 +74,7 @@ export type BitmapTextureFill = {
   luminanceEnabled: boolean;
   mirrorX: boolean;
   mirrorY: boolean;
+  multiplyAmount: number;
   name: string;
   offset: number;
   offsetMode: BitmapTextureOffsetMode;

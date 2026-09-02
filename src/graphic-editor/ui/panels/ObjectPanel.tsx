@@ -336,6 +336,7 @@ export function ObjectPanel({
   geometry,
   gridSettings,
   onAction,
+  onDimensionChange,
   onGeometryChange,
   onGeometryChangeEnd,
   onLayerAction,
@@ -519,28 +520,22 @@ export function ObjectPanel({
     );
   };
   const updateDimension = (
-    axis: "widthPercent" | "heightPercent",
+    axis: "width" | "height",
     value: string
   ) => {
     const parsedValue = parseFiniteNumber(value);
 
-    if (parsedValue === null || !geometry) {
+    if (parsedValue === null) {
       return;
     }
 
-    const baseDimension =
-      axis === "widthPercent"
-        ? geometry.baseBounds.width
-        : geometry.baseBounds.height;
-    const worldValue = fromDisplayUnit(parsedValue);
-
-    updateScale(
+    onDimensionChange(
       axis,
-      `${
-        (Math.max(0, worldValue) /
-          Math.max(Number.EPSILON, baseDimension)) *
-        OBJECT_PANEL_UI_SETTINGS.defaultScalePercent
-      }`
+      fromDisplayUnit(parsedValue),
+      {
+        preserveAspectRatio: aspectLocked,
+        transient: true
+      }
     );
   };
   const updateAngle = (value: string) => {
@@ -685,14 +680,11 @@ export function ObjectPanel({
                       step={OBJECT_PANEL_UI_SETTINGS.positionStep}
                       suffix={unit}
                       value={formatNumber(
-                        toDisplayUnit(
-                          (geometry.baseBounds.width * geometry.widthPercent) /
-                            OBJECT_PANEL_UI_SETTINGS.defaultScalePercent
-                        ),
+                        toDisplayUnit(geometry.width),
                         precision
                       )}
                       onChange={(value) =>
-                        updateDimension("widthPercent", value)
+                        updateDimension("width", value)
                       }
                       onCommit={onGeometryChangeEnd}
                     />
@@ -704,15 +696,11 @@ export function ObjectPanel({
                       step={OBJECT_PANEL_UI_SETTINGS.positionStep}
                       suffix={unit}
                       value={formatNumber(
-                        toDisplayUnit(
-                          (geometry.baseBounds.height *
-                            geometry.heightPercent) /
-                            OBJECT_PANEL_UI_SETTINGS.defaultScalePercent
-                        ),
+                        toDisplayUnit(geometry.height),
                         precision
                       )}
                       onChange={(value) =>
-                        updateDimension("heightPercent", value)
+                        updateDimension("height", value)
                       }
                       onCommit={onGeometryChangeEnd}
                     />

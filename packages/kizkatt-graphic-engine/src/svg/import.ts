@@ -1302,6 +1302,10 @@ function getImportedBitmapTexture(value: unknown): BitmapTextureFill | null {
       texture.desaturateEnabled,
       DEFAULT_BITMAP_TEXTURE_FILL.desaturateEnabled
     ),
+    destinationOutAmount: getFiniteNumber(
+      texture.destinationOutAmount,
+      DEFAULT_BITMAP_TEXTURE_FILL.destinationOutAmount
+    ),
     edgeMatch: getFiniteNumber(
       texture.edgeMatch,
       DEFAULT_BITMAP_TEXTURE_FILL.edgeMatch
@@ -1333,6 +1337,15 @@ function getImportedBitmapTexture(value: unknown): BitmapTextureFill | null {
     mirrorY: getBoolean(
       texture.mirrorY,
       DEFAULT_BITMAP_TEXTURE_FILL.mirrorY
+    ),
+    multiplyAmount: getFiniteNumber(
+      texture.multiplyAmount,
+      texture.blendMode === "multiply"
+        ? getFiniteNumber(
+            texture.blendAmount,
+            DEFAULT_BITMAP_TEXTURE_FILL.blendAmount
+          )
+        : DEFAULT_BITMAP_TEXTURE_FILL.multiplyAmount
     ),
     name: typeof texture.name === "string" ? texture.name : "",
     offset: getFiniteNumber(

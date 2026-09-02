@@ -18,6 +18,7 @@ import {
   PERCENT_MAX_VALUE,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
   TEXT_ELEMENT_DEFAULT_WIDTH,
+  canElementUseBackground,
   findElementAtPoint,
   getElementIdsInSelectionArea,
   getResizeAnchorPoint,
@@ -29,6 +30,8 @@ import {
   skewElementsFromSelectionHandle
 } from "kizkatt-graphic-engine";
 import {
+  createBitmapTextureFillFromCatalogTexture,
+  getStoredTextureId,
   KizkattGraphicEditorController,
   type KizkattGraphicEditorCanvasViewModel,
   type KizkattGraphicEditorViewModel,
@@ -83,6 +86,10 @@ import { I18nProvider, useI18n } from "../i18n";
 import { GraphicEditorSettingsProvider } from "../ui/settings/GraphicEditorSettings";
 import { useGraphicEditorSettings } from "../ui/settings/GraphicEditorSettings";
 import { EditorLoader } from "../ui/feedback/EditorLoader";
+import {
+  getTextureById,
+  MONOCHROME_TEXTURE_COLLECTION_ID
+} from "../assets/textures/monochrome/textureCatalog";
 import { SceneElement } from "../controller/SceneElement";
 import {
   ImagePlacementPreview,
@@ -390,14 +397,6 @@ function KizkattGraphicEditorView({
     }),
     { height: 0, width: 0 }
   );
-  const openBitmapPatternPanel = () => {
-    setBitmapPatternPanelOpen(true);
-    setBitmapPatternPanelReopenKey((value) => value + 1);
-  };
-  const openTextureLibrary = () => {
-    setTextureLibraryOpen(true);
-    setTextureLibraryReopenKey((value) => value + 1);
-  };
   const applyBitmapTexture = (
     texture: NonNullable<StylingPanelProps["style"]["bitmapTexture"]>,
     options?: { transient?: boolean }
@@ -409,6 +408,38 @@ function KizkattGraphicEditorView({
       },
       options
     );
+  };
+  const openBitmapPatternPanel = () => {
+    const selectedTextureId = getStoredTextureId(
+      MONOCHROME_TEXTURE_COLLECTION_ID
+    );
+    const selectedCatalogTexture = selectedTextureId
+      ? getTextureById(selectedTextureId)
+      : null;
+    const canApplyToSelection =
+      stylingControls.selectedElements.length > EMPTY_COLLECTION_LENGTH &&
+      stylingControls.selectedElements.every(canElementUseBackground);
+
+    if (selectedCatalogTexture && canApplyToSelection) {
+      const currentTexture = stylingControls.style.bitmapTexture;
+      const texture =
+        currentTexture?.textureId === selectedCatalogTexture.id
+          ? currentTexture
+          : createBitmapTextureFillFromCatalogTexture({
+              targetSize: bitmapTextureTargetSize,
+              texture: selectedCatalogTexture
+            });
+
+      applyBitmapTexture(texture);
+      stylingControls.onStyleChangeEnd();
+    }
+
+    setBitmapPatternPanelOpen(true);
+    setBitmapPatternPanelReopenKey((value) => value + 1);
+  };
+  const openTextureLibrary = () => {
+    setTextureLibraryOpen(true);
+    setTextureLibraryReopenKey((value) => value + 1);
   };
 
   return (
@@ -454,6 +485,7 @@ function KizkattGraphicEditorView({
       {!previewMode && (textureLibraryOpen || textureLibraryPinned) && (
         <TextureLibraryPopover
           activeTexture={stylingControls.style.bitmapTexture}
+          initialCollectionId={MONOCHROME_TEXTURE_COLLECTION_ID}
           onClose={() => setTextureLibraryOpen(false)}
           onTextureChange={(texture) => {
             applyBitmapTexture(texture);

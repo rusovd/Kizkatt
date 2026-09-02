@@ -134,6 +134,7 @@ import type {
   KizkattGraphicEditorControllerProps,
   KizkattRenderElementOptions,
   EditorDisplayMode,
+  ObjectDimensionAxis,
   ObjectGeometryPatch,
   ObjectMirrorAxis
 } from "./types";
@@ -148,6 +149,7 @@ import {
   DEFAULT_OBJECT_GEOMETRY_PERCENT,
   getBoundsCenter,
   getElementFromBase,
+  getObjectDimensionPatch,
   getObjectPanelGeometry,
   mirrorElementAroundPoint,
   RADIANS_PER_DEGREE,
@@ -940,6 +942,29 @@ export function KizkattGraphicEditorController({
     mergingGeometryChangeRef.current = false;
   };
 
+  const updateSelectedDimension = (
+    axis: ObjectDimensionAxis,
+    value: number,
+    options: {
+      preserveAspectRatio: boolean;
+      transient?: boolean;
+    }
+  ) => {
+    if (!objectPanelGeometry) {
+      return;
+    }
+
+    updateSelectedGeometry(
+      getObjectDimensionPatch(
+        objectPanelGeometry,
+        axis,
+        value,
+        options.preserveAspectRatio
+      ),
+      { transient: options.transient }
+    );
+  };
+
   const mirrorSelected = (axis: ObjectMirrorAxis) => {
     if (
       selectedElements.length === EMPTY_COLLECTION_LENGTH ||
@@ -1689,6 +1714,7 @@ export function KizkattGraphicEditorController({
           geometry: objectPanelGeometry,
           gridSettings,
           onAction: applyElementAction,
+          onDimensionChange: updateSelectedDimension,
           onGeometryChange: updateSelectedGeometry,
           onGeometryChangeEnd: endSelectedGeometryChange,
           onLayerAction: applyLayerAction,

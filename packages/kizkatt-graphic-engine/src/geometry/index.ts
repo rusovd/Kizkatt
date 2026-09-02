@@ -74,8 +74,10 @@ export {
 export { transformSvgPathData } from "./svgPathData";
 export type { TransformedSvgPathData } from "./svgPathData";
 export {
+  getDimensionFromScalePercent,
   getResizeAnchorPoint,
   getResizeCursor,
+  getScalePercentFromDimension,
   resizeElementFromHandle,
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,

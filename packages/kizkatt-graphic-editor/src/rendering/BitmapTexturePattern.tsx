@@ -10,6 +10,54 @@ import {
   getBitmapTextureImageStyle
 } from "./BitmapTextureFilter";
 
+function TextureImages({
+  height,
+  normalOpacity,
+  multiplyOpacity,
+  source,
+  width,
+  x,
+  y
+}: {
+  height: number;
+  normalOpacity: number;
+  multiplyOpacity: number;
+  source: string;
+  width: number;
+  x: number;
+  y: number;
+}) {
+  const imageProps = {
+    height,
+    href: source,
+    preserveAspectRatio: "none",
+    width,
+    x,
+    y
+  } as const;
+
+  return (
+    <>
+      {normalOpacity > 0 && (
+        <image
+          {...imageProps}
+          data-texture-blend="normal"
+          opacity={normalOpacity}
+          style={getBitmapTextureImageStyle("normal")}
+        />
+      )}
+      {multiplyOpacity > 0 && (
+        <image
+          {...imageProps}
+          data-texture-blend="multiply"
+          opacity={multiplyOpacity}
+          style={getBitmapTextureImageStyle("multiply")}
+        />
+      )}
+    </>
+  );
+}
+
 export function BitmapTextureFillPattern({
   element,
   patternId,
@@ -34,8 +82,9 @@ export function BitmapTextureFillPattern({
     `skewY(${placement.transform.skewY})`,
     `scale(${placement.transform.scaleX} ${placement.transform.scaleY})`
   ].join(" ");
-  const imageStyle = getBitmapTextureImageStyle(texture);
   const textureFilterId = `${patternId}-texture-filter`;
+  const normalOpacity = adjustments.opacity;
+  const multiplyOpacity = adjustments.opacity * adjustments.multiply;
   const tile =
     texture.tile &&
     (placement.bounds.width > placement.image.width ||
@@ -84,29 +133,27 @@ export function BitmapTextureFillPattern({
             data-texture-transform
             data-texture-transform-value={tileTransform}
           >
-            <image
-              href={source}
+            <TextureImages
+              source={source}
               x={patternX}
               y={patternY}
               width={placement.image.width}
               height={placement.image.height}
-              opacity={adjustments.opacity}
-              preserveAspectRatio="none"
-              style={imageStyle}
+              normalOpacity={normalOpacity}
+              multiplyOpacity={multiplyOpacity}
             />
           </g>
         ) : (
           <g transform={textureTransform} data-texture-transform>
             <g filter={`url(#${textureFilterId})`}>
-              <image
-                href={source}
+              <TextureImages
+                source={source}
                 x={placement.image.x}
                 y={placement.image.y}
                 width={placement.image.width}
                 height={placement.image.height}
-                opacity={adjustments.opacity}
-                preserveAspectRatio="none"
-                style={imageStyle}
+                normalOpacity={normalOpacity}
+                multiplyOpacity={multiplyOpacity}
               />
             </g>
           </g>

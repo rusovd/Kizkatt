@@ -101,9 +101,11 @@ export type ObjectPanelGeometry = {
   angle: number;
   baseBounds: Bounds;
   bounds: Bounds;
+  height: number;
   heightPercent: number;
   offsetX: number;
   offsetY: number;
+  width: number;
   widthPercent: number;
 };
 
@@ -115,11 +117,20 @@ export type ObjectGeometryPatch = Partial<
 >;
 
 export type ObjectMirrorAxis = "horizontal" | "vertical";
+export type ObjectDimensionAxis = "height" | "width";
 
 export type ObjectPanelProps = {
   geometry: ObjectPanelGeometry | null;
   gridSettings: GridSettings;
   onAction: (action: "delete" | "duplicate") => void;
+  onDimensionChange: (
+    axis: ObjectDimensionAxis,
+    value: number,
+    options: {
+      preserveAspectRatio: boolean;
+      transient?: boolean;
+    }
+  ) => void;
   onGeometryChange: (
     patch: ObjectGeometryPatch,
     options?: { transient?: boolean }

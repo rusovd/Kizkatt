@@ -329,9 +329,17 @@ export function getBitmapTextureAdjustments(texture: BitmapTextureFill) {
   const desaturate = texture.desaturateEnabled
     ? Math.max(0, Math.min(PERCENT_MAX_VALUE, texture.desaturate))
     : 0;
+  const legacyMultiplyAmount =
+    texture.blendMode === "multiply" ? texture.blendAmount : 0;
+  const multiplyAmount = Number.isFinite(texture.multiplyAmount)
+    ? texture.multiplyAmount
+    : legacyMultiplyAmount;
+  const destinationOutAmount = Number.isFinite(texture.destinationOutAmount)
+    ? texture.destinationOutAmount
+    : 0;
 
   return {
-    blendMode: texture.blendMode,
+    blendMode: multiplyAmount > 0 ? "multiply" : "normal",
     blur: texture.edgeMatchEnabled
       ? Math.max(0, texture.edgeMatch) / PERCENT_MAX_VALUE
       : 0,
@@ -341,6 +349,12 @@ export function getBitmapTextureAdjustments(texture: BitmapTextureFill) {
     contrast: texture.luminanceEnabled
       ? Math.max(0, PERCENT_MAX_VALUE + texture.luminance)
       : PERCENT_MAX_VALUE,
+    destinationOut: Math.max(
+      0,
+      Math.min(PERCENT_MAX_VALUE, destinationOutAmount)
+    ) / PERCENT_MAX_VALUE,
+    multiply: Math.max(0, Math.min(PERCENT_MAX_VALUE, multiplyAmount)) /
+      PERCENT_MAX_VALUE,
     opacity: texture.blendAmount / PERCENT_MAX_VALUE,
     saturation: saturation * (1 - desaturate / PERCENT_MAX_VALUE)
   };

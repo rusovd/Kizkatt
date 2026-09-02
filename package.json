@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest",
+    "textures:catalog": "node scripts/generate-texture-catalog.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {

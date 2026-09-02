@@ -56,6 +56,87 @@ export type ContextMenuDefaults = {
   snapping: ContextMenuSnappingDefault;
 };
 
+const LAST_TEXTURE_BY_COLLECTION_STORAGE_KEY =
+  "kizkatt:last-texture-by-collection";
+const LAST_TEXTURE_CATEGORY_BY_COLLECTION_STORAGE_KEY =
+  "kizkatt:last-texture-category-by-collection";
+
+function getStoredStringMap(key: string, storage: Storage) {
+  try {
+    const parsed = JSON.parse(storage.getItem(key) ?? "{}");
+
+    return isRecord(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function storeStringMapValue(
+  key: string,
+  name: string,
+  value: string,
+  storage: Storage
+) {
+  storage.setItem(
+    key,
+    JSON.stringify({ ...getStoredStringMap(key, storage), [name]: value })
+  );
+}
+
+export function getStoredTextureCategoryId(
+  collectionId: string,
+  storage = window.localStorage
+) {
+  const stored = getStoredStringMap(
+    LAST_TEXTURE_CATEGORY_BY_COLLECTION_STORAGE_KEY,
+    storage
+  );
+
+  return typeof stored[collectionId] === "string"
+    ? stored[collectionId]
+    : null;
+}
+
+export function storeTextureCategoryId(
+  collectionId: string,
+  categoryId: string,
+  storage = window.localStorage
+) {
+  storeStringMapValue(
+    LAST_TEXTURE_CATEGORY_BY_COLLECTION_STORAGE_KEY,
+    collectionId,
+    categoryId,
+    storage
+  );
+}
+
+export function getStoredTextureId(
+  collectionId: string,
+  storage = window.localStorage
+) {
+  const stored = getStoredStringMap(
+    LAST_TEXTURE_BY_COLLECTION_STORAGE_KEY,
+    storage
+  );
+
+  return typeof stored[collectionId] === "string"
+    ? stored[collectionId]
+    : null;
+}
+
+export function storeTextureId(
+  collectionId: string,
+  textureId: string,
+  storage = window.localStorage
+) {
+  storeStringMapValue(
+    LAST_TEXTURE_BY_COLLECTION_STORAGE_KEY,
+    collectionId,
+    textureId,
+    storage
+  );
+}
+
 const DEFAULT_CONTEXT_MENU_DEFAULTS: ContextMenuDefaults = {
   copy: "selection",
   paste: "clipboard",
