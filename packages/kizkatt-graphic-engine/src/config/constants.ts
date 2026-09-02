@@ -1,6 +1,7 @@
 import type {
   Dpi,
   ElementType,
+  GradientFill,
   GridSettings,
   KizkattTheme,
   ResizeHandle,
@@ -133,6 +134,26 @@ export const TRANSPARENT_COLOR = "transparent";
 export const DEFAULT_EDGE_STYLE = "round";
 export const DEFAULT_FILL_STYLE = "solid";
 export const DEFAULT_FILL_WEIGHT = 1;
+export const DEFAULT_GRADIENT_FILL: GradientFill = {
+  acceleration: 0,
+  centerX: 50,
+  centerY: 50,
+  name: "Black to white",
+  rotation: 0,
+  scaleLocked: true,
+  scaleX: 100,
+  scaleY: 100,
+  skew: 0,
+  smooth: true,
+  spread: "pad",
+  steps: 12,
+  stepsEnabled: false,
+  stops: [
+    { id: "start", color: "#000000", opacity: 100, position: 0 },
+    { id: "end", color: "#ffffff", opacity: 100, position: 100 }
+  ],
+  type: "linear"
+};
 export const DEFAULT_BITMAP_TEXTURE_FILL = {
   blendAmount: 100,
   blendMode: "normal",

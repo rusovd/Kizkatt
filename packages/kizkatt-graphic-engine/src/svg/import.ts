@@ -7,7 +7,7 @@ import {
   TRANSPARENT_COLOR,
   VIEWPORT_CENTER_DIVISOR
 } from "../config/constants";
-import { transformSvgPathData } from "../geometry";
+import { normalizeGradientFill, transformSvgPathData } from "../geometry";
 import {
   createId,
   normalizeFillStyle,
@@ -20,6 +20,7 @@ import type {
   ArrowheadStyle,
   BitmapTextureFill,
   Bounds,
+  GradientFill,
   KizkattElement,
   Point,
   StyleState
@@ -1397,6 +1398,12 @@ function getImportedBitmapTexture(value: unknown): BitmapTextureFill | null {
   };
 }
 
+function getImportedGradientFill(value: unknown): GradientFill | null {
+  return value && typeof value === "object"
+    ? normalizeGradientFill(value as Partial<GradientFill>)
+    : null;
+}
+
 function getImportedOutlineSettings(group: Element): ImportedElementSettings {
   const startArrowhead = group.getAttribute("data-kizkatt-start-arrowhead");
   const endArrowhead = group.getAttribute("data-kizkatt-end-arrowhead");
@@ -1431,6 +1438,10 @@ function getImportedOutlineSettings(group: Element): ImportedElementSettings {
   const bitmapTexture = getImportedBitmapTexture(metadata?.bitmapTexture);
   if (bitmapTexture) {
     settings.bitmapTexture = bitmapTexture;
+  }
+  const gradientFill = getImportedGradientFill(metadata?.gradientFill);
+  if (gradientFill) {
+    settings.gradientFill = gradientFill;
   }
   const fillStyle = normalizeFillStyle(metadata?.fillStyle);
   if (fillStyle) {

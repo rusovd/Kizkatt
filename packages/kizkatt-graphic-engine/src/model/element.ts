@@ -18,9 +18,11 @@ import type {
 } from "./types";
 import { createElementName } from "./naming";
 import type { ElementNamingConfig } from "./naming";
+import { normalizeGradientFill } from "../geometry/gradients";
 
 const FILL_STYLES = new Set<FillStyle>([
   "monochromeTexture",
+  "gradient",
   "crossHatch",
   "hachure",
   "solid"
@@ -79,6 +81,10 @@ export function normalizeElement(element: KizkattElement): KizkattElement {
 
   if (fillStyle) {
     next.fillStyle = fillStyle;
+  }
+
+  if (element.gradientFill) {
+    next.gradientFill = normalizeGradientFill(element.gradientFill);
   }
 
   if (next.type === "line" || next.type === "arrow") {

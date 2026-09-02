@@ -26,6 +26,18 @@ export {
 } from "./bitmapTextures";
 export { isHexColor } from "./colors";
 export {
+  addGradientStop,
+  getAcceleratedGradientPosition,
+  getGradientColorAtPosition,
+  getRenderedGradientStops,
+  normalizeGradientFill,
+  normalizeGradientStop,
+  normalizeGradientStops,
+  removeGradientStop,
+  reverseGradientStops,
+  updateGradientStop
+} from "./gradients";
+export {
   findElementAtPoint,
   observeHitTesting,
   type HitTestObserver,

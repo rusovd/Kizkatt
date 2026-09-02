@@ -52,6 +52,7 @@ export type BitmapTextureBlendMode = "multiply" | "normal";
 export type BitmapTextureOffsetMode = "column" | "row";
 export type FillStyle =
   | "monochromeTexture"
+  | "gradient"
   | "hachure"
   | "crossHatch"
   | "solid";
@@ -94,6 +95,35 @@ export type BitmapTextureFill = {
   width: number;
 };
 
+export type GradientType = "linear" | "radial" | "conic" | "diamond";
+export type GradientSpread = "pad" | "repeat" | "reflect";
+
+export type GradientStop = {
+  id: string;
+  color: string;
+  opacity: number;
+  position: number;
+};
+
+export type GradientFill = {
+  acceleration: number;
+  centerX: number;
+  centerY: number;
+  name: string;
+  presetId?: string;
+  rotation: number;
+  scaleLocked: boolean;
+  scaleX: number;
+  scaleY: number;
+  skew: number;
+  smooth: boolean;
+  spread: GradientSpread;
+  steps: number;
+  stepsEnabled: boolean;
+  stops: GradientStop[];
+  type: GradientType;
+};
+
 export type GridSettings = {
   unit: GridUnit;
   metricScale: number;
@@ -122,6 +152,7 @@ export type KizkattElement = {
   strokeColor: string;
   backgroundColor: string;
   bitmapTexture?: BitmapTextureFill;
+  gradientFill?: GradientFill;
   fillStyle?: FillStyle;
   fillWeight?: number;
   strokeWidth: number;
@@ -304,6 +335,7 @@ export type StyleState = Pick<
   | "endArrowhead"
   | "fillStyle"
   | "fillWeight"
+  | "gradientFill"
   | "opacity"
   | "sloppiness"
   | "sloppinessGap"
