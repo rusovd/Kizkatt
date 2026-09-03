@@ -20,6 +20,7 @@ export function ElementGroup({
     arrowheadScale: element.arrowheadScale,
     backgroundColor: element.backgroundColor,
     bitmapTexture: element.bitmapTexture,
+    gradientFill: element.gradientFill,
     calligraphy: element.calligraphy,
     calligraphyStretch: element.calligraphyStretch,
     endArrowhead: element.endArrowhead,

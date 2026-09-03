@@ -15,6 +15,7 @@ import {
   DEFAULT_ELEMENT_STYLE_BY_THEME,
   DEFAULT_GRID_COLOR,
   DEFAULT_GRID_COLOR_BY_THEME,
+  DEFAULT_GRADIENT_FILL,
   PERCENT_MAX_VALUE,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
   TEXT_ELEMENT_DEFAULT_WIDTH,
@@ -30,9 +31,16 @@ import {
   skewElementsFromSelectionHandle
 } from "kizkatt-graphic-engine";
 import {
+  createCustomGradientPreset,
   createBitmapTextureFillFromCatalogTexture,
+  DEFAULT_GRADIENT_PRESETS,
+  getStoredCustomGradientPresets,
+  getStoredGradientPresetId,
   getStoredTextureId,
   KizkattGraphicEditorController,
+  storeCustomGradientPresets,
+  storeGradientPresetId,
+  type GradientPreset,
   type KizkattGraphicEditorCanvasViewModel,
   type KizkattGraphicEditorViewModel,
   type ObjectPanelProps,
@@ -75,6 +83,8 @@ import { ObjectPanel } from "../ui/panels/ObjectPanel";
 import { StylingPanel } from "../ui/panels/StylePanel";
 import { BitmapPatternFillPanel } from "../ui/panels/BitmapPatternFillPanel";
 import { TextureLibraryPopover } from "../ui/panels/TextureLibraryPopover";
+import { GradientFillPanel } from "../ui/panels/GradientFillPanel";
+import { GradientLibraryPopover } from "../ui/panels/GradientLibraryPopover";
 import {
   ELEMENT_NAMING,
   ELEMENT_TOOL_BY_TYPE,
@@ -154,7 +164,10 @@ function TextEditor({
 }
 
 function AppStylingPanel(
-  props: StylingPanelProps & { onMonochromeTextureOpen: () => void }
+  props: StylingPanelProps & {
+    onGradientOpen: () => void;
+    onMonochromeTextureOpen: () => void;
+  }
 ) {
   return (
     <StylingPanel
@@ -338,16 +351,29 @@ function KizkattGraphicEditorView({
   const objectPanelPinned = isPanelPinned("object-panel");
   const bitmapPatternPanelPinned = isPanelPinned("bitmap-pattern-fill");
   const textureLibraryPinned = isPanelPinned("texture-library");
+  const gradientPanelPinned = isPanelPinned("gradient-fill");
+  const gradientLibraryPinned = isPanelPinned("gradient-library");
   const [textureLibraryOpen, setTextureLibraryOpen] = useState(false);
   const [textureLibraryReopenKey, setTextureLibraryReopenKey] = useState(0);
   const [bitmapPatternPanelOpen, setBitmapPatternPanelOpen] = useState(false);
   const [bitmapPatternPanelReopenKey, setBitmapPatternPanelReopenKey] =
     useState(0);
+  const [gradientPanelOpen, setGradientPanelOpen] = useState(false);
+  const [gradientPanelReopenKey, setGradientPanelReopenKey] = useState(0);
+  const [gradientLibraryOpen, setGradientLibraryOpen] = useState(false);
+  const [gradientLibraryReopenKey, setGradientLibraryReopenKey] = useState(0);
+  const [customGradientPresets, setCustomGradientPresets] = useState<
+    GradientPreset[]
+  >(() => getStoredCustomGradientPresets());
   const lastSelectionGeometryControlsRef = useRef(selectionGeometryControls);
   const lastBitmapTextureRef = useRef(stylingControls.style.bitmapTexture);
   const previousBitmapTextureRef = useRef(
     stylingControls.style.bitmapTexture
   );
+  const lastGradientRef = useRef(
+    stylingControls.style.gradientFill ?? DEFAULT_GRADIENT_FILL
+  );
+  const previousGradientRef = useRef(stylingControls.style.gradientFill);
 
   useEffect(() => {
     if (
@@ -360,12 +386,27 @@ function KizkattGraphicEditorView({
     previousBitmapTextureRef.current = stylingControls.style.bitmapTexture;
   }, [stylingControls.style.bitmapTexture]);
 
+  useEffect(() => {
+    if (
+      previousGradientRef.current &&
+      !stylingControls.style.gradientFill
+    ) {
+      setGradientPanelOpen(false);
+    }
+
+    previousGradientRef.current = stylingControls.style.gradientFill;
+  }, [stylingControls.style.gradientFill]);
+
   if (selectionGeometryControls) {
     lastSelectionGeometryControlsRef.current = selectionGeometryControls;
   }
 
   if (stylingControls.style.bitmapTexture) {
     lastBitmapTextureRef.current = stylingControls.style.bitmapTexture;
+  }
+
+  if (stylingControls.style.gradientFill) {
+    lastGradientRef.current = stylingControls.style.gradientFill;
   }
 
   const visibleSelectionGeometryControls =
@@ -390,6 +431,10 @@ function KizkattGraphicEditorView({
   const showBitmapPatternPanel =
     !previewMode &&
     (bitmapPatternPanelPinned || bitmapPatternPanelOpen);
+  const showGradientPanel =
+    !previewMode && (gradientPanelPinned || gradientPanelOpen);
+  const visibleGradientFill =
+    stylingControls.style.gradientFill ?? lastGradientRef.current;
   const bitmapTextureTargetSize = stylingControls.selectedElements.reduce(
     (size, element) => ({
       height: Math.max(size.height, Math.abs(element.height)),
@@ -416,11 +461,11 @@ function KizkattGraphicEditorView({
     const selectedCatalogTexture = selectedTextureId
       ? getTextureById(selectedTextureId)
       : null;
-    const canApplyToSelection =
-      stylingControls.selectedElements.length > EMPTY_COLLECTION_LENGTH &&
+    const canApplyToCurrentTarget =
+      stylingControls.selectedElements.length === EMPTY_COLLECTION_LENGTH ||
       stylingControls.selectedElements.every(canElementUseBackground);
 
-    if (selectedCatalogTexture && canApplyToSelection) {
+    if (selectedCatalogTexture && canApplyToCurrentTarget) {
       const currentTexture = stylingControls.style.bitmapTexture;
       const texture =
         currentTexture?.textureId === selectedCatalogTexture.id
@@ -440,6 +485,56 @@ function KizkattGraphicEditorView({
   const openTextureLibrary = () => {
     setTextureLibraryOpen(true);
     setTextureLibraryReopenKey((value) => value + 1);
+  };
+  const applyGradient = (
+    gradient: NonNullable<StylingPanelProps["style"]["gradientFill"]>,
+    options?: { transient?: boolean }
+  ) => {
+    lastGradientRef.current = gradient;
+    stylingControls.onStyleChange(
+      { gradientFill: gradient, fillStyle: "gradient" },
+      options
+    );
+  };
+  const openGradientPanel = () => {
+    const allPresets = [
+      ...DEFAULT_GRADIENT_PRESETS,
+      ...customGradientPresets
+    ];
+    const rememberedPresetId = getStoredGradientPresetId();
+    const rememberedPreset = allPresets.find(
+      (preset) => preset.id === rememberedPresetId
+    );
+    const canApplyToCurrentTarget =
+      stylingControls.selectedElements.length === EMPTY_COLLECTION_LENGTH ||
+      stylingControls.selectedElements.every(canElementUseBackground);
+    const gradient =
+      stylingControls.style.gradientFill ??
+      rememberedPreset?.gradient ??
+      lastGradientRef.current;
+
+    if (canApplyToCurrentTarget) {
+      applyGradient(gradient);
+      stylingControls.onStyleChangeEnd();
+    }
+
+    setGradientPanelOpen(true);
+    setGradientPanelReopenKey((value) => value + 1);
+  };
+  const openGradientLibrary = () => {
+    setGradientLibraryOpen(true);
+    setGradientLibraryReopenKey((value) => value + 1);
+  };
+  const saveGradientPreset = (
+    gradient: NonNullable<StylingPanelProps["style"]["gradientFill"]>
+  ) => {
+    const preset = createCustomGradientPreset(gradient);
+    const nextPresets = [...customGradientPresets, preset];
+    setCustomGradientPresets(nextPresets);
+    storeCustomGradientPresets(nextPresets);
+    storeGradientPresetId(preset.id);
+    applyGradient(preset.gradient);
+    stylingControls.onStyleChangeEnd();
   };
 
   return (
@@ -479,6 +574,7 @@ function KizkattGraphicEditorView({
       {showStylingPanel && (
         <AppStylingPanel
           {...stylingControls}
+          onGradientOpen={openGradientPanel}
           onMonochromeTextureOpen={openBitmapPatternPanel}
         />
       )}
@@ -507,6 +603,31 @@ function KizkattGraphicEditorView({
           reopenKey={bitmapPatternPanelReopenKey}
           targetSize={bitmapTextureTargetSize}
           texture={visibleBitmapTexture}
+        />
+      )}
+      {showGradientPanel && (
+        <GradientFillPanel
+          gradient={visibleGradientFill}
+          onChange={applyGradient}
+          onChangeEnd={stylingControls.onStyleChangeEnd}
+          onClose={() => setGradientPanelOpen(false)}
+          onOpenLibrary={openGradientLibrary}
+          onSavePreset={saveGradientPreset}
+          reopenKey={gradientPanelReopenKey}
+        />
+      )}
+      {!previewMode && (gradientLibraryOpen || gradientLibraryPinned) && (
+        <GradientLibraryPopover
+          activeGradient={visibleGradientFill}
+          customPresets={customGradientPresets}
+          onClose={() => setGradientLibraryOpen(false)}
+          onGradientChange={(preset) => {
+            storeGradientPresetId(preset.id);
+            applyGradient(preset.gradient);
+            stylingControls.onStyleChangeEnd();
+            if (!gradientLibraryPinned) setGradientLibraryOpen(false);
+          }}
+          reopenKey={gradientLibraryReopenKey}
         />
       )}
       {textEditing && <TextEditor {...textEditing} />}

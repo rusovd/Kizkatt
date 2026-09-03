@@ -1,5 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
-import { BitmapTextureFillPattern } from "kizkatt-graphic-editor";
+import {
+  BitmapTextureFillPattern,
+  GradientFillDefinition
+} from "kizkatt-graphic-editor";
 
 import {
   getElementBends,
@@ -15,6 +18,7 @@ import {
   ARROW_MARKER_PATH,
   ARROW_MARKER_REF_Y,
   DEFAULT_BITMAP_TEXTURE_FILL,
+  DEFAULT_GRADIENT_FILL,
   PERCENT_MAX_VALUE
 } from "../../config/constants";
 import {
@@ -61,6 +65,7 @@ import {
   EMPTY_REPLACEMENT,
   FILL_PATTERN_ID_PREFIX,
   FILL_STYLE_MONOCHROME_TEXTURE,
+  FILL_STYLE_GRADIENT,
   FILL_STYLE_CROSS_HATCH,
   FILL_STYLE_HACHURE,
   HACHURE_PATTERN_NEGATIVE_OFFSET_FACTOR,
@@ -565,6 +570,15 @@ function ElementFillPattern({ element }: { element: KizkattElement }) {
   const bitmapTextureSource = bitmapTexture
     ? bitmapTexture.source ?? getTextureSource(bitmapTexture.textureId)
     : null;
+
+  if (fillStyle === FILL_STYLE_GRADIENT && element.gradientFill) {
+    return (
+      <GradientFillDefinition
+        id={patternId}
+        gradient={{ ...DEFAULT_GRADIENT_FILL, ...element.gradientFill }}
+      />
+    );
+  }
 
   if (
     fillStyle === FILL_STYLE_MONOCHROME_TEXTURE &&
