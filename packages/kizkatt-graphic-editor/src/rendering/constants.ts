@@ -72,6 +72,7 @@ export const SECONDARY_SHAPE_MAX_INSET_MULTIPLIER = 0.38;
 
 export const DEFAULT_FILL_STYLE = "solid";
 export const FILL_STYLE_MONOCHROME_TEXTURE = "monochromeTexture";
+export const FILL_STYLE_GRADIENT = "gradient";
 export const FILL_STYLE_HACHURE = "hachure";
 export const FILL_STYLE_CROSS_HATCH = "crossHatch";
 export const TRANSPARENT_COLOR = "transparent";

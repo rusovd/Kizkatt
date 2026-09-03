@@ -37,8 +37,11 @@ import type {
   GridSettings,
   GridUnit,
   KizkattElement,
-  KizkattTheme
+  KizkattTheme,
+  GradientFill
 } from "kizkatt-graphic-engine";
+import { normalizeGradientFill } from "kizkatt-graphic-engine";
+import type { GradientPreset } from "../model/gradientPresets";
 
 export type ContextMenuPasteDefault = "clipboard" | "svgCode";
 export type ContextMenuCopyDefault = "selection" | "png" | "svg";
@@ -60,6 +63,8 @@ const LAST_TEXTURE_BY_COLLECTION_STORAGE_KEY =
   "kizkatt:last-texture-by-collection";
 const LAST_TEXTURE_CATEGORY_BY_COLLECTION_STORAGE_KEY =
   "kizkatt:last-texture-category-by-collection";
+const CUSTOM_GRADIENT_PRESETS_STORAGE_KEY = "kizkatt:custom-gradient-presets";
+const LAST_GRADIENT_PRESET_STORAGE_KEY = "kizkatt:last-gradient-preset";
 
 function getStoredStringMap(key: string, storage: Storage) {
   try {
@@ -134,6 +139,60 @@ export function storeTextureId(
     collectionId,
     textureId,
     storage
+  );
+}
+
+export function getStoredGradientPresetId(
+  storage = window.localStorage
+) {
+  return storage.getItem(LAST_GRADIENT_PRESET_STORAGE_KEY);
+}
+
+export function storeGradientPresetId(
+  presetId: string,
+  storage = window.localStorage
+) {
+  storage.setItem(LAST_GRADIENT_PRESET_STORAGE_KEY, presetId);
+}
+
+export function getStoredCustomGradientPresets(
+  storage = window.localStorage
+): GradientPreset[] {
+  try {
+    const value: unknown = JSON.parse(
+      storage.getItem(CUSTOM_GRADIENT_PRESETS_STORAGE_KEY) ?? "[]"
+    );
+
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value.flatMap((entry) => {
+      if (!isRecord(entry) || typeof entry.id !== "string") {
+        return [];
+      }
+
+      const gradient = normalizeGradientFill(
+        isRecord(entry.gradient)
+          ? (entry.gradient as Partial<GradientFill>)
+          : undefined
+      );
+      const name = typeof entry.name === "string" ? entry.name : gradient.name;
+
+      return [{ custom: true, gradient, id: entry.id, name }];
+    });
+  } catch {
+    return [];
+  }
+}
+
+export function storeCustomGradientPresets(
+  presets: readonly GradientPreset[],
+  storage = window.localStorage
+) {
+  storage.setItem(
+    CUSTOM_GRADIENT_PRESETS_STORAGE_KEY,
+    JSON.stringify(presets.filter((preset) => preset.custom))
   );
 }
 

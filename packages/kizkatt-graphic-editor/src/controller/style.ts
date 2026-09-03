@@ -35,20 +35,36 @@ export function getExclusiveFillStylePatch(
 ): Partial<StyleState> {
   const nextPatch = { ...patch };
 
+  if (patch.gradientFill) {
+    nextPatch.backgroundColor = TRANSPARENT_COLOR;
+    nextPatch.bitmapTexture = undefined;
+    nextPatch.fillStyle = "gradient";
+    return nextPatch;
+  }
+
   if (patch.bitmapTexture) {
     nextPatch.backgroundColor = TRANSPARENT_COLOR;
+    nextPatch.gradientFill = undefined;
     nextPatch.fillStyle = "monochromeTexture";
     return nextPatch;
   }
 
   if (hasOwnStyleProperty(patch, "backgroundColor")) {
     nextPatch.bitmapTexture = undefined;
+    nextPatch.gradientFill = undefined;
     nextPatch.fillStyle = "solid";
   } else if (
     hasOwnStyleProperty(patch, "fillStyle") &&
     patch.fillStyle !== "monochromeTexture"
   ) {
     nextPatch.bitmapTexture = undefined;
+  }
+
+  if (
+    hasOwnStyleProperty(patch, "fillStyle") &&
+    patch.fillStyle !== "gradient"
+  ) {
+    nextPatch.gradientFill = undefined;
   }
 
   return nextPatch;
@@ -67,6 +83,13 @@ export function applyStylePatch<T extends StyleState>(
     delete nextStyle.bitmapTexture;
   }
 
+  if (
+    hasOwnStyleProperty(patch, "gradientFill") &&
+    patch.gradientFill === undefined
+  ) {
+    delete nextStyle.gradientFill;
+  }
+
   return nextStyle;
 }
 
@@ -83,6 +106,7 @@ export function isSameStyle(
     firstStyle.edgeStyle === secondStyle.edgeStyle &&
     firstStyle.endArrowhead === secondStyle.endArrowhead &&
     firstStyle.fillStyle === secondStyle.fillStyle &&
+    firstStyle.gradientFill === secondStyle.gradientFill &&
     firstStyle.fillWeight === secondStyle.fillWeight &&
     firstStyle.opacity === secondStyle.opacity &&
     firstStyle.sloppiness === secondStyle.sloppiness &&
