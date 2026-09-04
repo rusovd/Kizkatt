@@ -155,6 +155,12 @@ export function storeGradientPresetId(
   storage.setItem(LAST_GRADIENT_PRESET_STORAGE_KEY, presetId);
 }
 
+export function clearStoredGradientPresetId(
+  storage = window.localStorage
+) {
+  storage.removeItem(LAST_GRADIENT_PRESET_STORAGE_KEY);
+}
+
 export function getStoredCustomGradientPresets(
   storage = window.localStorage
 ): GradientPreset[] {

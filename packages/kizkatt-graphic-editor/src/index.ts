@@ -1,6 +1,7 @@
 export * from "./controller/KizkattGraphicEditorController";
 export * from "./components/ColorPicker";
 export * from "./components/BitmapTextureCropPreview";
+export * from "./components/GradientTransformPreview";
 export * from "./controller/objectCommands";
 export * from "./controller/selectionCommands";
 export * from "./controller/style";
@@ -9,6 +10,7 @@ export * from "./export/clipboardExport";
 export * from "./hooks/useCanvasHistory";
 export * from "./hooks/useBitmapTextureDraft";
 export * from "./hooks/useGradientFillDraft";
+export * from "./hooks/useGradientPresetLibrary";
 export type * from "./model/types";
 export * from "./model/textureCatalog";
 export * from "./model/gradientPresets";

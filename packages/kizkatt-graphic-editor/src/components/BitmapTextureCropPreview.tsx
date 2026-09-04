@@ -264,6 +264,7 @@ export function getBitmapTextureCropPreviewLayout(
 
 export function BitmapTextureCropPreview({
   cropEnabled = true,
+  freeDeformation = false,
   imageRef,
   labels,
   onClick,
@@ -271,11 +272,13 @@ export function BitmapTextureCropPreview({
   onTextureChange,
   onTextureChangeEnd,
   pickingColor = false,
+  shadeOverlay = true,
   source,
   targetSize,
   texture
 }: {
   cropEnabled?: boolean;
+  freeDeformation?: boolean;
   imageRef?: RefObject<HTMLImageElement | null>;
   labels: BitmapTextureCropPreviewLabels;
   onClick?: (event: MouseEvent<HTMLDivElement>) => void;
@@ -283,6 +286,7 @@ export function BitmapTextureCropPreview({
   onTextureChange: (change: Partial<BitmapTextureFill>) => void;
   onTextureChangeEnd: () => void;
   pickingColor?: boolean;
+  shadeOverlay?: boolean;
   source?: string;
   targetSize: BitmapTextureSize;
   texture: BitmapTextureFill;
@@ -310,6 +314,12 @@ export function BitmapTextureCropPreview({
       width: Math.max(MIN_TEXTURE_SIZE, texture.width)
     });
   }, [source, texture.textureId]);
+
+  useEffect(() => {
+    if (!freeDeformation) {
+      setTransformMode("resize");
+    }
+  }, [freeDeformation]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -600,6 +610,7 @@ export function BitmapTextureCropPreview({
     stageRef.current?.releasePointerCapture?.(event.pointerId);
 
     if (
+      freeDeformation &&
       allowModeToggle &&
       interaction.action === "move" &&
       !interaction.hasMoved
@@ -682,7 +693,9 @@ export function BitmapTextureCropPreview({
             <div
               ref={cropRef}
               aria-label={labels.crop}
-              className={`kizkatt-bitmap-texture-crop is-${transformMode}-mode`}
+              className={`kizkatt-bitmap-texture-crop is-${transformMode}-mode${
+                shadeOverlay ? " is-overlay-shaded" : ""
+              }`}
               data-bitmap-texture-crop
               style={{
                 height: preview.overlayHeight,
@@ -695,7 +708,7 @@ export function BitmapTextureCropPreview({
               onPointerDown={(event) => beginInteraction(event, "move")}
             />
           )}
-          {cropEnabled && transformMode === "resize" && (
+          {cropEnabled && freeDeformation && transformMode === "resize" && (
             <>
               {RESIZE_HANDLES.map((handle) => (
                 <button
@@ -728,7 +741,7 @@ export function BitmapTextureCropPreview({
               </span>
             </>
           )}
-          {cropEnabled && transformMode === "skew" && (
+          {cropEnabled && freeDeformation && transformMode === "skew" && (
             <>
               {SKEW_HANDLES.map((handle) => (
                 <button

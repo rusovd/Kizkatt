@@ -195,6 +195,84 @@ function cmykToRgb({ c, k, m, y }: CmykColor): RgbColor {
   };
 }
 
+function parseFunctionalColorChannels(value: string) {
+  const openParenthesis = value.indexOf("(");
+  const closeParenthesis = value.lastIndexOf(")");
+  const body =
+    openParenthesis >= 0 && closeParenthesis > openParenthesis
+      ? value.slice(openParenthesis + 1, closeParenthesis)
+      : value;
+
+  return body
+    .trim()
+    .split(/[\s,\/]+/)
+    .filter(Boolean);
+}
+
+function parsePercentageChannel(value: string) {
+  const parsed = Number.parseFloat(value);
+
+  if (!Number.isFinite(parsed)) return null;
+
+  return clamp(value.includes("%") || parsed > 1 ? parsed / 100 : parsed, 0, 1);
+}
+
+export function formatColorForMode(value: string, mode: ColorPickerMode) {
+  const color = parseHexColor(value) ?? { a: 1, h: 0, s: 0, v: 0 };
+  const rgb = hsvToRgb(color);
+
+  if (mode === "rgba") {
+    return `rgba(${Math.round(rgb.r)}, ${Math.round(rgb.g)}, ${Math.round(rgb.b)}, ${round(color.a, 2)})`;
+  }
+
+  if (mode === "cmyk") {
+    const cmyk = rgbToCmyk(rgb);
+    return `cmyk(${Math.round(cmyk.c * 100)}%, ${Math.round(cmyk.m * 100)}%, ${Math.round(cmyk.y * 100)}%, ${Math.round(cmyk.k * 100)}%)`;
+  }
+
+  return hsvaToHex(color);
+}
+
+export function parseColorForMode(
+  value: string,
+  mode: ColorPickerMode
+): string | null {
+  if (mode === "hex") {
+    const color = parseHexColor(value);
+    return color ? hsvaToHex(color) : null;
+  }
+
+  const channels = parseFunctionalColorChannels(value);
+
+  if (mode === "rgba") {
+    if (channels.length < 3) return null;
+    const rgb = channels.slice(0, 3).map(Number);
+    const alphaChannel = channels[3];
+    const alpha = alphaChannel === undefined
+      ? 1
+      : alphaChannel.includes("%")
+        ? Number.parseFloat(alphaChannel) / 100
+        : Number(alphaChannel);
+
+    if (rgb.some((channel) => !Number.isFinite(channel)) || !Number.isFinite(alpha)) {
+      return null;
+    }
+
+    return hsvaToHex({
+      ...rgbToHsv({ b: rgb[2], g: rgb[1], r: rgb[0] }),
+      a: clamp(alpha, 0, 1)
+    });
+  }
+
+  if (channels.length < 4) return null;
+  const [c, m, y, k] = channels.slice(0, 4).map(parsePercentageChannel);
+
+  if (c === null || m === null || y === null || k === null) return null;
+  const rgb = cmykToRgb({ c, k, m, y });
+
+  return hsvaToHex({ ...rgbToHsv(rgb), a: 1 });
+}
+
 function Field({
   label,
   max,

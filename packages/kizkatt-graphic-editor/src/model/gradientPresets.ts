@@ -118,3 +118,36 @@ export function createCustomGradientPreset(
     name
   };
 }
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function getUniqueGradientPresetName(
+  requestedName: string,
+  existingNames: readonly string[]
+) {
+  const requested = requestedName.trim() || "Custom gradient";
+  const normalizedNames = existingNames.map((name) => name.trim());
+  const hasExactMatch = normalizedNames.some(
+    (name) => name.localeCompare(requested, undefined, { sensitivity: "accent" }) === 0
+  );
+
+  if (!hasExactMatch) {
+    return requested;
+  }
+
+  const baseName = requested.replace(/\s+\d{3}$/, "").trim();
+  const matchingName = new RegExp(`^${escapeRegExp(baseName)}(?:\\s+(\\d{3}))?$`, "i");
+  const maximumSuffix = normalizedNames.reduce((maximum, name) => {
+    const match = matchingName.exec(name);
+
+    if (!match) {
+      return maximum;
+    }
+
+    return Math.max(maximum, match[1] ? Number.parseInt(match[1], 10) : 0);
+  }, 0);
+
+  return `${baseName} ${String(maximumSuffix + 1).padStart(3, "0")}`;
+}
