@@ -33,6 +33,32 @@ function getTranslatePoint(element: Element | null) {
 }
 
 describe("KizkattGraphicEditor drawing and style panel", () => {
+  it("applies and edits a multi-stop gradient fill", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 180, clientY: 140 });
+    firePointerEvent(canvas, "pointerup");
+
+    fireEvent.click(screen.getByRole("button", { name: "Gradient fill" }));
+
+    expect(document.querySelector(".kizkatt-gradient-panel"))
+      .toBeInTheDocument();
+    expect(canvas.querySelector("linearGradient")).toBeInTheDocument();
+    expect(canvas.querySelector("[data-element-id] rect")?.getAttribute("fill"))
+      .toMatch(/^url\(#kizkatt-fill-/);
+
+    fireEvent.click(screen.getByRole("button", { name: "Radial" }));
+    expect(canvas.querySelector("radialGradient")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add gradient stop" }));
+    expect(
+      document.querySelectorAll(".kizkatt-gradient-stop-track > button")
+    ).toHaveLength(3);
+  });
+
   it("draws a polyline through click and drag points until double-click", () => {
     render(<KizkattGraphicEditor />);
 
