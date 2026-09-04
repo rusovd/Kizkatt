@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { GradientFill } from "kizkatt-graphic-engine";
 import {
   DEFAULT_GRADIENT_PRESETS,
@@ -7,22 +7,28 @@ import {
 } from "kizkatt-graphic-editor";
 
 import { useI18n } from "../../i18n";
+import { TrashIcon } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
 
 export function GradientLibraryPopover({
   activeGradient,
+  anchorElement,
   customPresets,
   onClose,
+  onGradientDelete,
   onGradientChange,
   reopenKey
 }: {
   activeGradient?: GradientFill;
+  anchorElement: HTMLElement | null;
   customPresets: readonly GradientPreset[];
   onClose: () => void;
+  onGradientDelete: (preset: GradientPreset) => void;
   onGradientChange: (preset: GradientPreset) => void;
   reopenKey: number;
 }) {
   const { strings } = useI18n();
+  const popupRef = useRef<HTMLElement | null>(null);
   const [search, setSearch] = useState("");
   const presets = useMemo(
     () => [...DEFAULT_GRADIENT_PRESETS, ...customPresets],
@@ -32,22 +38,42 @@ export function GradientLibraryPopover({
     preset.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
   );
 
+  useEffect(() => {
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+
+      if (target instanceof Node && !popupRef.current?.contains(target)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointerDown, true);
+    return () =>
+      document.removeEventListener(
+        "pointerdown",
+        closeOnOutsidePointerDown,
+        true
+      );
+  }, [onClose]);
+
   return (
     <DraggablePanel
+      anchorElement={anchorElement}
       id="gradient-library"
-      closable
       defaultOrientation="vertical"
-      minSize={{ height: 420, width: 420 }}
-      onClose={onClose}
+      draggable={false}
       orientationChangeable={false}
-      pinnable
       reopenKey={reopenKey}
-      resizable
-      resizeAxes={{ vertical: "vertical" }}
+      showDragHandle={false}
       title={strings.gradientLibrary.title}
     >
-      {({ actions, chrome }) => (
-        <section className="kizkatt-gradient-library" aria-label={strings.gradientLibrary.title}>
+      {({ chrome }) => (
+        <section
+          ref={popupRef}
+          className="kizkatt-gradient-library"
+          role="dialog"
+          aria-label={strings.gradientLibrary.title}
+        >
           {chrome}
           <input
             aria-label={strings.gradientLibrary.search}
@@ -57,19 +83,32 @@ export function GradientLibraryPopover({
           />
           <div className="kizkatt-gradient-library-grid">
             {filtered.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                className={activeGradient?.presetId === preset.id ? "is-active" : undefined}
-                onClick={() => onGradientChange(preset)}
-              >
-                <i style={{ background: getGradientCssPreview(preset.gradient) }} />
-                <span>{preset.name}</span>
-              </button>
+              <div key={preset.id} className="kizkatt-gradient-preset-item">
+                <button
+                  type="button"
+                  className={`kizkatt-gradient-preset${
+                    activeGradient?.presetId === preset.id ? " is-active" : ""
+                  }`}
+                  onClick={() => onGradientChange(preset)}
+                >
+                  <i style={{ background: getGradientCssPreview(preset.gradient) }} />
+                  <span>{preset.name}</span>
+                </button>
+                {preset.custom && (
+                  <button
+                    type="button"
+                    className="kizkatt-gradient-preset-delete"
+                    aria-label={`${strings.gradientLibrary.remove} ${preset.name}`}
+                    title={`${strings.gradientLibrary.remove} ${preset.name}`}
+                    onClick={() => onGradientDelete(preset)}
+                  >
+                    {TrashIcon}
+                  </button>
+                )}
+              </div>
             ))}
             {filtered.length === 0 && <p>{strings.gradientLibrary.empty}</p>}
           </div>
-          {actions}
         </section>
       )}
     </DraggablePanel>

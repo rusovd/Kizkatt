@@ -215,6 +215,87 @@ export const GradientIcon = createIcon(
   </g>,
 );
 
+export const LinearGradientIcon = createIcon(
+  <g strokeWidth="1.4">
+    <rect x="3.5" y="5" width="17" height="14" rx="1.5" />
+    <path d="M6 16.5 18 7.5" />
+    <circle cx="6" cy="16.5" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="18" cy="7.5" r="1.6" fill="currentColor" stroke="none" />
+  </g>
+);
+
+export const RadialGradientIcon = createIcon(
+  <g strokeWidth="1.4">
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="5.25" />
+    <circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none" />
+  </g>
+);
+
+export const ConicGradientIcon = createIcon(
+  <g strokeWidth="1.4">
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 12V3.5M12 12l7.35 4.25M12 12l-7.35 4.25" />
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+  </g>
+);
+
+export const DiamondGradientIcon = createIcon(
+  <g strokeWidth="1.4">
+    <path d="m12 3.5 8.5 8.5-8.5 8.5L3.5 12Z" />
+    <path d="m12 7.5 4.5 4.5-4.5 4.5L7.5 12Z" />
+    <circle cx="12" cy="12" r="1.35" fill="currentColor" stroke="none" />
+  </g>
+);
+
+export const GradientPadIcon = createIcon(
+  <g strokeWidth="1.4">
+    <rect x="3.5" y="6" width="17" height="12" rx="1.5" />
+    <path d="M7 8.5v7M10 8.5v7M14 8.5v7M18 8.5v7" />
+  </g>
+);
+
+export const GradientReflectIcon = createIcon(
+  <g strokeWidth="1.4">
+    <rect x="3.5" y="6" width="17" height="12" rx="1.5" />
+    <path d="M12 7.5v9M8.5 9v6M15.5 9v6M5.5 11v2M18.5 11v2" />
+  </g>
+);
+
+export const GradientRepeatIcon = createIcon(
+  <g strokeWidth="1.4">
+    <rect x="3.5" y="6" width="17" height="12" rx="1.5" />
+    <path d="M7.5 7.5v9M12 7.5v9M16.5 7.5v9" />
+    <path d="m5.5 12 2-2 2 2M10 12l2-2 2 2M14.5 12l2-2 2 2" />
+  </g>
+);
+
+export const DefaultGradientIcon = createIcon(
+  <path
+    d="M19.5 18.5V7.3a1.5 1.5 0 0 0-.4-1L15.7 3a1.5 1.5 0 0 0-1-.4H5.5A1.5 1.5 0 0 0 4 4.1v16.4A1.5 1.5 0 0 0 5.5 22h15a1.5 1.5 0 0 0 1.5-1.5v-7"
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="1.5"
+  />
+);
+
+export const SaveIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M5 3.5h11l3 3v14H5Z" />
+    <path d="M8 3.5v6h8v-6M8 20.5v-7h8v7" />
+  </g>
+);
+
+export const AddGradientStopIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="M8 5h12l-6 11Z" />
+    <path d="M14 2v3" />
+    <path d="M3 18h6M6 15v6" />
+  </g>
+);
+
 export const MonochromeTextureIcon = createIcon(
   <g>
     <path stroke="none" d="M0 0h24v24H0z" fill="none" />

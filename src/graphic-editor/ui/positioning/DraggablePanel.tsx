@@ -4,7 +4,7 @@ import type {
   PointerEvent,
   ReactNode
 } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { useI18n } from "../../i18n";
 import { CloseIcon, PinIcon } from "../icons";
@@ -191,6 +191,8 @@ function getPointerId(
 }
 
 export function DraggablePanel({
+  anchorElement,
+  anchorGap = 6,
   children,
   className,
   closable = false,
@@ -198,6 +200,7 @@ export function DraggablePanel({
   draggable = true,
   dragByTitle = true,
   hideLabels,
+  headerActions,
   horizontalActionsLayout = "row",
   id,
   maxCols = 1,
@@ -206,12 +209,16 @@ export function DraggablePanel({
   onClose,
   orientationChangeable = true,
   pinnable = false,
+  positionStorageId,
   reopenKey,
   resizable = false,
   resizeAxes,
+  showDragHandle = true,
   title,
   topDock = false
 }: {
+  anchorElement?: HTMLElement | null;
+  anchorGap?: number;
   children:
     | ReactNode
     | ((state: DraggablePanelRenderState) => ReactNode);
@@ -221,6 +228,7 @@ export function DraggablePanel({
   draggable?: boolean;
   dragByTitle?: boolean;
   hideLabels?: Partial<Record<PanelOrientation, boolean>>;
+  headerActions?: ReactNode;
   id: string;
   horizontalActionsLayout?: "column" | "row";
   maxCols?: number;
@@ -229,9 +237,11 @@ export function DraggablePanel({
   onClose?: () => void;
   orientationChangeable?: boolean;
   pinnable?: boolean;
+  positionStorageId?: string;
   reopenKey?: string | number;
   resizable?: boolean;
   resizeAxes?: Partial<Record<PanelOrientation, PanelResizeAxis>>;
+  showDragHandle?: boolean;
   title?: string;
   topDock?: boolean;
 }) {
@@ -258,8 +268,9 @@ export function DraggablePanel({
   } | null>(null);
   const previousReopenKeyRef = useRef(reopenKey);
   const suppressClickRef = useRef(false);
+  const positionKey = positionStorageId ?? id;
   const [position, setPosition] = useState<PanelPosition | null>(() =>
-    readStoredPosition(id)
+    draggable ? readStoredPosition(positionKey) : null
   );
   const initialOrientationRef = useRef(
     orientationChangeable
@@ -304,6 +315,66 @@ export function DraggablePanel({
     return registerVisiblePanel(id, pinnable);
   }, [id, pinnable, registerVisiblePanel, temporarilyClosed]);
 
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+
+    if (!anchorElement || !panel || draggable) {
+      return;
+    }
+
+    const updatePositionFromAnchor = () => {
+      const anchorRect = anchorElement.getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+      const offsetParent = panel.offsetParent as HTMLElement | null;
+      const parentRect = offsetParent?.getBoundingClientRect() ?? {
+        bottom: window.innerHeight,
+        height: window.innerHeight,
+        left: 0,
+        right: window.innerWidth,
+        top: 0,
+        width: window.innerWidth
+      };
+      const padding = 8;
+      const maximumLeft = Math.max(
+        padding,
+        parentRect.width - panelRect.width - padding
+      );
+      const nextPosition = {
+        x: Math.min(
+          maximumLeft,
+          Math.max(padding, anchorRect.left - parentRect.left)
+        ),
+        y: Math.max(
+          padding,
+          anchorRect.bottom - parentRect.top + anchorGap
+        )
+      };
+
+      setPosition((currentPosition) =>
+        currentPosition?.x === nextPosition.x &&
+        currentPosition.y === nextPosition.y
+          ? currentPosition
+          : nextPosition
+      );
+    };
+
+    updatePositionFromAnchor();
+    window.addEventListener("resize", updatePositionFromAnchor);
+    window.addEventListener("scroll", updatePositionFromAnchor, true);
+
+    const resizeObserver = globalThis.ResizeObserver
+      ? new ResizeObserver(updatePositionFromAnchor)
+      : null;
+    resizeObserver?.observe(anchorElement);
+    resizeObserver?.observe(panel);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updatePositionFromAnchor);
+      window.removeEventListener("scroll", updatePositionFromAnchor, true);
+    };
+  }, [anchorElement, anchorGap, draggable, reopenKey]);
+
   const setNextPosition = (
     nextPosition: PanelPosition,
     rect: DOMRect,
@@ -323,7 +394,7 @@ export function DraggablePanel({
     setPosition(clampedPosition);
 
     if (persist) {
-      storePosition(id, clampedPosition);
+      storePosition(positionKey, clampedPosition);
     }
   };
 
@@ -568,7 +639,9 @@ export function DraggablePanel({
   };
 
   const style = {
-    ...(position ? { left: position.x, top: position.y } : {}),
+    ...(position
+      ? { bottom: "auto", left: position.x, right: "auto", top: position.y }
+      : {}),
     ...(canResize && size
       ? {
           ...(resizeAxis !== "horizontal" ? { height: size.height } : {}),
@@ -586,7 +659,7 @@ export function DraggablePanel({
     "--kizkatt-panel-max-cols": Math.max(1, Math.floor(maxCols)),
     "--kizkatt-panel-max-rows": Math.max(1, Math.floor(maxRows))
   } as CSSProperties;
-  const panelActions = (pinnable || closable) && (
+  const panelActions = (headerActions || pinnable || closable) && (
     <span
       className={[
         "kizkatt-panel-actions",
@@ -599,6 +672,15 @@ export function DraggablePanel({
       ].join(" ")}
       data-no-panel-drag
     >
+      {headerActions && (
+        <>
+          <span
+            aria-hidden="true"
+            className="kizkatt-panel-action-spacer"
+          />
+          {headerActions}
+        </>
+      )}
       {pinnable && (
         <button
           type="button"
@@ -644,11 +726,13 @@ export function DraggablePanel({
     <div
       className={`kizkatt-panel-chrome kizkatt-panel-chrome--${orientation}`}
     >
-      <PanelDragHandle
-        placement={orientation === "vertical" ? "top" : "left"}
-        title={strings.settings.tooltips.panelDragHandle}
-        onDoubleClick={orientationChangeable ? toggleOrientation : undefined}
-      />
+      {showDragHandle && (
+        <PanelDragHandle
+          placement={orientation === "vertical" ? "top" : "left"}
+          title={strings.settings.tooltips.panelDragHandle}
+          onDoubleClick={orientationChangeable ? toggleOrientation : undefined}
+        />
+      )}
       {orientation === "vertical" && title && (
         <strong
           className="kizkatt-panel-title"

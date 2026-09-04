@@ -1,6 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   addGradientStop,
+  addGradientStopToFirstSegment,
+  getDefaultGradientFill,
   removeGradientStop,
   reverseGradientStops,
   updateGradientStop,
@@ -9,57 +12,64 @@ import {
   type GradientType
 } from "kizkatt-graphic-engine";
 import {
+  ColorPicker,
+  formatColorForMode,
+  GradientTransformPreview,
   getGradientCssPreview,
+  parseColorForMode,
   useGradientFillDraft
 } from "kizkatt-graphic-editor";
 
 import { useI18n } from "../../i18n";
-import { ChevronDownIcon, ResetIcon, TrashIcon } from "../icons";
+import {
+  AddGradientStopIcon,
+  ChevronDownIcon,
+  ConicGradientIcon,
+  DefaultGradientIcon,
+  DiamondGradientIcon,
+  GradientPadIcon,
+  GradientReflectIcon,
+  GradientRepeatIcon,
+  LinearGradientIcon,
+  RadialGradientIcon,
+  ResetIcon,
+  SaveIcon,
+  TrashIcon
+} from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
+import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
+import { CollapsiblePanelSection } from "./CollapsiblePanelSection";
+import { EditableSliderInput } from "./EditableSliderInput";
 
 const PANEL_ID = "gradient-fill";
+const COLOR_PICKER_WIDTH = 260;
+const COLOR_PICKER_HEIGHT = 310;
+const COLOR_PICKER_GAP = 8;
 const TYPE_OPTIONS: GradientType[] = ["linear", "radial", "conic", "diamond"];
 const SPREAD_OPTIONS: GradientSpread[] = ["pad", "reflect", "repeat"];
+const TYPE_ICONS: Record<GradientType, ReactNode> = {
+  conic: ConicGradientIcon,
+  diamond: DiamondGradientIcon,
+  linear: LinearGradientIcon,
+  radial: RadialGradientIcon
+};
+const SPREAD_ICONS: Record<GradientSpread, ReactNode> = {
+  pad: GradientPadIcon,
+  reflect: GradientReflectIcon,
+  repeat: GradientRepeatIcon
+};
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function NumericField({
-  label,
-  max,
-  min,
-  onChange,
-  onCommit,
-  suffix,
-  value
-}: {
-  label: string;
-  max: number;
-  min: number;
-  onChange: (value: number) => void;
-  onCommit: () => void;
-  suffix?: string;
-  value: number;
-}) {
-  return (
-    <label className="kizkatt-gradient-number">
-      <span>{label}</span>
-      <input
-        aria-label={label}
-        type="number"
-        min={min}
-        max={max}
-        value={Number(value.toFixed(2))}
-        onBlur={onCommit}
-        onChange={(event) => {
-          const parsed = Number(event.target.value);
-          if (Number.isFinite(parsed)) onChange(clamp(parsed, min, max));
-        }}
-      />
-      {suffix && <small>{suffix}</small>}
-    </label>
-  );
+function getStopPickerColor(color: string, opacity: number) {
+  const opaqueColor = /^#[\da-f]{6}/i.exec(color)?.[0] ?? "#000000";
+  const alpha = Math.round(clamp(opacity, 0, 100) * 2.55)
+    .toString(16)
+    .padStart(2, "0");
+
+  return alpha === "ff" ? opaqueColor : `${opaqueColor}${alpha}`;
 }
 
 export function GradientFillPanel({
@@ -75,13 +85,23 @@ export function GradientFillPanel({
   onChange: (gradient: GradientFill, options?: { transient?: boolean }) => void;
   onChangeEnd: () => void;
   onClose: () => void;
-  onOpenLibrary: () => void;
+  onOpenLibrary: (anchor: HTMLButtonElement) => void;
   onSavePreset: (gradient: GradientFill) => void;
   reopenKey: number;
 }) {
   const { strings } = useI18n();
+  const {
+    colorMode,
+    gradientFreeDeformation,
+    overlayContrast,
+    setColorMode,
+    setGradientFreeDeformation,
+    setOverlayContrast
+  } = useGraphicEditorSettings();
   const labels = strings.gradientFill;
   const stopTrackRef = useRef<HTMLDivElement | null>(null);
+  const colorButtonRef = useRef<HTMLButtonElement | null>(null);
+  const colorPickerRef = useRef<HTMLDivElement | null>(null);
   const { commit, gradient, replace, update } = useGradientFillDraft({
     onCommit: onChangeEnd,
     onPreview: onChange,
@@ -94,7 +114,96 @@ export function GradientFillPanel({
   const selectedStop =
     gradient.stops.find((stop) => stop.id === selectedStopId) ??
     gradient.stops[0];
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [colorPickerPosition, setColorPickerPosition] = useState({
+    left: COLOR_PICKER_GAP,
+    top: COLOR_PICKER_GAP
+  });
+  const [colorDraft, setColorDraft] = useState(() =>
+    formatColorForMode(
+      getStopPickerColor(
+        gradient.stops[0]?.color ?? "#000000",
+        gradient.stops[0]?.opacity ?? 100
+      ),
+      colorMode
+    )
+  );
 
+  useEffect(() => {
+    setColorDraft(
+      formatColorForMode(
+        getStopPickerColor(
+          selectedStop?.color ?? "#000000",
+          selectedStop?.opacity ?? 100
+        ),
+        colorMode
+      )
+    );
+  }, [colorMode, selectedStop?.color, selectedStop?.id, selectedStop?.opacity]);
+
+  useEffect(() => {
+    if (!colorPickerOpen) return;
+
+    const updatePosition = () => {
+      const anchor = colorButtonRef.current?.getBoundingClientRect();
+      if (!anchor) return;
+      const pickerWidth =
+        colorPickerRef.current?.offsetWidth || COLOR_PICKER_WIDTH;
+      const pickerHeight =
+        colorPickerRef.current?.offsetHeight || COLOR_PICKER_HEIGHT;
+      const preferredLeft = anchor.left - pickerWidth - COLOR_PICKER_GAP;
+      const alternateLeft = anchor.right + COLOR_PICKER_GAP;
+      const left = preferredLeft >= COLOR_PICKER_GAP
+        ? preferredLeft
+        : Math.min(
+            window.innerWidth - pickerWidth - COLOR_PICKER_GAP,
+            alternateLeft
+          );
+      const top = Math.min(
+        window.innerHeight - pickerHeight - COLOR_PICKER_GAP,
+        Math.max(COLOR_PICKER_GAP, anchor.top)
+      );
+
+      setColorPickerPosition({
+        left: Math.max(COLOR_PICKER_GAP, left),
+        top: Math.max(COLOR_PICKER_GAP, top)
+      });
+    };
+    const closeOnOutsidePointer = (event: globalThis.PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        !colorButtonRef.current?.contains(target) &&
+        !colorPickerRef.current?.contains(target)
+      ) {
+        setColorPickerOpen(false);
+      }
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("pointerdown", closeOnOutsidePointer, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("pointerdown", closeOnOutsidePointer, true);
+    };
+  }, [colorPickerOpen]);
+
+  const updateSelectedStopColor = (color: string) => {
+    if (!selectedStop) return;
+    const match = /^(#[\da-f]{6})([\da-f]{2})?$/i.exec(color);
+
+    if (!match?.[1]) return;
+    replace(updateGradientStop(gradient, selectedStop.id, {
+      color: match[1],
+      ...(match[2]
+        ? { opacity: Number.parseInt(match[2], 16) / 2.55 }
+        : {})
+    }));
+  };
   const addStopAtClientX = (clientX: number) => {
     const bounds = stopTrackRef.current?.getBoundingClientRect();
     if (!bounds) return;
@@ -104,24 +213,63 @@ export function GradientFillPanel({
     replace(result.gradient);
     commit();
   };
-  const updateSelectedStop = (
-    patch: Parameters<typeof updateGradientStop>[2],
-    finalize = false
-  ) => {
-    if (!selectedStop) return;
-    replace(updateGradientStop(gradient, selectedStop.id, patch));
-    if (finalize) commit();
+  const addStopToFirstSegment = () => {
+    const result = addGradientStopToFirstSegment(gradient);
+    setSelectedStopId(result.stopId);
+    replace(result.gradient);
+    commit();
   };
-
+  const loadTypeDefault = () => {
+    const next = {
+      ...getDefaultGradientFill(gradient.type),
+      name: "Default"
+    };
+    setSelectedStopId(next.stops[0]?.id ?? "");
+    replace(next);
+    commit();
+  };
+  const removeSelectedStop = () => {
+    if (!selectedStop || gradient.stops.length <= 2) return;
+    const nextStop = gradient.stops.find(
+      (stop) => stop.id !== selectedStop.id
+    );
+    setSelectedStopId(nextStop?.id ?? "");
+    replace(removeGradientStop(gradient, selectedStop.id));
+    commit();
+  };
   return (
     <DraggablePanel
       id={PANEL_ID}
       closable
       defaultOrientation="vertical"
-      minSize={{ height: 600, width: 700 }}
+      headerActions={(
+        <>
+          <button
+            type="button"
+            aria-label={labels.reverse}
+            title={labels.reverse}
+            onClick={() => {
+              replace(reverseGradientStops(gradient));
+              commit();
+            }}
+          >
+            {ResetIcon}
+          </button>
+          <button
+            type="button"
+            aria-label={labels.loadDefault}
+            title={labels.loadDefault}
+            onClick={loadTypeDefault}
+          >
+            {DefaultGradientIcon}
+          </button>
+        </>
+      )}
+      minSize={{ height: 570, width: 700 }}
       onClose={onClose}
       orientationChangeable={false}
       pinnable
+      positionStorageId="fill-settings"
       reopenKey={reopenKey}
       resizable
       resizeAxes={{ vertical: "horizontal" }}
@@ -135,7 +283,11 @@ export function GradientFillPanel({
               <label className="kizkatt-gradient-name">
                 <span>{labels.name}</span>
                 <span>
-                  <button type="button" onClick={onOpenLibrary} aria-label={labels.library}>
+                  <button
+                    type="button"
+                    onClick={(event) => onOpenLibrary(event.currentTarget)}
+                    aria-label={labels.library}
+                  >
                     <i style={{ background: getGradientCssPreview(gradient) }} />
                     {ChevronDownIcon}
                   </button>
@@ -145,13 +297,57 @@ export function GradientFillPanel({
                     onBlur={commit}
                     onChange={(event) => update({ name: event.target.value })}
                   />
-                  <button type="button" onClick={() => onSavePreset(gradient)} aria-label={labels.addPreset}>+</button>
+                  <button
+                    type="button"
+                    className={gradient.presetId ? undefined : "is-active"}
+                    disabled={Boolean(gradient.presetId)}
+                    onClick={() => onSavePreset(gradient)}
+                    aria-label={labels.addPreset}
+                    title={labels.addPreset}
+                  >
+                    {SaveIcon}
+                  </button>
                 </span>
               </label>
 
-              <div
-                className="kizkatt-gradient-preview"
-                style={{ background: getGradientCssPreview(gradient) }}
+              <div className="kizkatt-preview-overlay-options">
+                <label className="kizkatt-preview-overlay-toggle">
+                  <input
+                    type="checkbox"
+                    checked={overlayContrast}
+                    onChange={(event) =>
+                      setOverlayContrast(event.target.checked)
+                    }
+                  />
+                  <span>{labels.overlayContrast}</span>
+                </label>
+                <label className="kizkatt-preview-overlay-toggle">
+                  <input
+                    type="checkbox"
+                    checked={gradientFreeDeformation}
+                    onChange={(event) =>
+                      setGradientFreeDeformation(event.target.checked)
+                    }
+                  />
+                  <span>{labels.freeDeformation}</span>
+                </label>
+              </div>
+
+              <GradientTransformPreview
+                freeDeformation={gradientFreeDeformation}
+                gradient={gradient}
+                labels={{
+                  move: labels.move,
+                  resize: labels.resize,
+                  rotate: labels.rotate,
+                  skew: labels.skew,
+                  stop: labels.stop
+                }}
+                selectedStopId={selectedStopId}
+                onChange={replace}
+                onChangeEnd={commit}
+                onSelectedStopIdChange={setSelectedStopId}
+                shadeOverlay={overlayContrast}
               />
               <div
                 ref={stopTrackRef}
@@ -164,8 +360,8 @@ export function GradientFillPanel({
                     key={stop.id}
                     type="button"
                     aria-label={`${labels.position} ${stop.position}`}
-                    className={stop.id === selectedStop?.id ? "is-active" : undefined}
-                    style={{ left: `${stop.position}%`, backgroundColor: stop.color, opacity: stop.opacity / 100 }}
+                    className={stop.id === selectedStopId ? "is-active" : undefined}
+                    style={{ left: `${stop.position}%` }}
                     onClick={() => setSelectedStopId(stop.id)}
                     onPointerDown={(event) => {
                       event.currentTarget.setPointerCapture(event.pointerId);
@@ -182,64 +378,54 @@ export function GradientFillPanel({
                       event.currentTarget.releasePointerCapture(event.pointerId);
                       commit();
                     }}
-                  />
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 16 18">
+                      <line x1="8" y1="0" x2="8" y2="4" />
+                      <path
+                        d="M2 4 H14 L8 16 Z"
+                        fill={stop.color}
+                        fillOpacity={stop.opacity / 100}
+                      />
+                    </svg>
+                  </button>
                 ))}
               </div>
-              <button type="button" className="kizkatt-gradient-add-stop" onClick={() => addStopAtClientX((stopTrackRef.current?.getBoundingClientRect().left ?? 0) + (stopTrackRef.current?.getBoundingClientRect().width ?? 0) / 2)}>
-                {labels.addStop}
-              </button>
-
-              {selectedStop && (
-                <div className="kizkatt-gradient-stop-editor">
-                  <label>
-                    <span>{labels.color}</span>
-                    <input
-                      aria-label={labels.color}
-                      type="color"
-                      value={selectedStop.color}
-                      onBlur={commit}
-                      onChange={(event) => updateSelectedStop({ color: event.target.value })}
-                    />
-                  </label>
-                  <NumericField label={labels.opacity} min={0} max={100} suffix="%" value={100 - selectedStop.opacity} onChange={(value) => updateSelectedStop({ opacity: 100 - value })} onCommit={commit} />
-                  <NumericField label={labels.position} min={0} max={100} suffix="%" value={selectedStop.position} onChange={(value) => updateSelectedStop({ position: value })} onCommit={commit} />
-                  <button
-                    type="button"
-                    disabled={gradient.stops.length <= 2}
-                    aria-label={labels.removeStop}
-                    onClick={() => {
-                      replace(removeGradientStop(gradient, selectedStop.id));
-                      setSelectedStopId(gradient.stops.find((stop) => stop.id !== selectedStop.id)?.id ?? "");
-                      commit();
-                    }}
-                  >
-                    {TrashIcon}
-                  </button>
-                </div>
-              )}
             </div>
 
             <div className="kizkatt-gradient-settings-column">
               <fieldset>
                 <legend>{labels.type}</legend>
-                <div className="kizkatt-gradient-segments">
+                <div className="kizkatt-gradient-type-controls">
                   {TYPE_OPTIONS.map((type) => (
-                    <button key={type} type="button" className={gradient.type === type ? "is-active" : undefined} onClick={() => { update({ type }); commit(); }}>
-                      {labels[type]}
+                    <button
+                      key={type}
+                      type="button"
+                      aria-label={labels[type]}
+                      aria-pressed={gradient.type === type}
+                      title={labels[type]}
+                      className={gradient.type === type ? "is-active" : undefined}
+                      onClick={() => { update({ type }); commit(); }}
+                    >
+                      {TYPE_ICONS[type]}
                     </button>
                   ))}
-                </div>
-                <button type="button" onClick={() => { replace(reverseGradientStops(gradient)); commit(); }}>
-                  {ResetIcon} {labels.reverse}
-                </button>
-              </fieldset>
-
-              <fieldset>
-                <legend>{labels.arrangement}</legend>
-                <div className="kizkatt-gradient-segments">
+                  <span aria-hidden="true" />
                   {SPREAD_OPTIONS.map((spread) => (
-                    <button key={spread} type="button" className={gradient.spread === spread ? "is-active" : undefined} onClick={() => { update({ spread }); commit(); }}>
-                      {labels[spread]}
+                    <button
+                      key={spread}
+                      type="button"
+                      aria-label={labels[spread]}
+                      aria-pressed={gradient.spread === spread}
+                      title={labels[spread]}
+                      className={
+                        gradient.spread === spread ? "is-active" : undefined
+                      }
+                      onClick={() => {
+                        update({ spread });
+                        commit();
+                      }}
+                    >
+                      {SPREAD_ICONS[spread]}
                     </button>
                   ))}
                 </div>
@@ -247,22 +433,261 @@ export function GradientFillPanel({
 
               <fieldset>
                 <legend>{labels.flow}</legend>
-                <label className="kizkatt-gradient-check"><input type="checkbox" checked={gradient.stepsEnabled} onChange={(event) => { update({ stepsEnabled: event.target.checked }); commit(); }} />{labels.steps}</label>
-                <NumericField label={labels.steps} min={2} max={256} value={gradient.steps} onChange={(steps) => update({ steps })} onCommit={commit} />
+                <label className="kizkatt-gradient-slider">
+                  <span className="kizkatt-gradient-check">
+                    <input
+                      type="checkbox"
+                      checked={gradient.stepsEnabled}
+                      aria-label={labels.steps}
+                      onChange={(event) => { update({ stepsEnabled: event.target.checked }); commit(); }}
+                    />
+                    {labels.steps}
+                  </span>
+                  <input
+                    aria-label={labels.steps}
+                    type="range"
+                    min="2"
+                    max="256"
+                    disabled={!gradient.stepsEnabled}
+                    value={gradient.steps}
+                    onChange={(event) => update({ steps: Number(event.target.value) })}
+                    onPointerUp={commit}
+                  />
+                  <output>{gradient.steps}</output>
+                </label>
                 <label className="kizkatt-gradient-slider"><span>{labels.acceleration}</span><input aria-label={labels.acceleration} type="range" min="-100" max="100" value={gradient.acceleration} onChange={(event) => update({ acceleration: Number(event.target.value) })} onPointerUp={commit} /><output>{gradient.acceleration}</output></label>
                 <label className="kizkatt-gradient-check"><input type="checkbox" checked={gradient.smooth} onChange={(event) => { update({ smooth: event.target.checked }); commit(); }} />{labels.smooth}</label>
               </fieldset>
 
-              <fieldset className="kizkatt-gradient-transformations">
-                <legend>Transformations</legend>
-                <NumericField label="X" min={-200} max={300} suffix="%" value={gradient.centerX} onChange={(centerX) => update({ centerX })} onCommit={commit} />
-                <NumericField label="Y" min={-200} max={300} suffix="%" value={gradient.centerY} onChange={(centerY) => update({ centerY })} onCommit={commit} />
-                <NumericField label="W" min={1} max={1000} suffix="%" value={gradient.scaleX} onChange={(scaleX) => update({ scaleX, ...(gradient.scaleLocked ? { scaleY: scaleX } : {}) })} onCommit={commit} />
-                <NumericField label="H" min={1} max={1000} suffix="%" value={gradient.scaleY} onChange={(scaleY) => update({ scaleY, ...(gradient.scaleLocked ? { scaleX: scaleY } : {}) })} onCommit={commit} />
-                <label className="kizkatt-gradient-check"><input type="checkbox" checked={gradient.scaleLocked} onChange={(event) => { update({ scaleLocked: event.target.checked }); commit(); }} />Lock scale</label>
-                <NumericField label={labels.rotation} min={-360} max={360} suffix="°" value={gradient.rotation} onChange={(rotation) => update({ rotation })} onCommit={commit} />
-                <NumericField label={labels.skew} min={-85} max={85} suffix="°" value={gradient.skew} onChange={(skew) => update({ skew })} onCommit={commit} />
+              <fieldset className="kizkatt-gradient-stop-settings">
+                <legend>{labels.stop}</legend>
+                <div className="kizkatt-gradient-stop-toolbar">
+                  <button
+                    ref={colorButtonRef}
+                    type="button"
+                    className="kizkatt-gradient-stop-color-button"
+                    aria-label={labels.color}
+                    title={labels.color}
+                    disabled={!selectedStop}
+                    onClick={() => {
+                      if (selectedStop) {
+                        setColorPickerOpen((open) => !open);
+                      }
+                    }}
+                  >
+                    <i style={{ backgroundColor: selectedStop?.color }} />
+                  </button>
+                  <input
+                    className="kizkatt-gradient-stop-color-value"
+                    aria-label={`${labels.colorValue} ${colorMode.toUpperCase()}`}
+                    disabled={!selectedStop}
+                    value={colorDraft}
+                    onBlur={() => {
+                      const parsed = parseColorForMode(colorDraft, colorMode);
+                      if (parsed) updateSelectedStopColor(parsed);
+                      commit();
+                    }}
+                    onChange={(event) => {
+                      const nextDraft = event.target.value;
+                      setColorDraft(nextDraft);
+                      const parsed = parseColorForMode(nextDraft, colorMode);
+                      if (parsed) updateSelectedStopColor(parsed);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") event.currentTarget.blur();
+                    }}
+                  />
+                  <button
+                    type="button"
+                    aria-label={labels.addStop}
+                    title={labels.addStop}
+                    onClick={addStopToFirstSegment}
+                  >
+                    {AddGradientStopIcon}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={labels.removeStop}
+                    title={labels.removeStop}
+                    disabled={!selectedStop || gradient.stops.length <= 2}
+                    onClick={removeSelectedStop}
+                  >
+                    {TrashIcon}
+                  </button>
+                </div>
+                {colorPickerOpen && selectedStop &&
+                  createPortal(
+                    <div
+                      ref={colorPickerRef}
+                      className="kizkatt-gradient-stop-color-picker"
+                      style={colorPickerPosition}
+                    >
+                      <ColorPicker
+                        defaultMode={colorMode}
+                        value={getStopPickerColor(
+                          selectedStop.color,
+                          selectedStop.opacity
+                        )}
+                        onChange={updateSelectedStopColor}
+                        onCommit={(color) => {
+                          updateSelectedStopColor(color);
+                          commit();
+                        }}
+                        onModeChange={setColorMode}
+                      />
+                    </div>,
+                    document.querySelector(".kizkatt-board") ?? document.body
+                  )}
+                <label className="kizkatt-gradient-slider">
+                  <span>{labels.opacity}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    aria-label={labels.opacity}
+                    disabled={!selectedStop}
+                    value={selectedStop ? 100 - selectedStop.opacity : 0}
+                    onChange={(event) => {
+                      if (!selectedStop) return;
+                      replace(updateGradientStop(gradient, selectedStop.id, {
+                        opacity: 100 - Number(event.target.value)
+                      }));
+                    }}
+                    onPointerUp={commit}
+                  />
+                  <output>{selectedStop ? 100 - selectedStop.opacity : 0}</output>
+                </label>
+                <label className="kizkatt-gradient-slider">
+                  <span>{labels.positionX}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    aria-label={labels.positionX}
+                    disabled={!selectedStop}
+                    value={selectedStop?.position ?? 0}
+                    onChange={(event) => {
+                      if (!selectedStop) return;
+                      replace(updateGradientStop(gradient, selectedStop.id, {
+                        position: Number(event.target.value)
+                      }));
+                    }}
+                    onPointerUp={commit}
+                  />
+                  <output>{Math.round(selectedStop?.position ?? 0)}</output>
+                </label>
               </fieldset>
+
+              <CollapsiblePanelSection title={labels.transformations}>
+                <div className="kizkatt-transformation-fields">
+                  <label>
+                    <span>{labels.positionX}</span>
+                    <EditableSliderInput
+                      ariaLabel={labels.positionX}
+                      min={-200}
+                      max={300}
+                      unit="%"
+                      value={gradient.centerX}
+                      onChangeEnd={commit}
+                      onValueChange={(centerX) => update({ centerX })}
+                    />
+                  </label>
+                  <label>
+                    <span>{labels.positionY}</span>
+                    <EditableSliderInput
+                      ariaLabel={labels.positionY}
+                      min={-200}
+                      max={300}
+                      unit="%"
+                      value={gradient.centerY}
+                      onChangeEnd={commit}
+                      onValueChange={(centerY) => update({ centerY })}
+                    />
+                  </label>
+                  <label>
+                    <span>{labels.width}</span>
+                    <EditableSliderInput
+                      ariaLabel={labels.width}
+                      min={1}
+                      max={1000}
+                      unit="%"
+                      value={gradient.scaleX}
+                      onChangeEnd={commit}
+                      onValueChange={(scaleX) =>
+                        update({
+                          scaleX,
+                          ...(gradient.scaleLocked
+                            ? {
+                                scaleY:
+                                  gradient.scaleY *
+                                  (scaleX / Math.max(1, gradient.scaleX))
+                              }
+                            : {})
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>{labels.height}</span>
+                    <EditableSliderInput
+                      ariaLabel={labels.height}
+                      min={1}
+                      max={1000}
+                      unit="%"
+                      value={gradient.scaleY}
+                      onChangeEnd={commit}
+                      onValueChange={(scaleY) =>
+                        update({
+                          scaleY,
+                          ...(gradient.scaleLocked
+                            ? {
+                                scaleX:
+                                  gradient.scaleX *
+                                  (scaleY / Math.max(1, gradient.scaleY))
+                              }
+                            : {})
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>{labels.rotation}</span>
+                    <EditableSliderInput
+                      ariaLabel={labels.rotation}
+                      min={-360}
+                      max={360}
+                      unit="°"
+                      value={gradient.rotation}
+                      onChangeEnd={commit}
+                      onValueChange={(rotation) => update({ rotation })}
+                    />
+                  </label>
+                  <label>
+                    <span>{labels.skew}</span>
+                    <EditableSliderInput
+                      ariaLabel={labels.skew}
+                      min={-85}
+                      max={85}
+                      unit="°"
+                      value={gradient.skew}
+                      onChangeEnd={commit}
+                      onValueChange={(skew) => update({ skew })}
+                    />
+                  </label>
+                  <label className="is-checkbox is-wide">
+                    <input
+                      type="checkbox"
+                      checked={gradient.scaleLocked}
+                      onChange={(event) => {
+                        update({ scaleLocked: event.target.checked });
+                        commit();
+                      }}
+                    />
+                    <span>{labels.lockScale}</span>
+                  </label>
+                </div>
+              </CollapsiblePanelSection>
             </div>
           </div>
         </section>

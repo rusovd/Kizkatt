@@ -2,7 +2,10 @@ import { DEFAULT_STROKE_WIDTH } from "./constants";
 
 export const DEFAULT_GRAPHIC_EDITOR_SETTINGS = {
   autohideToolbar: false,
-  colorMode: "hex"
+  colorMode: "hex",
+  gradientFreeDeformation: false,
+  overlayContrast: true,
+  textureFreeDeformation: true
 } as const;
 
 export const OBJECT_PANEL_UI_SETTINGS = {

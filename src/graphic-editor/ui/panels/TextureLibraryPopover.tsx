@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type {
   BitmapTextureFill,
@@ -46,6 +46,7 @@ function getInitialCategoryId(collectionId: string) {
 
 export function TextureLibraryPopover({
   activeTexture,
+  anchorElement,
   initialCollectionId = MONOCHROME_TEXTURE_COLLECTION_ID,
   onClose,
   onTextureChange,
@@ -53,6 +54,7 @@ export function TextureLibraryPopover({
   targetSize
 }: {
   activeTexture?: BitmapTextureFill;
+  anchorElement: HTMLElement | null;
   initialCollectionId?: string;
   onClose: () => void;
   onTextureChange: (texture: BitmapTextureFill) => void;
@@ -60,6 +62,7 @@ export function TextureLibraryPopover({
   targetSize: BitmapTextureSize;
 }) {
   const { strings } = useI18n();
+  const popupRef = useRef<HTMLElement | null>(null);
   const entries = useMemo(
     () => getTextureCatalogEntries(textureCatalog),
     []
@@ -95,6 +98,24 @@ export function TextureLibraryPopover({
     setCategoryId(getInitialCategoryId(initialCollectionId));
   }, [initialCollectionId, reopenKey]);
 
+  useEffect(() => {
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+
+      if (target instanceof Node && !popupRef.current?.contains(target)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointerDown, true);
+    return () =>
+      document.removeEventListener(
+        "pointerdown",
+        closeOnOutsidePointerDown,
+        true
+      );
+  }, [onClose]);
+
   const selectCatalogTexture = (entry: TextureCatalogEntry) => {
     storeTextureId(entry.collectionId, entry.texture.id);
     onTextureChange(
@@ -108,19 +129,18 @@ export function TextureLibraryPopover({
 
   return (
     <DraggablePanel
+      anchorElement={anchorElement}
       id={PANEL_ID}
-      closable
       defaultOrientation="vertical"
-      minSize={{ height: 420, width: 380 }}
-      onClose={onClose}
-      pinnable
+      draggable={false}
+      orientationChangeable={false}
       reopenKey={reopenKey}
-      resizable
-      resizeAxes={{ horizontal: "vertical", vertical: "vertical" }}
+      showDragHandle={false}
       title={strings.textureLibrary.title}
     >
-      {({ actions, chrome, orientation }) => (
+      {({ chrome, orientation }) => (
         <section
+          ref={popupRef}
           className={`kizkatt-texture-library kizkatt-texture-library--${orientation}`}
           role="dialog"
           aria-label={strings.textureLibrary.title}
@@ -234,7 +254,6 @@ export function TextureLibraryPopover({
             />
             <output>{thumbnailColumns}</output>
           </footer>
-          {actions}
         </section>
       )}
     </DraggablePanel>

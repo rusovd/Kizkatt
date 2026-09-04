@@ -261,6 +261,12 @@
   flex-direction: column;
 }
 
+.kizkatt-panel-action-spacer {
+  width: 23px;
+  min-width: 23px;
+  height: 23px;
+}
+
 .kizkatt-floating-panel .kizkatt-panel-actions button {
   display: grid;
   width: 23px;
@@ -711,4 +717,28 @@
 .kizkatt-footer-controls button:disabled {
   color: #777784;
   cursor: default;
+}
+.kizkatt-preview-overlay-toggle {
+  display: flex;
+  min-height: 22px;
+  align-items: center;
+  gap: 7px;
+  color: var(--kizkatt-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.kizkatt-preview-overlay-options {
+  display: grid;
+  gap: 4px;
+}
+
+.kizkatt-preview-overlay-toggle > input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--kizkatt-selection);
+  cursor: pointer;
 }

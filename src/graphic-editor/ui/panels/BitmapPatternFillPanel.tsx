@@ -30,6 +30,9 @@ import {
   UploadIcon
 } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
+import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
+import { CollapsiblePanelSection } from "./CollapsiblePanelSection";
+import { EditableSliderInput } from "./EditableSliderInput";
 
 const PANEL_ID = "bitmap-pattern-fill";
 const MIN_ADJUSTMENT = -100;
@@ -42,85 +45,6 @@ function clamp(value: number, min: number, max: number) {
 function parseNumber(value: string, fallback: number) {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function parseEditableNumber(value: string) {
-  const normalizedValue = value.trim().replace(",", ".");
-
-  if (!normalizedValue) {
-    return null;
-  }
-
-  const parsed = Number(normalizedValue);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function EditableNumberInput({
-  ariaLabel,
-  disabled,
-  max,
-  min,
-  onChangeEnd,
-  onValueChange,
-  step = 0.1,
-  value
-}: {
-  ariaLabel: string;
-  disabled?: boolean;
-  max?: number;
-  min?: number;
-  onChangeEnd: () => void;
-  onValueChange: (value: string) => void;
-  step?: number;
-  value: number | string;
-}) {
-  const externalValue = String(value);
-  const [draft, setDraft] = useState(externalValue);
-
-  useEffect(() => {
-    setDraft(externalValue);
-  }, [externalValue]);
-
-  const commitDraft = () => {
-    const parsed = parseEditableNumber(draft);
-
-    if (parsed === null) {
-      setDraft(externalValue);
-    } else {
-      onValueChange(String(parsed));
-      setDraft(String(parsed));
-    }
-
-    onChangeEnd();
-  };
-
-  return (
-    <input
-      aria-label={ariaLabel}
-      disabled={disabled}
-      inputMode="decimal"
-      data-max={max}
-      data-min={min}
-      data-step={step}
-      value={draft}
-      onBlur={commitDraft}
-      onChange={(event) => {
-        const nextDraft = event.target.value;
-        const parsed = parseEditableNumber(nextDraft);
-
-        setDraft(nextDraft);
-
-        if (parsed !== null) {
-          onValueChange(String(parsed));
-        }
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.currentTarget.blur();
-        }
-      }}
-    />
-  );
 }
 
 function AdjustmentField({
@@ -244,12 +168,18 @@ export function BitmapPatternFillPanel({
   ) => void;
   onChangeEnd: () => void;
   onClose: () => void;
-  onOpenLibrary: () => void;
+  onOpenLibrary: (anchor: HTMLButtonElement) => void;
   reopenKey: number;
   targetSize: BitmapTextureSize;
   texture?: BitmapTextureFill;
 }) {
   const { strings } = useI18n();
+  const {
+    overlayContrast,
+    setOverlayContrast,
+    setTextureFreeDeformation,
+    textureFreeDeformation
+  } = useGraphicEditorSettings();
   const previewImageRef = useRef<HTMLImageElement | null>(null);
   const sourceInputRef = useRef<HTMLInputElement | null>(null);
   const [sourceNaturalSize, setSourceNaturalSize] =
@@ -275,6 +205,22 @@ export function BitmapPatternFillPanel({
   const hasTarget = targetSize.width > 0 && targetSize.height > 0;
   const colorDisabled =
     texture.desaturateEnabled && texture.desaturate >= MAX_ADJUSTMENT;
+  const transformationWidthMax = Math.max(
+    1000,
+    Math.ceil(
+      Math.max(texture.width, sourceNaturalSize.width, targetSize.width) * 2
+    )
+  );
+  const transformationHeightMax = Math.max(
+    1000,
+    Math.ceil(
+      Math.max(texture.height, sourceNaturalSize.height, targetSize.height) * 2
+    )
+  );
+  const transformationOffsetMax = Math.max(
+    transformationWidthMax,
+    transformationHeightMax
+  );
 
   useEffect(() => {
     setSourceNaturalSize({
@@ -377,10 +323,24 @@ export function BitmapPatternFillPanel({
       id={PANEL_ID}
       closable
       defaultOrientation="vertical"
+      headerActions={(
+        <button
+          type="button"
+          aria-label={strings.bitmapPattern.resetTransformations}
+          title={strings.bitmapPattern.resetTransformations}
+          onClick={() => {
+            update(getResetBitmapTextureTransform(sourceNaturalSize));
+            onChangeEnd();
+          }}
+        >
+          {ResetIcon}
+        </button>
+      )}
       minSize={{ height: 540, width: 620 }}
       onClose={close}
       orientationChangeable={false}
       pinnable
+      positionStorageId="fill-settings"
       reopenKey={reopenKey}
       resizable
       resizeAxes={{ vertical: "horizontal" }}
@@ -403,7 +363,7 @@ export function BitmapPatternFillPanel({
                       className="kizkatt-bitmap-pattern-fill-button"
                       aria-label={strings.textureLibrary.chooseTexture}
                       title={strings.textureLibrary.chooseTexture}
-                      onClick={onOpenLibrary}
+                      onClick={(event) => onOpenLibrary(event.currentTarget)}
                     >
                       {source ? <img src={source} alt="" /> : ImageIcon}
                       {ChevronDownIcon}
@@ -419,12 +379,52 @@ export function BitmapPatternFillPanel({
                         )
                       }
                     />
+                    <button
+                      type="button"
+                      className="kizkatt-bitmap-pattern-upload-button"
+                      aria-label={strings.bitmapPattern.choose}
+                      title={strings.bitmapPattern.choose}
+                      onClick={() => sourceInputRef.current?.click()}
+                    >
+                      {UploadIcon}
+                    </button>
+                    <input
+                      ref={sourceInputRef}
+                      className="kizkatt-file-input"
+                      type="file"
+                      accept={STANDARD_IMAGE_FILE_ACCEPT}
+                      onChange={(event) => void chooseSource(event)}
+                    />
                   </span>
                 </div>
               </div>
 
+              <div className="kizkatt-preview-overlay-options">
+                <label className="kizkatt-preview-overlay-toggle">
+                  <input
+                    type="checkbox"
+                    checked={overlayContrast}
+                    onChange={(event) =>
+                      setOverlayContrast(event.target.checked)
+                    }
+                  />
+                  <span>{strings.bitmapPattern.overlayContrast}</span>
+                </label>
+                <label className="kizkatt-preview-overlay-toggle">
+                  <input
+                    type="checkbox"
+                    checked={textureFreeDeformation}
+                    onChange={(event) =>
+                      setTextureFreeDeformation(event.target.checked)
+                    }
+                  />
+                  <span>{strings.bitmapPattern.freeDeformation}</span>
+                </label>
+              </div>
+
               <BitmapTextureCropPreview
                 cropEnabled={hasTarget}
+                freeDeformation={textureFreeDeformation}
                 imageRef={previewImageRef}
                 labels={{
                   crop: strings.bitmapPattern.crop,
@@ -437,6 +437,7 @@ export function BitmapPatternFillPanel({
                 targetSize={targetSize}
                 texture={texture}
                 pickingColor={pickingTransparencyColor}
+                shadeOverlay={overlayContrast}
                 onClick={pickTransparencyColor}
                 onNaturalSizeChange={setSourceNaturalSize}
                 onTextureChange={(change) =>
@@ -444,28 +445,6 @@ export function BitmapPatternFillPanel({
                 }
                 onTextureChangeEnd={onChangeEnd}
               />
-
-              <div className="kizkatt-bitmap-pattern-source">
-                <strong>{strings.bitmapPattern.source}</strong>
-                <div>
-                  {source ? <img src={source} alt="" /> : null}
-                  <button
-                    type="button"
-                    aria-label={strings.bitmapPattern.choose}
-                    title={strings.bitmapPattern.choose}
-                    onClick={() => sourceInputRef.current?.click()}
-                  >
-                    {UploadIcon}
-                  </button>
-                  <input
-                    ref={sourceInputRef}
-                    className="kizkatt-file-input"
-                    type="file"
-                    accept={STANDARD_IMAGE_FILE_ACCEPT}
-                    onChange={(event) => void chooseSource(event)}
-                  />
-                </div>
-              </div>
             </div>
 
             <div className="kizkatt-bitmap-pattern-settings-column">
@@ -692,21 +671,164 @@ export function BitmapPatternFillPanel({
                   />
                   {strings.bitmapPattern.fitToObjectSize}
                 </label>
-                <button
-                  type="button"
-                  className="kizkatt-bitmap-pattern-reset-control"
-                  aria-label={strings.bitmapPattern.resetTransformations}
-                  title={strings.bitmapPattern.resetTransformations}
-                  onClick={() => {
-                    update(
-                      getResetBitmapTextureTransform(sourceNaturalSize)
-                    );
-                    onChangeEnd();
-                  }}
-                >
-                  {ResetIcon}
-                </button>
               </div>
+
+              <CollapsiblePanelSection
+                className="kizkatt-bitmap-pattern-transformations"
+                title={strings.bitmapPattern.transformations}
+              >
+                <div className="kizkatt-transformation-fields">
+                  <label>
+                    <span>{strings.bitmapPattern.width}</span>
+                    <EditableSliderInput
+                      ariaLabel={strings.bitmapPattern.width}
+                      min={1}
+                      max={transformationWidthMax}
+                      step={1}
+                      unit="px"
+                      value={texture.width}
+                      onChangeEnd={onChangeEnd}
+                      onValueChange={(value) =>
+                        update(
+                          {
+                            width: value,
+                            ...(texture.scaleLocked
+                              ? {
+                                  height:
+                                    texture.height *
+                                    (value / Math.max(1, texture.width))
+                                }
+                              : {})
+                          },
+                          { transient: true }
+                        )
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>{strings.bitmapPattern.height}</span>
+                    <EditableSliderInput
+                      ariaLabel={strings.bitmapPattern.height}
+                      min={1}
+                      max={transformationHeightMax}
+                      step={1}
+                      unit="px"
+                      value={texture.height}
+                      onChangeEnd={onChangeEnd}
+                      onValueChange={(value) =>
+                        update(
+                          {
+                            height: value,
+                            ...(texture.scaleLocked
+                              ? {
+                                  width:
+                                    texture.width *
+                                    (value / Math.max(1, texture.height))
+                                }
+                              : {})
+                          },
+                          { transient: true }
+                        )
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>{strings.bitmapPattern.offsetX}</span>
+                    <EditableSliderInput
+                      ariaLabel={strings.bitmapPattern.offsetX}
+                      min={-transformationOffsetMax}
+                      max={transformationOffsetMax}
+                      unit="px"
+                      value={texture.offsetX}
+                      onChangeEnd={onChangeEnd}
+                      onValueChange={(value) =>
+                        update({ offsetX: value }, { transient: true })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>{strings.bitmapPattern.offsetY}</span>
+                    <EditableSliderInput
+                      ariaLabel={strings.bitmapPattern.offsetY}
+                      min={-transformationOffsetMax}
+                      max={transformationOffsetMax}
+                      unit="px"
+                      value={texture.offsetY}
+                      onChangeEnd={onChangeEnd}
+                      onValueChange={(value) =>
+                        update({ offsetY: value }, { transient: true })
+                      }
+                    />
+                  </label>
+                  <label className="is-wide">
+                    <span>{strings.bitmapPattern.rotation}</span>
+                    <EditableSliderInput
+                      ariaLabel={strings.bitmapPattern.rotation}
+                      min={-360}
+                      max={360}
+                      unit="°"
+                      value={texture.rotation}
+                      onChangeEnd={onChangeEnd}
+                      onValueChange={(value) =>
+                        update({ rotation: value }, { transient: true })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>{strings.bitmapPattern.skew} X</span>
+                    <EditableSliderInput
+                      ariaLabel={`${strings.bitmapPattern.skew} X`}
+                      min={-85}
+                      max={85}
+                      unit="°"
+                      value={texture.skew}
+                      onChangeEnd={onChangeEnd}
+                      onValueChange={(value) =>
+                        update({ skew: value }, { transient: true })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>{strings.bitmapPattern.skew} Y</span>
+                    <EditableSliderInput
+                      ariaLabel={`${strings.bitmapPattern.skew} Y`}
+                      min={-85}
+                      max={85}
+                      unit="°"
+                      value={texture.skewY}
+                      onChangeEnd={onChangeEnd}
+                      onValueChange={(value) =>
+                        update({ skewY: value }, { transient: true })
+                      }
+                    />
+                  </label>
+                  <label className="is-checkbox is-wide">
+                    <input
+                      type="checkbox"
+                      checked={texture.scaleLocked}
+                      onChange={(event) => {
+                        update({ scaleLocked: event.target.checked });
+                        onChangeEnd();
+                      }}
+                    />
+                    <span>{strings.bitmapPattern.lockScale}</span>
+                  </label>
+                  <label className="is-checkbox is-wide">
+                    <input
+                      type="checkbox"
+                      checked={texture.transformWithObject}
+                      onChange={(event) => {
+                        update(
+                          { transformWithObject: event.target.checked },
+                          { transient: true }
+                        );
+                        onChangeEnd();
+                      }}
+                    />
+                    <span>{strings.bitmapPattern.transformWithObject}</span>
+                  </label>
+                </div>
+              </CollapsiblePanelSection>
 
               <fieldset className="kizkatt-bitmap-pattern-transparency">
                 <legend>{strings.bitmapPattern.transparency}</legend>

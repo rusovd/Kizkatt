@@ -14,11 +14,17 @@ type GraphicEditorSettings = {
   autohideToolbar: boolean;
   allVisiblePanelsPinned: boolean;
   colorMode: ColorPickerMode;
+  gradientFreeDeformation: boolean;
   isPanelPinned: (id: string) => boolean;
+  overlayContrast: boolean;
   registerVisiblePanel: (id: string, pinnable: boolean) => () => void;
   setAutohideToolbar: (value: boolean) => void;
   setColorMode: (value: ColorPickerMode) => void;
+  setGradientFreeDeformation: (value: boolean) => void;
+  setOverlayContrast: (value: boolean) => void;
   setPanelPinned: (id: string, pinned: boolean) => void;
+  setTextureFreeDeformation: (value: boolean) => void;
+  textureFreeDeformation: boolean;
   toggleVisiblePanelsPinned: () => void;
 };
 
@@ -26,8 +32,14 @@ const AUTOHIDE_TOOLBAR_STORAGE_KEY =
   "kizkatt:graphic-editor:settings:autohide-toolbar";
 const COLOR_MODE_STORAGE_KEY =
   "kizkatt:graphic-editor:settings:color-mode";
+const GRADIENT_FREE_DEFORMATION_STORAGE_KEY =
+  "kizkatt:graphic-editor:settings:gradient-free-deformation";
+const OVERLAY_CONTRAST_STORAGE_KEY =
+  "kizkatt:graphic-editor:settings:overlay-contrast";
 const PINNED_PANELS_STORAGE_KEY =
   "kizkatt:graphic-editor:settings:pinned-panels";
+const TEXTURE_FREE_DEFORMATION_STORAGE_KEY =
+  "kizkatt:graphic-editor:settings:texture-free-deformation";
 
 const GraphicEditorSettingsContext =
   createContext<GraphicEditorSettings | null>(null);
@@ -99,6 +111,26 @@ export function GraphicEditorSettingsProvider({
     )
   );
   const [colorMode, setColorModeState] = useState(readStoredColorMode);
+  const [gradientFreeDeformation, setGradientFreeDeformationState] = useState(
+    () =>
+      readStoredBoolean(
+        GRADIENT_FREE_DEFORMATION_STORAGE_KEY,
+        DEFAULT_GRAPHIC_EDITOR_SETTINGS.gradientFreeDeformation
+      )
+  );
+  const [textureFreeDeformation, setTextureFreeDeformationState] = useState(
+    () =>
+      readStoredBoolean(
+        TEXTURE_FREE_DEFORMATION_STORAGE_KEY,
+        DEFAULT_GRAPHIC_EDITOR_SETTINGS.textureFreeDeformation
+      )
+  );
+  const [overlayContrast, setOverlayContrastState] = useState(() =>
+    readStoredBoolean(
+      OVERLAY_CONTRAST_STORAGE_KEY,
+      DEFAULT_GRAPHIC_EDITOR_SETTINGS.overlayContrast
+    )
+  );
   const [pinnedPanelIds, setPinnedPanelIds] = useState(readStoredPanelIds);
   const [visiblePinnablePanelIds, setVisiblePinnablePanelIds] = useState(
     () => new Set<string>()
@@ -168,7 +200,9 @@ export function GraphicEditorSettingsProvider({
       autohideToolbar,
       allVisiblePanelsPinned,
       colorMode,
+      gradientFreeDeformation,
       isPanelPinned: (id) => pinnedPanelIds.has(id),
+      overlayContrast,
       registerVisiblePanel,
       setAutohideToolbar: (value) => {
         setAutohideToolbarState(value);
@@ -178,16 +212,32 @@ export function GraphicEditorSettingsProvider({
         setColorModeState(value);
         window.localStorage.setItem(COLOR_MODE_STORAGE_KEY, value);
       },
+      setGradientFreeDeformation: (value) => {
+        setGradientFreeDeformationState(value);
+        storeBoolean(GRADIENT_FREE_DEFORMATION_STORAGE_KEY, value);
+      },
+      setOverlayContrast: (value) => {
+        setOverlayContrastState(value);
+        storeBoolean(OVERLAY_CONTRAST_STORAGE_KEY, value);
+      },
       setPanelPinned,
+      setTextureFreeDeformation: (value) => {
+        setTextureFreeDeformationState(value);
+        storeBoolean(TEXTURE_FREE_DEFORMATION_STORAGE_KEY, value);
+      },
+      textureFreeDeformation,
       toggleVisiblePanelsPinned
     }),
     [
       allVisiblePanelsPinned,
       autohideToolbar,
       colorMode,
+      gradientFreeDeformation,
+      overlayContrast,
       pinnedPanelIds,
       registerVisiblePanel,
       setPanelPinned,
+      textureFreeDeformation,
       toggleVisiblePanelsPinned
     ]
   );

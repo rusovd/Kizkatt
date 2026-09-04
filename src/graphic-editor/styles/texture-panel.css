@@ -53,6 +53,10 @@
   gap: 12px;
 }
 
+.kizkatt-bitmap-pattern-transformations {
+  order: 1;
+}
+
 .kizkatt-bitmap-pattern-heading-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -67,8 +71,23 @@
 
 .kizkatt-bitmap-pattern-name > span:last-child {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 92px minmax(0, 1fr) 30px;
   gap: 5px;
+}
+
+.kizkatt-bitmap-pattern-upload-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--kizkatt-divider) !important;
+  border-radius: 6px;
+}
+
+.kizkatt-bitmap-pattern-upload-button .kizkatt-tool-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .kizkatt-bitmap-pattern-panel input,
@@ -97,7 +116,7 @@
 .kizkatt-bitmap-pattern-panel button,
 .kizkatt-texture-library button {
   border: 0;
-  background: transparent;
+  background: color-mix(in srgb, var(--kizkatt-selection) 12%, transparent);
   color: var(--kizkatt-text-secondary);
   cursor: pointer;
 }
@@ -184,11 +203,18 @@
   min-width: 10px;
   min-height: 10px;
   border: 2px solid var(--kizkatt-selection);
-  background: color-mix(in srgb, var(--kizkatt-selection) 12%, transparent);
+  background: transparent;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--kizkatt-canvas-bg) 70%, transparent);
   cursor: move;
   touch-action: none;
   transform-origin: center;
+}
+
+.kizkatt-bitmap-texture-crop.is-overlay-shaded {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.92),
+    0 0 0 2px rgba(0, 0, 0, 0.72),
+    0 0 3px rgba(0, 0, 0, 0.9);
 }
 
 .kizkatt-bitmap-pattern-preview.is-picking-color
@@ -289,39 +315,6 @@
   width: 48px;
   height: 48px;
   opacity: 0.45;
-}
-
-.kizkatt-bitmap-pattern-source {
-  display: grid;
-  gap: 7px;
-}
-
-.kizkatt-bitmap-pattern-source > div {
-  display: flex;
-  align-items: end;
-  gap: 8px;
-}
-
-.kizkatt-bitmap-pattern-source img {
-  width: 58px;
-  height: 58px;
-  border: 1px solid var(--kizkatt-divider);
-  object-fit: cover;
-}
-
-.kizkatt-bitmap-pattern-source button {
-  display: grid;
-  width: 38px;
-  height: 30px;
-  place-items: center;
-  padding: 0;
-  border: 1px solid var(--kizkatt-divider);
-  border-radius: 6px;
-}
-
-.kizkatt-bitmap-pattern-source button .kizkatt-tool-icon {
-  width: 18px;
-  height: 18px;
 }
 
 .kizkatt-bitmap-pattern-top-settings {
@@ -450,21 +443,6 @@
   height: 20px;
 }
 
-.kizkatt-bitmap-pattern-reset-control {
-  display: grid;
-  width: 34px;
-  height: 30px;
-  margin-left: auto;
-  place-items: center;
-  border-radius: 6px;
-  background: var(--kizkatt-control-bg-hover);
-}
-
-.kizkatt-bitmap-pattern-reset-control .kizkatt-tool-icon {
-  width: 20px;
-  height: 20px;
-}
-
 .kizkatt-bitmap-pattern-tile-control:has(input:checked) {
   color: var(--kizkatt-selection);
   box-shadow: inset 0 0 0 1px var(--kizkatt-selection);
@@ -556,26 +534,7 @@
 }
 
 .kizkatt-floating-panel--texture-library {
-  top: 106px;
-  right: 18px;
   z-index: 11;
-  transform-origin: top right;
-}
-
-.kizkatt-floating-panel--texture-library.is-positioned {
-  right: auto;
-  transform-origin: top left;
-}
-
-.kizkatt-floating-panel--texture-library.is-resized
-  > .kizkatt-texture-library {
-  height: 100%;
-  max-height: none;
-}
-
-.kizkatt-floating-panel--texture-library.is-resizing,
-.kizkatt-floating-panel--texture-library .kizkatt-panel-resize-handle {
-  cursor: ns-resize;
 }
 
 .kizkatt-texture-library {
