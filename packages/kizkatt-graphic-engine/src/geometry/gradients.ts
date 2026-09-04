@@ -3,13 +3,20 @@ import type {
   GradientFill,
   GradientSpread,
   GradientStop,
-  GradientType
+  GradientType,
+  KizkattElement,
+  Point
 } from "../model/types";
+import { getElementLocalPoint, transformElementPoint } from "./primitives";
 
 const MIN_GRADIENT_STOP_COUNT = 2;
 const MIN_GRADIENT_STEPS = 2;
 const MAX_GRADIENT_STEPS = 256;
 const ACCELERATION_EXPONENT_DIVISOR = 50;
+const DEGREES_PER_RADIAN = 180 / Math.PI;
+const RADIANS_PER_DEGREE = Math.PI / 180;
+const FULL_ROTATION_RADIANS = Math.PI * 2;
+const GRADIENT_TRANSFORM_ELEMENT_ID = "gradient-transform";
 
 function createGradientStopId() {
   return (
@@ -288,6 +295,16 @@ export function addGradientStop(
   };
 }
 
+export function addGradientStopToFirstSegment(value: GradientFill) {
+  const gradient = normalizeGradientFill(value);
+  const [first, second] = gradient.stops;
+
+  return addGradientStop(
+    gradient,
+    first.position + (second.position - first.position) / 2
+  );
+}
+
 export function updateGradientStop(
   value: GradientFill,
   stopId: string,
@@ -332,4 +349,117 @@ export function reverseGradientStops(value: GradientFill) {
       .map((stop) => ({ ...stop, position: 100 - stop.position }))
       .sort((left, right) => left.position - right.position)
   };
+}
+
+export function getDefaultGradientFill(type: GradientType): GradientFill {
+  return normalizeGradientFill({
+    ...DEFAULT_GRADIENT_FILL,
+    name: "Default",
+    presetId: undefined,
+    type
+  });
+}
+
+export function getGradientTransformElement(
+  value: GradientFill
+): KizkattElement {
+  const gradient = normalizeGradientFill(value);
+
+  return {
+    angle: gradient.rotation * RADIANS_PER_DEGREE,
+    backgroundColor: "transparent",
+    height: gradient.scaleY,
+    id: GRADIENT_TRANSFORM_ELEMENT_ID,
+    opacity: 100,
+    skewX: gradient.skew * RADIANS_PER_DEGREE,
+    skewY: 0,
+    strokeColor: "transparent",
+    strokeStyle: "solid",
+    strokeWidth: 0,
+    type: "rectangle",
+    width: gradient.scaleX,
+    x: gradient.centerX - gradient.scaleX / 2,
+    y: gradient.centerY - gradient.scaleY / 2
+  };
+}
+
+export function getGradientFillFromTransformElement(
+  value: GradientFill,
+  element: KizkattElement
+): GradientFill {
+  return normalizeGradientFill({
+    ...value,
+    centerX: element.x + element.width / 2,
+    centerY: element.y + element.height / 2,
+    presetId: undefined,
+    rotation: element.angle * DEGREES_PER_RADIAN,
+    scaleX: element.width,
+    scaleY: element.height,
+    skew: (element.skewX ?? 0) * DEGREES_PER_RADIAN
+  });
+}
+
+export function getGradientStopPoint(
+  value: GradientFill,
+  position: number
+): Point {
+  const gradient = normalizeGradientFill(value);
+  const element = getGradientTransformElement(gradient);
+  const normalizedPosition = clamp(position, 0, 100) / 100;
+  const centerX = gradient.centerX;
+  const centerY = gradient.centerY;
+  const radiusX = gradient.scaleX / 2;
+  const radiusY = gradient.scaleY / 2;
+  let localPoint: Point;
+
+  if (gradient.type === "linear") {
+    localPoint = {
+      x: element.x + element.width * normalizedPosition,
+      y: centerY
+    };
+  } else if (gradient.type === "conic") {
+    const angle = normalizedPosition * FULL_ROTATION_RADIANS - Math.PI / 2;
+    localPoint = {
+      x: centerX + Math.cos(angle) * radiusX,
+      y: centerY + Math.sin(angle) * radiusY
+    };
+  } else {
+    localPoint = {
+      x: centerX + radiusX * normalizedPosition,
+      y: centerY
+    };
+  }
+
+  return transformElementPoint(element, localPoint);
+}
+
+export function getGradientStopPositionAtPoint(
+  value: GradientFill,
+  point: Point
+) {
+  const gradient = normalizeGradientFill(value);
+  const element = getGradientTransformElement(gradient);
+  const local = getElementLocalPoint(element, point);
+  const radiusX = Math.max(0.5, element.width / 2);
+  const radiusY = Math.max(0.5, element.height / 2);
+
+  if (gradient.type === "linear") {
+    return clamp(((local.x - element.x) / element.width) * 100, 0, 100);
+  }
+
+  if (gradient.type === "conic") {
+    const normalizedX = (local.x - gradient.centerX) / radiusX;
+    const normalizedY = (local.y - gradient.centerY) / radiusY;
+    const angle = Math.atan2(normalizedY, normalizedX) + Math.PI / 2;
+    return (
+      ((angle % FULL_ROTATION_RADIANS) + FULL_ROTATION_RADIANS) %
+      FULL_ROTATION_RADIANS
+    ) / FULL_ROTATION_RADIANS * 100;
+  }
+
+  return clamp(
+    ((local.x - gradient.centerX) / radiusX) * 100,
+    0,
+    100
+  );
 }

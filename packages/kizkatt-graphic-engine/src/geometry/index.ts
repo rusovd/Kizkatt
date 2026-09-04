@@ -27,9 +27,15 @@ export {
 export { isHexColor } from "./colors";
 export {
   addGradientStop,
+  addGradientStopToFirstSegment,
   getAcceleratedGradientPosition,
   getGradientColorAtPosition,
+  getDefaultGradientFill,
+  getGradientFillFromTransformElement,
   getRenderedGradientStops,
+  getGradientStopPoint,
+  getGradientStopPositionAtPoint,
+  getGradientTransformElement,
   normalizeGradientFill,
   normalizeGradientStop,
   normalizeGradientStops,
