@@ -19,13 +19,16 @@ import {
 } from "kizkatt-graphic-engine";
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type MouseEvent,
-  type PointerEvent,
+  type PointerEvent as ReactPointerEvent,
   type RefObject
 } from "react";
+
+import { useWindowPointerTracking } from "../hooks/useWindowPointerTracking";
 
 const DEFAULT_PREVIEW_SIZE = 320;
 const MIN_TEXTURE_SIZE = 1;
@@ -34,6 +37,9 @@ const DEGREES_PER_RADIAN = 180 / Math.PI;
 const RADIANS_PER_DEGREE = Math.PI / 180;
 const ROTATION_SNAP_STEP = 15 * RADIANS_PER_DEGREE;
 const CROP_ELEMENT_ID = "bitmap-texture-crop";
+const CROP_SCROLL_PADDING = 20;
+const CROP_BOUNDS_EPSILON = 0.000001;
+const CROP_CONSTRAINT_ITERATIONS = 24;
 
 const RESIZE_HANDLES: ResizeHandle[] = [
   "nw",
@@ -86,8 +92,181 @@ export type BitmapTexturePreviewScrollAxis =
   | "none"
   | "vertical";
 
+type PreviewPointerEvent = Pick<
+  globalThis.PointerEvent,
+  "altKey" | "clientX" | "clientY" | "pointerId" | "preventDefault"
+>;
+
 function normalizeAngleDelta(angle: number) {
   return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
+function getScrollPositionForVisibleRange(
+  current: number,
+  viewportSize: number,
+  contentSize: number,
+  rangeStart: number,
+  rangeEnd: number
+) {
+  const maximum = Math.max(0, contentSize - viewportSize);
+  const padding = Math.min(CROP_SCROLL_PADDING, viewportSize / 4);
+
+  if (rangeStart < current + padding) {
+    return Math.max(0, Math.min(maximum, rangeStart - padding));
+  }
+
+  if (rangeEnd > current + viewportSize - padding) {
+    return Math.max(
+      0,
+      Math.min(maximum, rangeEnd - viewportSize + padding)
+    );
+  }
+
+  return current;
+}
+
+function isElementInsideTexture(
+  element: KizkattElement,
+  sourceSize: BitmapTextureSize
+) {
+  const bounds = getElementTransformedBounds(element);
+
+  return (
+    bounds.x >= -CROP_BOUNDS_EPSILON &&
+    bounds.y >= -CROP_BOUNDS_EPSILON &&
+    bounds.x + bounds.width <= sourceSize.width + CROP_BOUNDS_EPSILON &&
+    bounds.y + bounds.height <= sourceSize.height + CROP_BOUNDS_EPSILON
+  );
+}
+
+function translateElementInsideTexture(
+  element: KizkattElement,
+  sourceSize: BitmapTextureSize
+) {
+  const bounds = getElementTransformedBounds(element);
+  let deltaX = 0;
+  let deltaY = 0;
+
+  if (bounds.x < 0) {
+    deltaX = -bounds.x;
+  } else if (bounds.x + bounds.width > sourceSize.width) {
+    deltaX = sourceSize.width - bounds.x - bounds.width;
+  }
+
+  if (bounds.y < 0) {
+    deltaY = -bounds.y;
+  } else if (bounds.y + bounds.height > sourceSize.height) {
+    deltaY = sourceSize.height - bounds.y - bounds.height;
+  }
+
+  return {
+    ...element,
+    x: element.x + deltaX,
+    y: element.y + deltaY
+  };
+}
+
+function fitElementInsideTexture(
+  element: KizkattElement,
+  sourceSize: BitmapTextureSize
+) {
+  let nextElement = element;
+
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    const bounds = getElementTransformedBounds(nextElement);
+    const scale = Math.min(
+      1,
+      sourceSize.width / Math.max(MIN_TEXTURE_SIZE, bounds.width),
+      sourceSize.height / Math.max(MIN_TEXTURE_SIZE, bounds.height)
+    );
+
+    if (scale < 1) {
+      const centerX = nextElement.x + nextElement.width / 2;
+      const centerY = nextElement.y + nextElement.height / 2;
+      const width = Math.max(MIN_TEXTURE_SIZE, nextElement.width * scale);
+      const height = Math.max(MIN_TEXTURE_SIZE, nextElement.height * scale);
+      nextElement = {
+        ...nextElement,
+        height,
+        width,
+        x: centerX - width / 2,
+        y: centerY - height / 2
+      };
+    }
+
+    nextElement = translateElementInsideTexture(nextElement, sourceSize);
+  }
+
+  return nextElement;
+}
+
+function interpolateElement(
+  from: KizkattElement,
+  to: KizkattElement,
+  progress: number
+) {
+  const interpolate = (start: number, end: number) =>
+    start + (end - start) * progress;
+
+  return {
+    ...to,
+    angle: interpolate(from.angle, to.angle),
+    height: interpolate(from.height, to.height),
+    skewX: interpolate(from.skewX ?? 0, to.skewX ?? 0),
+    skewY: interpolate(from.skewY ?? 0, to.skewY ?? 0),
+    width: interpolate(from.width, to.width),
+    x: interpolate(from.x, to.x),
+    y: interpolate(from.y, to.y)
+  };
+}
+
+export function constrainBitmapTextureCropElement(
+  originalElement: KizkattElement,
+  candidateElement: KizkattElement,
+  sourceSize: BitmapTextureSize,
+  translateCandidate = false
+) {
+  if (isElementInsideTexture(candidateElement, sourceSize)) {
+    return candidateElement;
+  }
+
+  const candidateBounds = getElementTransformedBounds(candidateElement);
+  if (
+    translateCandidate &&
+    candidateBounds.width <= sourceSize.width &&
+    candidateBounds.height <= sourceSize.height
+  ) {
+    return translateElementInsideTexture(candidateElement, sourceSize);
+  }
+
+  const safeOriginal = isElementInsideTexture(originalElement, sourceSize)
+    ? originalElement
+    : fitElementInsideTexture(originalElement, sourceSize);
+  let minimum = 0;
+  let maximum = 1;
+  let constrainedElement = safeOriginal;
+
+  for (
+    let iteration = 0;
+    iteration < CROP_CONSTRAINT_ITERATIONS;
+    iteration += 1
+  ) {
+    const progress = (minimum + maximum) / 2;
+    const interpolatedElement = interpolateElement(
+      safeOriginal,
+      candidateElement,
+      progress
+    );
+
+    if (isElementInsideTexture(interpolatedElement, sourceSize)) {
+      constrainedElement = interpolatedElement;
+      minimum = progress;
+    } else {
+      maximum = progress;
+    }
+  }
+
+  return constrainedElement;
 }
 
 function getInteractiveTexture(
@@ -226,22 +405,14 @@ export function getBitmapTextureCropPreviewLayout(
   const renderedHeight = sourceHeight * scale;
   const overlayWidth = geometry.crop.width * scale;
   const overlayHeight = geometry.crop.height * scale;
-  const cropDeltaX = (geometry.crop.centerX - sourceWidth / 2) * scale;
-  const cropDeltaY = (geometry.crop.centerY - sourceHeight / 2) * scale;
-  const unconstrainedStageWidth = Math.max(
-    viewportWidth,
-    renderedWidth,
-    2 * (Math.abs(cropDeltaX) + overlayWidth / 2)
-  );
-  const unconstrainedStageHeight = Math.max(
-    viewportHeight,
-    renderedHeight,
-    2 * (Math.abs(cropDeltaY) + overlayHeight / 2)
-  );
   const stageWidth =
-    scrollAxis === "vertical" ? viewportWidth : unconstrainedStageWidth;
+    scrollAxis === "horizontal"
+      ? Math.max(viewportWidth, renderedWidth)
+      : viewportWidth;
   const stageHeight =
-    scrollAxis === "horizontal" ? viewportHeight : unconstrainedStageHeight;
+    scrollAxis === "vertical"
+      ? Math.max(viewportHeight, renderedHeight)
+      : viewportHeight;
   const imageLeft = (stageWidth - renderedWidth) / 2;
   const imageTop = (stageHeight - renderedHeight) / 2;
 
@@ -296,6 +467,8 @@ export function BitmapTextureCropPreview({
   const cropRef = useRef<HTMLDivElement | null>(null);
   const localImageRef = useRef<HTMLImageElement | null>(null);
   const interactionRef = useRef<CropInteraction | null>(null);
+  const previewFrameRef = useRef({ imageLeft: 0, imageTop: 0 });
+  const [interactionActive, setInteractionActive] = useState(false);
   const [naturalSize, setNaturalSize] = useState<BitmapTextureSize>({
     height: Math.max(MIN_TEXTURE_SIZE, texture.height),
     width: Math.max(MIN_TEXTURE_SIZE, texture.width)
@@ -358,6 +531,45 @@ export function BitmapTextureCropPreview({
     [naturalSize, targetSize, texture, viewportSize]
   );
 
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    const previousFrame = previewFrameRef.current;
+
+    if (viewport && interactionActive) {
+      viewport.scrollLeft += preview.imageLeft - previousFrame.imageLeft;
+      viewport.scrollTop += preview.imageTop - previousFrame.imageTop;
+
+      const cropBounds = getElementTransformedBounds(
+        getCropElement(preview.geometry.crop)
+      );
+      const cropLeft = preview.imageLeft + cropBounds.x * preview.scale;
+      const cropTop = preview.imageTop + cropBounds.y * preview.scale;
+
+      if (preview.scrollAxis === "horizontal") {
+        viewport.scrollLeft = getScrollPositionForVisibleRange(
+          viewport.scrollLeft,
+          viewport.clientWidth,
+          viewport.scrollWidth,
+          cropLeft,
+          cropLeft + cropBounds.width * preview.scale
+        );
+      } else if (preview.scrollAxis === "vertical") {
+        viewport.scrollTop = getScrollPositionForVisibleRange(
+          viewport.scrollTop,
+          viewport.clientHeight,
+          viewport.scrollHeight,
+          cropTop,
+          cropTop + cropBounds.height * preview.scale
+        );
+      }
+    }
+
+    previewFrameRef.current = {
+      imageLeft: preview.imageLeft,
+      imageTop: preview.imageTop
+    };
+  }, [interactionActive, preview]);
+
   useEffect(() => {
     const viewport = viewportRef.current;
 
@@ -381,8 +593,6 @@ export function BitmapTextureCropPreview({
     naturalSize.height,
     naturalSize.width,
     source,
-    preview.stageHeight,
-    preview.stageWidth,
     viewportSize.height,
     viewportSize.width
   ]);
@@ -424,7 +634,7 @@ export function BitmapTextureCropPreview({
   };
 
   const beginInteraction = (
-    event: PointerEvent<HTMLElement>,
+    event: ReactPointerEvent<HTMLElement>,
     action: CropAction,
     handle?: ResizeHandle | SkewHandle
   ) => {
@@ -471,10 +681,11 @@ export function BitmapTextureCropPreview({
       ),
       texture: interactiveTexture
     };
+    setInteractionActive(true);
     stageRef.current?.setPointerCapture?.(event.pointerId);
   };
 
-  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+  const onPointerMove = (event: PreviewPointerEvent) => {
     const interaction = interactionRef.current;
 
     if (!interaction || interaction.pointerId !== event.pointerId) {
@@ -492,11 +703,16 @@ export function BitmapTextureCropPreview({
     }
 
     if (interaction.action === "move") {
-      const movedElement = {
-        ...interaction.originalElement,
-        x: interaction.originalElement.x + deltaX / preview.scale,
-        y: interaction.originalElement.y + deltaY / preview.scale
-      };
+      const movedElement = constrainBitmapTextureCropElement(
+        interaction.originalElement,
+        {
+          ...interaction.originalElement,
+          x: interaction.originalElement.x + deltaX / preview.scale,
+          y: interaction.originalElement.y + deltaY / preview.scale
+        },
+        naturalSize,
+        true
+      );
       onTextureChange(
         getBitmapTextureTransformFromPreviewCrop(
           interaction.texture,
@@ -515,11 +731,15 @@ export function BitmapTextureCropPreview({
         return;
       }
 
-      const resizedElement = resizeElementFromHandle(
+      const resizedElement = constrainBitmapTextureCropElement(
         interaction.originalElement,
-        handle as ResizeHandle,
-        getSourcePoint(event.clientX, event.clientY),
-        { preserveAspectRatio: event.altKey }
+        resizeElementFromHandle(
+          interaction.originalElement,
+          handle as ResizeHandle,
+          getSourcePoint(event.clientX, event.clientY),
+          { preserveAspectRatio: event.altKey }
+        ),
+        naturalSize
       );
       onTextureChange(
         getBitmapTextureTransformFromPreviewCrop(
@@ -551,12 +771,18 @@ export function BitmapTextureCropPreview({
       )[0];
 
       if (rotatedElement) {
+        const constrainedElement = constrainBitmapTextureCropElement(
+          interaction.originalElement,
+          rotatedElement,
+          naturalSize,
+          true
+        );
         onTextureChange(
           getBitmapTextureTransformFromPreviewCrop(
             interaction.texture,
             naturalSize,
             targetSize,
-            getCropFromElement(rotatedElement)
+            getCropFromElement(constrainedElement)
           )
         );
       }
@@ -586,28 +812,41 @@ export function BitmapTextureCropPreview({
       return;
     }
 
+    const constrainedElement = constrainBitmapTextureCropElement(
+      interaction.originalElement,
+      skewedElement,
+      naturalSize
+    );
+
     onTextureChange(
       getBitmapTextureTransformFromPreviewCrop(
         interaction.texture,
         naturalSize,
         targetSize,
-        getCropFromElement(skewedElement)
+        getCropFromElement(constrainedElement)
       )
     );
   };
 
   const finishInteraction = (
-    event: PointerEvent<HTMLDivElement>,
+    event: Pick<globalThis.PointerEvent, "pointerId"> | null,
     allowModeToggle = true
   ) => {
     const interaction = interactionRef.current;
 
-    if (!interaction || interaction.pointerId !== event.pointerId) {
+    if (
+      !interaction ||
+      (event && interaction.pointerId !== event.pointerId)
+    ) {
       return;
     }
 
     interactionRef.current = null;
-    stageRef.current?.releasePointerCapture?.(event.pointerId);
+    setInteractionActive(false);
+    const stage = stageRef.current;
+    if (stage?.hasPointerCapture?.(interaction.pointerId)) {
+      stage.releasePointerCapture(interaction.pointerId);
+    }
 
     if (
       freeDeformation &&
@@ -620,6 +859,13 @@ export function BitmapTextureCropPreview({
 
     onTextureChangeEnd();
   };
+
+  useWindowPointerTracking({
+    active: interactionActive,
+    onPointerCancel: () => finishInteraction(null, false),
+    onPointerMove,
+    onPointerUp: (event) => finishInteraction(event)
+  });
 
   const cropElement = getCropElement(preview.geometry.crop);
   const resizeHandlePoints = getCropResizeHandlePoints(cropElement);
@@ -672,9 +918,6 @@ export function BitmapTextureCropPreview({
           ref={stageRef}
           className="kizkatt-bitmap-texture-preview-stage"
           style={{ height: preview.stageHeight, width: preview.stageWidth }}
-          onPointerMove={onPointerMove}
-          onPointerUp={finishInteraction}
-          onPointerCancel={(event) => finishInteraction(event, false)}
         >
           <img
             ref={setImage}

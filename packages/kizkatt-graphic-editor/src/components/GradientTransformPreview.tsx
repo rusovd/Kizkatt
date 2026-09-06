@@ -26,9 +26,10 @@ import {
   useMemo,
   useRef,
   useState,
-  type PointerEvent
+  type PointerEvent as ReactPointerEvent
 } from "react";
 
+import { useWindowPointerTracking } from "../hooks/useWindowPointerTracking";
 import { getGradientCssPreview } from "../model/gradientPresets";
 import { GradientFillDefinition } from "../rendering/GradientFill";
 
@@ -65,6 +66,11 @@ type GradientInteraction = {
   startPointerAngle: number;
   stopId?: string;
 };
+
+type PreviewPointerEvent = Pick<
+  globalThis.PointerEvent,
+  "altKey" | "clientX" | "clientY" | "pointerId" | "preventDefault"
+>;
 
 export type GradientTransformPreviewLabels = {
   move: string;
@@ -196,6 +202,7 @@ export function GradientTransformPreview({
   const gradientDefinitionId = `kizkatt-gradient-preview-${useId().replaceAll(":", "")}`;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const interactionRef = useRef<GradientInteraction | null>(null);
+  const [interactionActive, setInteractionActive] = useState(false);
   const [transformMode, setTransformMode] =
     useState<SelectionTransformMode>("resize");
 
@@ -224,7 +231,7 @@ export function GradientTransformPreview({
   };
 
   const beginInteraction = (
-    event: PointerEvent<HTMLElement>,
+    event: ReactPointerEvent<HTMLElement>,
     action: InteractionAction,
     handle?: ResizeHandle | SkewHandle,
     stopId?: string
@@ -248,11 +255,12 @@ export function GradientTransformPreview({
       ),
       stopId
     };
+    setInteractionActive(true);
     if (stopId) onSelectedStopIdChange(stopId);
     rootRef.current?.setPointerCapture?.(event.pointerId);
   };
 
-  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+  const onPointerMove = (event: PreviewPointerEvent) => {
     const interaction = interactionRef.current;
     if (!interaction || interaction.pointerId !== event.pointerId) return;
     event.preventDefault();
@@ -332,13 +340,20 @@ export function GradientTransformPreview({
   };
 
   const finishInteraction = (
-    event: PointerEvent<HTMLDivElement>,
+    event: Pick<globalThis.PointerEvent, "pointerId"> | null,
     allowModeToggle = true
   ) => {
     const interaction = interactionRef.current;
-    if (!interaction || interaction.pointerId !== event.pointerId) return;
+    if (
+      !interaction ||
+      (event && interaction.pointerId !== event.pointerId)
+    ) return;
     interactionRef.current = null;
-    rootRef.current?.releasePointerCapture?.(event.pointerId);
+    setInteractionActive(false);
+    const root = rootRef.current;
+    if (root?.hasPointerCapture?.(interaction.pointerId)) {
+      root.releasePointerCapture(interaction.pointerId);
+    }
 
     if (
       freeDeformation &&
@@ -352,15 +367,19 @@ export function GradientTransformPreview({
     onChangeEnd();
   };
 
+  useWindowPointerTracking({
+    active: interactionActive,
+    onPointerCancel: () => finishInteraction(null, false),
+    onPointerMove,
+    onPointerUp: (event) => finishInteraction(event)
+  });
+
   const closeShape = gradient.type !== "linear";
   return (
     <div
       ref={rootRef}
       className="kizkatt-gradient-transform-preview"
       style={{ background: getGradientCssPreview(gradient) }}
-      onPointerMove={onPointerMove}
-      onPointerUp={finishInteraction}
-      onPointerCancel={(event) => finishInteraction(event, false)}
     >
       <svg
         aria-hidden="true"
