@@ -234,6 +234,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: none;
+  z-index: 0;
 }
 
 .kizkatt-panel-title[data-panel-title-drag-handle] {
@@ -243,6 +244,8 @@
 }
 
 .kizkatt-panel-actions {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -729,8 +732,11 @@
 }
 
 .kizkatt-preview-overlay-options {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
 }
 
 .kizkatt-preview-overlay-toggle > input[type="checkbox"] {

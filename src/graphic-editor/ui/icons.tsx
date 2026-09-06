@@ -871,6 +871,11 @@ export const ChevronDownIcon = createIcon(
   { height: 20, width: 20 }
 );
 
+export const CheckIcon = createIcon(
+  <path d="m5 12 4.2 4.2L19 6.5" strokeWidth="2" />,
+  { height: 20, width: 20 }
+);
+
 export const DiameterIcon = createIcon(
   <g strokeWidth="1.7">
     <circle cx="12" cy="12" r="5.5" />

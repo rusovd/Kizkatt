@@ -23,10 +23,82 @@ import {
   textureCatalog
 } from "../../assets/textures/monochrome/textureCatalog";
 import { useI18n } from "../../i18n";
-import { ImageIcon } from "../icons";
+import { CheckIcon, ChevronDownIcon, ImageIcon } from "../icons";
 import { DraggablePanel } from "../positioning/DraggablePanel";
 
 const PANEL_ID = "texture-library";
+
+function TextureCollectionPicker({
+  label,
+  onChange,
+  value
+}: {
+  label: string;
+  onChange: (collectionId: string) => void;
+  value: string;
+}) {
+  const { strings } = useI18n();
+  const [open, setOpen] = useState(false);
+  const options = [
+    { id: "all", name: strings.textureLibrary.all },
+    ...textureCatalog.collections
+  ];
+  const selectedName =
+    options.find((option) => option.id === value)?.name ??
+    strings.textureLibrary.all;
+
+  return (
+    <div
+      className="kizkatt-texture-collection-picker"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setOpen(false);
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="kizkatt-texture-collection-trigger"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={label}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span>{selectedName}</span>
+        {ChevronDownIcon}
+      </button>
+      {open && (
+        <div
+          className="kizkatt-texture-collection-options"
+          role="listbox"
+          aria-label={label}
+        >
+          {options.map((option) => {
+            const selected = option.id === value;
+
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => {
+                  onChange(option.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="kizkatt-texture-collection-check">
+                  {selected ? CheckIcon : null}
+                </span>
+                <span>{option.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function getInitialCategoryId(collectionId: string) {
   const storedCategoryId = getStoredTextureCategoryId(collectionId);
@@ -49,6 +121,7 @@ export function TextureLibraryPopover({
   anchorElement,
   initialCollectionId = MONOCHROME_TEXTURE_COLLECTION_ID,
   onClose,
+  onCollectionChange,
   onTextureChange,
   reopenKey,
   targetSize
@@ -57,6 +130,7 @@ export function TextureLibraryPopover({
   anchorElement: HTMLElement | null;
   initialCollectionId?: string;
   onClose: () => void;
+  onCollectionChange?: (collectionName: string) => void;
   onTextureChange: (texture: BitmapTextureFill) => void;
   reopenKey: number;
   targetSize: BitmapTextureSize;
@@ -118,6 +192,7 @@ export function TextureLibraryPopover({
 
   const selectCatalogTexture = (entry: TextureCatalogEntry) => {
     storeTextureId(entry.collectionId, entry.texture.id);
+    onCollectionChange?.(entry.collectionName);
     onTextureChange(
       createBitmapTextureFillFromCatalogTexture({
         base: activeTexture,
@@ -155,23 +230,21 @@ export function TextureLibraryPopover({
             onChange={(event) => setSearch(event.target.value)}
           />
 
-          <select
-            aria-label={strings.textureLibrary.collection}
+          <TextureCollectionPicker
+            label={strings.textureLibrary.collection}
             value={collectionId}
-            onChange={(event) => {
-              const nextCollectionId = event.target.value;
-
+            onChange={(nextCollectionId) => {
               setCollectionId(nextCollectionId);
               setCategoryId(getInitialCategoryId(nextCollectionId));
+              onCollectionChange?.(
+                nextCollectionId === "all"
+                  ? strings.textureLibrary.all
+                  : textureCatalog.collections.find(
+                      (collection) => collection.id === nextCollectionId
+                    )?.name ?? nextCollectionId
+              );
             }}
-          >
-            <option value="all">{strings.textureLibrary.all}</option>
-            {textureCatalog.collections.map((collection) => (
-              <option key={collection.id} value={collection.id}>
-                {collection.name}
-              </option>
-            ))}
-          </select>
+          />
 
           <select
             aria-label={strings.textureLibrary.category}

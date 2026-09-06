@@ -43,7 +43,7 @@
   height: min(650px, calc(100vh - 130px));
   min-height: 420px;
   max-height: calc(100vh - 130px);
-  grid-template-rows: auto auto minmax(220px, 1fr);
+  grid-template-rows: auto auto minmax(220px, 1fr) auto;
   gap: 8px;
 }
 
@@ -564,7 +564,10 @@
 .kizkatt-gradient-library-grid {
   display: grid;
   min-height: 0;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(
+    var(--kizkatt-gradient-columns, 2),
+    minmax(0, 1fr)
+  );
   gap: 8px;
   padding: 0 12px 12px;
   overflow: auto;
@@ -624,6 +627,29 @@
   width: 100%;
   aspect-ratio: 1.6;
   border-radius: 4px;
+}
+
+.kizkatt-gradient-library-size {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--kizkatt-divider);
+}
+
+.kizkatt-gradient-library-size input[type="range"] {
+  width: 100%;
+  height: auto;
+  padding: 0;
+  accent-color: var(--kizkatt-selection);
+}
+
+.kizkatt-gradient-library-size output {
+  color: var(--kizkatt-text-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 @media (max-width: 820px) {

@@ -21,7 +21,6 @@ import { isHexColor } from "../../geometry";
 import { canElementUseBackground } from "../../model/element";
 import { useI18n } from "../../i18n";
 import {
-  MonochromeTextureIcon,
   CloseIcon,
   ClosedPathIcon,
   EyedropperIcon,
@@ -62,7 +61,7 @@ type StylingPanelProps = {
   closedPath: boolean;
   colorColumnCount?: number;
   onClosedPathChange: (closed: boolean) => void;
-  onMonochromeTextureOpen: () => void;
+  onTextureFillOpen: () => void;
   onGradientOpen: () => void;
   onStyleChange: (
     patch: Partial<StyleState>,
@@ -123,7 +122,7 @@ const FILL_CONTROLS = [
     icon: FillSolidIcon,
     labelKey: "fillSolid",
     opensGradient: false,
-    opensMonochromeTexture: false,
+    opensTextureFill: false,
     style: "solid"
   },
   {
@@ -131,7 +130,7 @@ const FILL_CONTROLS = [
     icon: GradientIcon,
     labelKey: "fillGradient",
     opensGradient: true,
-    opensMonochromeTexture: false,
+    opensTextureFill: false,
     style: "gradient"
   },
   {
@@ -139,7 +138,7 @@ const FILL_CONTROLS = [
     icon: SvgFillIcon,
     labelKey: "fillSvg",
     opensGradient: false,
-    opensMonochromeTexture: false,
+    opensTextureFill: false,
     style: undefined
   },
   {
@@ -147,15 +146,7 @@ const FILL_CONTROLS = [
     icon: TextureIcon,
     labelKey: "fillCrossHatch",
     opensGradient: false,
-    opensMonochromeTexture: false,
-    style: "crossHatch"
-  },
-  {
-    disabled: false,
-    icon: MonochromeTextureIcon,
-    labelKey: "fillMonochromeTexture",
-    opensGradient: false,
-    opensMonochromeTexture: true,
+    opensTextureFill: true,
     style: "monochromeTexture"
   },
   {
@@ -163,7 +154,7 @@ const FILL_CONTROLS = [
     icon: FillHachureIcon,
     labelKey: "fillHachure",
     opensGradient: false,
-    opensMonochromeTexture: false,
+    opensTextureFill: false,
     style: "hachure"
   }
 ] as const;
@@ -416,7 +407,7 @@ export function StylingPanel({
   closedPath,
   colorColumnCount = COLOR_PANEL_COLUMN_COUNT,
   onClosedPathChange,
-  onMonochromeTextureOpen,
+  onTextureFillOpen,
   onGradientOpen,
   onStyleChange,
   onStyleChangeEnd,
@@ -714,8 +705,8 @@ export function StylingPanel({
                         return;
                       }
 
-                      if (control.opensMonochromeTexture) {
-                        onMonochromeTextureOpen();
+                      if (control.opensTextureFill) {
+                        onTextureFillOpen();
                         return;
                       }
 

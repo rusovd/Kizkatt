@@ -671,6 +671,7 @@ export function DraggablePanel({
           : ""
       ].join(" ")}
       data-no-panel-drag
+      onPointerDown={(event) => event.stopPropagation()}
     >
       {headerActions && (
         <>

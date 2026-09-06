@@ -32,6 +32,7 @@ import {
 } from "kizkatt-graphic-engine";
 import {
   createBitmapTextureFillFromCatalogTexture,
+  getTextureCatalogEntries,
   getStoredTextureId,
   KizkattGraphicEditorController,
   useGradientPresetLibrary,
@@ -93,7 +94,8 @@ import { useGraphicEditorSettings } from "../ui/settings/GraphicEditorSettings";
 import { EditorLoader } from "../ui/feedback/EditorLoader";
 import {
   getTextureById,
-  MONOCHROME_TEXTURE_COLLECTION_ID
+  MONOCHROME_TEXTURE_COLLECTION_ID,
+  textureCatalog
 } from "../assets/textures/monochrome/textureCatalog";
 import { SceneElement } from "../controller/SceneElement";
 import {
@@ -129,6 +131,8 @@ export {
 };
 export type { ResizeHandle } from "kizkatt-graphic-engine";
 
+const TEXTURE_CATALOG_ENTRIES = getTextureCatalogEntries(textureCatalog);
+
 function TextEditor({
   element,
   onBlur,
@@ -161,7 +165,7 @@ function TextEditor({
 function AppStylingPanel(
   props: StylingPanelProps & {
     onGradientOpen: () => void;
-    onMonochromeTextureOpen: () => void;
+    onTextureFillOpen: () => void;
   }
 ) {
   return (
@@ -350,6 +354,8 @@ function KizkattGraphicEditorView({
   const [textureLibraryAnchor, setTextureLibraryAnchor] =
     useState<HTMLButtonElement | null>(null);
   const [textureLibraryReopenKey, setTextureLibraryReopenKey] = useState(0);
+  const [textureTypeNameOverride, setTextureTypeNameOverride] =
+    useState<string | null>(null);
   const [bitmapPatternPanelOpen, setBitmapPatternPanelOpen] = useState(false);
   const [bitmapPatternPanelReopenKey, setBitmapPatternPanelReopenKey] =
     useState(0);
@@ -416,6 +422,15 @@ function KizkattGraphicEditorView({
   const visibleBitmapTexture =
     stylingControls.style.bitmapTexture ??
     lastBitmapTextureRef.current;
+  const visibleBitmapTextureTypeName =
+    textureTypeNameOverride ??
+    TEXTURE_CATALOG_ENTRIES.find(
+      (entry) => entry.texture.id === visibleBitmapTexture?.textureId
+    )?.collectionName ??
+    textureCatalog.collections.find(
+      (collection) => collection.id === MONOCHROME_TEXTURE_COLLECTION_ID
+    )?.name ??
+    "Monochrome";
   const showObjectPanel =
     !previewMode &&
     (!state.menuOpen || objectPanelPinned) &&
@@ -456,6 +471,7 @@ function KizkattGraphicEditorView({
     );
   };
   const openBitmapPatternPanel = () => {
+    setTextureTypeNameOverride(null);
     const selectedTextureId = getStoredTextureId(
       MONOCHROME_TEXTURE_COLLECTION_ID
     );
@@ -577,7 +593,7 @@ function KizkattGraphicEditorView({
         <AppStylingPanel
           {...stylingControls}
           onGradientOpen={openGradientPanel}
-          onMonochromeTextureOpen={openBitmapPatternPanel}
+          onTextureFillOpen={openBitmapPatternPanel}
         />
       )}
       {!previewMode && textureLibraryOpen && (
@@ -586,6 +602,7 @@ function KizkattGraphicEditorView({
           anchorElement={textureLibraryAnchor}
           initialCollectionId={MONOCHROME_TEXTURE_COLLECTION_ID}
           onClose={() => setTextureLibraryOpen(false)}
+          onCollectionChange={setTextureTypeNameOverride}
           onTextureChange={(texture) => {
             applyBitmapTexture(texture);
             stylingControls.onStyleChangeEnd();
@@ -604,6 +621,7 @@ function KizkattGraphicEditorView({
           reopenKey={bitmapPatternPanelReopenKey}
           targetSize={bitmapTextureTargetSize}
           texture={visibleBitmapTexture}
+          textureTypeName={visibleBitmapTextureTypeName}
         />
       )}
       {showGradientPanel && (

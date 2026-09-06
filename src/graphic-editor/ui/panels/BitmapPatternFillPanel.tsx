@@ -160,7 +160,8 @@ export function BitmapPatternFillPanel({
   onOpenLibrary,
   reopenKey,
   targetSize,
-  texture: textureValue
+  texture: textureValue,
+  textureTypeName
 }: {
   onChange: (
     texture: BitmapTextureFill,
@@ -172,6 +173,7 @@ export function BitmapPatternFillPanel({
   reopenKey: number;
   targetSize: BitmapTextureSize;
   texture?: BitmapTextureFill;
+  textureTypeName: string;
 }) {
   const { strings } = useI18n();
   const {
@@ -344,12 +346,12 @@ export function BitmapPatternFillPanel({
       reopenKey={reopenKey}
       resizable
       resizeAxes={{ vertical: "horizontal" }}
-      title={strings.bitmapPattern.title}
+      title={`${strings.bitmapPattern.texture} - ${textureTypeName}`}
     >
       {({ actions, chrome, orientation }) => (
         <section
           className={`kizkatt-bitmap-pattern-panel kizkatt-bitmap-pattern-panel--${orientation}`}
-          aria-label={strings.bitmapPattern.title}
+          aria-label={`${strings.bitmapPattern.texture} - ${textureTypeName}`}
         >
           {chrome}
           <div className="kizkatt-bitmap-pattern-content">

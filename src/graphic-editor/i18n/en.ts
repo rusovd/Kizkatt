@@ -338,6 +338,7 @@ export const ENGLISH_TRANSLATIONS = {
     source: "Source",
     title: "Monochrome",
     tile: "Tile texture",
+    texture: "Texture",
     transformWithObject: "Transform with object",
     transformations: "Transformations",
     transparency: "Transparency",
@@ -395,7 +396,8 @@ export const ENGLISH_TRANSLATIONS = {
     empty: "No gradients found",
     remove: "Delete gradient",
     search: "Search gradient",
-    title: "Gradients"
+    thumbnailColumns: "Gradients per row",
+    title: "Choose gradient"
   },
   textureLibrary: {
     all: "All",
@@ -409,7 +411,7 @@ export const ENGLISH_TRANSLATIONS = {
     name: "Texture name",
     search: "Search texture",
     thumbnailColumns: "Textures per row",
-    title: "Textures"
+    title: "Choose texture"
   },
   stylePanel: {
     actions: "Actions",
@@ -426,7 +428,6 @@ export const ENGLISH_TRANSLATIONS = {
     edgeSharp: "Edges sharp",
     styling: "Styling",
     fill: "Fill",
-    fillMonochromeTexture: "Monochrome texture",
     fillCrossHatch: "Texture fill",
     fillGradient: "Gradient fill",
     fillHachure: "Fill hachure",
@@ -473,7 +474,6 @@ export const ENGLISH_TRANSLATIONS = {
       edgeRound: "Use rounded edges",
       edgeSharp: "Use straight edges",
       eyedropper: "Pick a color from the screen",
-      fillMonochromeTexture: "Use a monochrome texture",
       fillCrossHatch: "Use texture fill",
       fillGradient: "Gradient fill (coming later)",
       fillHachure: "Use hachure fill",
