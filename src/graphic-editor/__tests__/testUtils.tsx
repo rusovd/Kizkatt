@@ -63,7 +63,7 @@ export function getCirclePoint(circle: Element | null) {
 }
 
 export function firePointerEvent(
-  target: Element,
+  target: Element | Window,
   type: "pointerdown" | "pointermove" | "pointerup",
   init: MouseEventInit = {}
 ) {
