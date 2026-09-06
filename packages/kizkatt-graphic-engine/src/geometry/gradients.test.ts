@@ -3,8 +3,14 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_GRADIENT_FILL } from "../config/constants";
 import {
   addGradientStop,
+  addGradientStopToFirstSegment,
+  getDefaultGradientFill,
   getGradientColorAtPosition,
+  getGradientFillFromTransformElement,
   getRenderedGradientStops,
+  getGradientStopPoint,
+  getGradientStopPositionAtPoint,
+  getGradientTransformElement,
   normalizeGradientFill,
   removeGradientStop,
   reverseGradientStops
@@ -62,5 +68,64 @@ describe("gradient geometry", () => {
     expect(stops).toHaveLength(9);
     expect(stops[1].position).toBe(stops[2].position);
     expect(stops[1].color).not.toBe(stops[2].color);
+  });
+
+  it("round-trips interactive transform geometry and stop positions", () => {
+    const gradient = normalizeGradientFill({
+      ...DEFAULT_GRADIENT_FILL,
+      centerX: 42,
+      centerY: 61,
+      rotation: 28,
+      scaleX: 72,
+      scaleY: 48,
+      skew: 12
+    });
+    const transformed = getGradientFillFromTransformElement(
+      gradient,
+      getGradientTransformElement(gradient)
+    );
+
+    expect(transformed).toMatchObject({
+      centerX: 42,
+      centerY: 61,
+      rotation: 28,
+      scaleX: 72,
+      scaleY: 48
+    });
+    expect(transformed.skew).toBeCloseTo(12, 8);
+
+    const stopPoint = getGradientStopPoint(gradient, 37);
+    expect(getGradientStopPositionAtPoint(gradient, stopPoint)).toBeCloseTo(
+      37,
+      5
+    );
+  });
+
+  it("adds a stop to the middle of the first segment", () => {
+    const result = addGradientStopToFirstSegment({
+      ...DEFAULT_GRADIENT_FILL,
+      stops: [
+        { id: "a", color: "#000000", opacity: 100, position: 10 },
+        { id: "b", color: "#ffffff", opacity: 100, position: 50 },
+        { id: "c", color: "#ffffff", opacity: 100, position: 100 }
+      ]
+    });
+
+    expect(
+      result.gradient.stops.find((stop) => stop.id === result.stopId)?.position
+    ).toBe(30);
+  });
+
+  it("provides the black-to-white default without changing gradient type", () => {
+    for (const type of ["linear", "radial", "conic", "diamond"] as const) {
+      const gradient = getDefaultGradientFill(type);
+      expect(gradient.type).toBe(type);
+      expect(gradient.name).toBe("Default");
+      expect(gradient.centerX).toBe(50);
+      expect(gradient.stops.map((stop) => stop.color)).toEqual([
+        "#000000",
+        "#ffffff"
+      ]);
+    }
   });
 });

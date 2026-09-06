@@ -1,9 +1,25 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ColorPicker } from "./ColorPicker";
+import {
+  ColorPicker,
+  formatColorForMode,
+  parseColorForMode
+} from "./ColorPicker";
 
 describe("ColorPicker", () => {
+  it("formats and parses the shared color representations", () => {
+    expect(formatColorForMode("#f08c00", "hex")).toBe("#f08c00");
+    expect(formatColorForMode("#f08c0080", "rgba"))
+      .toBe("rgba(240, 140, 0, 0.5)");
+    expect(formatColorForMode("#ff0000", "cmyk"))
+      .toBe("cmyk(0%, 100%, 100%, 0%)");
+    expect(parseColorForMode("rgba(10, 20, 30, 0.5)", "rgba"))
+      .toBe("#0a141e80");
+    expect(parseColorForMode("cmyk(0%, 100%, 100%, 0%)", "cmyk"))
+      .toBe("#ff0000");
+  });
+
   it("edits one color through HEX, RGB/A, and CMYK representations", () => {
     const onChange = vi.fn();
     const onCommit = vi.fn();
