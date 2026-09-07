@@ -2,15 +2,14 @@ import catalogJson from "./catalog.json";
 import type {
   TextureCatalog,
   TextureCatalogTexture
-} from "kizkatt-graphic-editor";
-import { findTextureCatalogTexture } from "kizkatt-graphic-editor";
+} from "kizkatt-graphic-engine";
 
 export type {
   TextureCatalog,
   TextureCatalogCategory,
   TextureCatalogCollection,
   TextureCatalogTexture
-} from "kizkatt-graphic-editor";
+} from "kizkatt-graphic-engine";
 
 const textureAssetUrls = import.meta.glob(
   [
@@ -40,6 +39,13 @@ export function normalizeMonochromeTextureId(textureId: string) {
 }
 
 export const textureCatalog = catalogJson as TextureCatalog;
+const textureById = new Map(
+  textureCatalog.collections.flatMap((collection) =>
+    collection.categories.flatMap((category) =>
+      category.textures.map((texture) => [texture.id, texture] as const)
+    )
+  )
+);
 
 export function getTextureAssetUrl(texture: TextureCatalogTexture) {
   return textureAssetUrls[`./${texture.file}`] ?? null;
@@ -52,10 +58,7 @@ export function getTextureThumbnailUrl(texture: TextureCatalogTexture) {
 }
 
 export function getTextureById(textureId: string) {
-  return findTextureCatalogTexture(
-    textureCatalog,
-    normalizeMonochromeTextureId(textureId)
-  );
+  return textureById.get(normalizeMonochromeTextureId(textureId)) ?? null;
 }
 
 export function getTextureSource(textureId: string) {
