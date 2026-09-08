@@ -1,4 +1,4 @@
-import { getKizkattEngineIconUrl } from "kizkatt-graphic-engine";
+import { getKizkattEngineIconUrl } from "kizkatt-ui";
 
 export function installPageIcon(documentRef: Document = document) {
   const existingIcon = documentRef.head.querySelector<HTMLLinkElement>(

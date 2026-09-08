@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   getKizkattEngineIconUrl,
   KIZKATT_ENGINE_ICON_URL
-} from "kizkatt-graphic-engine";
+} from "kizkatt-ui";
 import { installPageIcon } from "./installPageIcon";
 
 describe("installPageIcon", () => {
-  it("uses the icon exposed by the graphic engine", () => {
+  it("uses the product icon exposed by the UI package", () => {
     const page = document.implementation.createHTMLDocument("Kizkatt");
     const icon = installPageIcon(page);
 
