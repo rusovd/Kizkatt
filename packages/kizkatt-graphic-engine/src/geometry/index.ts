@@ -6,7 +6,9 @@ export {
   getSelectionTransformHandleLayout,
   selectionBounds
 } from "./bounds";
+export * from "./arrowheads";
 export {
+  constrainBitmapTextureCropElement,
   createBitmapTextureFill,
   getBitmapTextureAdjustments,
   getBitmapTexturePlacement,
@@ -24,7 +26,8 @@ export {
   type BitmapTexturePreviewGeometry,
   type BitmapTextureSize
 } from "./bitmapTextures";
-export { isHexColor } from "./colors";
+export * from "./colors";
+export * from "./decorativeStroke";
 export {
   addGradientStop,
   addGradientStopToFirstSegment,
@@ -59,6 +62,7 @@ export {
   type GridWorldSizing
 } from "./grid";
 export { reorderElementsByLayerAction } from "./layers";
+export * from "./objectGeometry";
 export { simplifyPolyline } from "./pathSimplification";
 export {
   getElementBends,
@@ -69,6 +73,7 @@ export {
   moveLinearElementEndpoint
 } from "./linearElements";
 export { getClientPoint, getWorldPoint } from "./pointerEvents";
+export * from "./polyline";
 export {
   constrainPointToAspectRatio,
   getBoundsFromPoints,
@@ -84,6 +89,7 @@ export {
 export {
   getElementIdsInSelectionArea
 } from "./selection";
+export * from "./rendering";
 export { snapPointToElements, snapPointToGrid } from "./snapping";
 export {
   getElementIndicesInBounds,

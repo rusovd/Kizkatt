@@ -122,9 +122,9 @@ export function findTextureCatalogTexture(
 
   return null;
 }
+import { DEFAULT_BITMAP_TEXTURE_FILL } from "../config/constants";
 import {
   createBitmapTextureFill,
-  DEFAULT_BITMAP_TEXTURE_FILL,
-  type BitmapTextureFill,
   type BitmapTextureSize
-} from "kizkatt-graphic-engine";
+} from "../geometry/bitmapTextures";
+import type { BitmapTextureFill } from "./types";

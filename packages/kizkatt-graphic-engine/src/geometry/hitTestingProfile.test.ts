@@ -5,7 +5,7 @@ import {
   observeHitTesting,
   type HitTestProfileSample,
   type KizkattElement
-} from "kizkatt-graphic-engine";
+} from "../index";
 
 const rectangle: KizkattElement = {
   angle: 0,

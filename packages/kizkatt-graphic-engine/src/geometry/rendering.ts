@@ -1,39 +1,38 @@
 import {
-  getElementCenter,
-  PERCENT_MAX_VALUE,
-  transformSvgPathData
-} from "kizkatt-graphic-engine";
-import type { KizkattElement } from "kizkatt-graphic-engine";
-import {
-  DASH_VALUE_DECIMALS,
-  DASHED_STROKE_DASH_MULTIPLIER,
-  DASHED_STROKE_GAP_MULTIPLIER,
-  DASHED_STROKE_MIN_DASH,
-  DASHED_STROKE_MIN_GAP,
-  DASH_DOT_STROKE_GAP_MULTIPLIER,
-  DASH_DOT_STROKE_MIN_GAP,
   DEFAULT_SELECTED_SLOPPINESS,
   DEFAULT_SLOPPINESS,
-  DOTTED_STROKE_GAP_MULTIPLIER,
-  DOTTED_STROKE_MIN_GAP,
   MIN_RENDERED_STROKE_WIDTH,
-  SVG_DEGREES_PER_RADIAN,
-  SVG_LINECAP_BUTT,
-  SVG_LINECAP_ROUND,
-  SVG_LINEJOIN_ROUND,
-  STROKE_STYLE_DASHED,
-  STROKE_STYLE_DASH_DOT,
-  STROKE_STYLE_DOTTED,
-  STROKE_STYLE_SOLID,
-  STROKE_STYLE_STITCHED,
-  STROKE_STYLE_WAVY,
-  STROKE_STYLE_ZIGZAG,
-  STITCHED_STROKE_DASH_MULTIPLIER,
-  STITCHED_STROKE_GAP_MULTIPLIER,
-  STITCHED_STROKE_MIN_DASH,
-  STITCHED_STROKE_MIN_GAP,
-  VECTOR_EFFECT_NON_SCALING_STROKE
-} from "./constants";
+  PERCENT_MAX_VALUE
+} from "../config/constants";
+import type { KizkattElement } from "../model/types";
+import { getElementCenter } from "./primitives";
+import { transformSvgPathData } from "./svgPathData";
+
+const SVG_DEGREES_PER_RADIAN = 180 / Math.PI;
+const SVG_LINECAP_BUTT = "butt" as const;
+const SVG_LINECAP_ROUND = "round" as const;
+const SVG_LINEJOIN_ROUND = "round" as const;
+const VECTOR_EFFECT_NON_SCALING_STROKE = "non-scaling-stroke" as const;
+const STROKE_STYLE_SOLID = "solid";
+const STROKE_STYLE_DASHED = "dashed";
+const STROKE_STYLE_DASH_DOT = "dashDot";
+const STROKE_STYLE_DOTTED = "dotted";
+const STROKE_STYLE_STITCHED = "stitched";
+const STROKE_STYLE_WAVY = "wavy";
+const STROKE_STYLE_ZIGZAG = "zigzag";
+const DASHED_STROKE_MIN_DASH = 10;
+const DASHED_STROKE_DASH_MULTIPLIER = 1.45;
+const DASHED_STROKE_MIN_GAP = 8;
+const DASHED_STROKE_GAP_MULTIPLIER = 1.6;
+const DASH_DOT_STROKE_MIN_GAP = 6;
+const DASH_DOT_STROKE_GAP_MULTIPLIER = 0.8;
+const DOTTED_STROKE_MIN_GAP = 6;
+const DOTTED_STROKE_GAP_MULTIPLIER = 0.5;
+const STITCHED_STROKE_MIN_DASH = 2;
+const STITCHED_STROKE_DASH_MULTIPLIER = 0.12;
+const STITCHED_STROKE_MIN_GAP = 8;
+const STITCHED_STROKE_GAP_MULTIPLIER = 1.8;
+const DASH_VALUE_DECIMALS = 2;
 
 function formatDashValue(value: number) {
   return Number.isInteger(value)
@@ -159,14 +158,14 @@ export function getElementShapeProps(element: KizkattElement) {
     element.edgeStyle === "sharp" || calligraphy
       ? "miter"
       : SVG_LINEJOIN_ROUND;
-  const strokeLinecap: "butt" | "round" =
-    calligraphy
-      ? SVG_LINECAP_BUTT
-      : usesGeometricDotPattern(element)
+  const strokeLinecap: "butt" | "round" = calligraphy
+    ? SVG_LINECAP_BUTT
+    : usesGeometricDotPattern(element)
       ? hasRoundedStrokeEdges(element)
         ? SVG_LINECAP_ROUND
         : SVG_LINECAP_BUTT
-      : (element.sloppiness ?? DEFAULT_SELECTED_SLOPPINESS) === DEFAULT_SLOPPINESS
+      : (element.sloppiness ?? DEFAULT_SELECTED_SLOPPINESS) ===
+          DEFAULT_SLOPPINESS
         ? SVG_LINECAP_BUTT
         : SVG_LINECAP_ROUND;
 

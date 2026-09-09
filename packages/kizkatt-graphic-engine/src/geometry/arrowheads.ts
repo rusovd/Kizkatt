@@ -3,14 +3,13 @@ import type {
   KizkattElement,
   LinearEndpoint,
   Point
-} from "kizkatt-graphic-engine";
+} from "../model/types";
 import {
   ARROW_MARKER_HEIGHT,
   ARROW_MARKER_REF_Y,
-  ARROW_MARKER_WIDTH
-} from "kizkatt-graphic-engine";
-
-import { MIN_RENDERED_STROKE_WIDTH } from "./constants";
+  ARROW_MARKER_WIDTH,
+  MIN_RENDERED_STROKE_WIDTH
+} from "../config/constants";
 
 export type ArrowheadGeometry = {
   angle: number;

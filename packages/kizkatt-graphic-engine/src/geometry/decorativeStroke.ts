@@ -1,5 +1,5 @@
-import { transformSvgPathData } from "kizkatt-graphic-engine";
-import type { KizkattElement, Point } from "kizkatt-graphic-engine";
+import type { KizkattElement, Point } from "../model/types";
+import { transformSvgPathData } from "./svgPathData";
 
 export type DecorativeStrokeStyle = "wavy" | "zigzag";
 

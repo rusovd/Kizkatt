@@ -1,4 +1,4 @@
-import type { KizkattElement, Point } from "kizkatt-graphic-engine";
+import type { KizkattElement, Point } from "../model/types";
 
 const POINT_EQUALITY_EPSILON = 0.000001;
 

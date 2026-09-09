@@ -1,7 +1,7 @@
 import {
-  TRANSPARENT_COLOR,
-  type StyleState
-} from "kizkatt-graphic-engine";
+  TRANSPARENT_COLOR
+} from "../config/constants";
+import type { StyleState } from "./types";
 
 const IMAGE_BORDER_STYLE_KEYS: ReadonlyArray<keyof StyleState> = [
   "calligraphy",

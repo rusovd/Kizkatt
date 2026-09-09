@@ -236,7 +236,6 @@ export function getLinearElementPath(
     index < points.length - NEXT_ARRAY_INDEX_OFFSET;
     index += NEXT_ARRAY_INDEX_OFFSET
   ) {
-    const current = points[index];
     const next = points[index + NEXT_ARRAY_INDEX_OFFSET];
     const { cp1, cp2 } = getLinearElementCubicControlPoints(points, index);
 

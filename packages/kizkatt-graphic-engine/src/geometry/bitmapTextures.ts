@@ -8,9 +8,11 @@ import type {
   KizkattElement,
   Point
 } from "../model/types";
-import { getElementBounds } from "./bounds";
+import { getElementBounds, getElementTransformedBounds } from "./bounds";
 
 const DEFAULT_TRANSPARENCY_TABLE_SAMPLE_COUNT = 32;
+const TEXTURE_BOUNDS_EPSILON = 0.000001;
+const TEXTURE_CONSTRAINT_ITERATIONS = 24;
 
 export type BitmapTextureSize = {
   height: number;
@@ -53,6 +55,150 @@ export type BitmapTexturePreviewGeometry = {
   };
   tileAvailable: boolean;
 };
+
+function isElementInsideTexture(
+  element: KizkattElement,
+  sourceSize: BitmapTextureSize
+) {
+  const bounds = getElementTransformedBounds(element);
+
+  return (
+    bounds.x >= -TEXTURE_BOUNDS_EPSILON &&
+    bounds.y >= -TEXTURE_BOUNDS_EPSILON &&
+    bounds.x + bounds.width <= sourceSize.width + TEXTURE_BOUNDS_EPSILON &&
+    bounds.y + bounds.height <= sourceSize.height + TEXTURE_BOUNDS_EPSILON
+  );
+}
+
+function translateElementInsideTexture(
+  element: KizkattElement,
+  sourceSize: BitmapTextureSize
+) {
+  const bounds = getElementTransformedBounds(element);
+  let deltaX = 0;
+  let deltaY = 0;
+
+  if (bounds.x < 0) {
+    deltaX = -bounds.x;
+  } else if (bounds.x + bounds.width > sourceSize.width) {
+    deltaX = sourceSize.width - bounds.x - bounds.width;
+  }
+
+  if (bounds.y < 0) {
+    deltaY = -bounds.y;
+  } else if (bounds.y + bounds.height > sourceSize.height) {
+    deltaY = sourceSize.height - bounds.y - bounds.height;
+  }
+
+  return {
+    ...element,
+    x: element.x + deltaX,
+    y: element.y + deltaY
+  };
+}
+
+function fitElementInsideTexture(
+  element: KizkattElement,
+  sourceSize: BitmapTextureSize
+) {
+  let nextElement = element;
+
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    const bounds = getElementTransformedBounds(nextElement);
+    const scale = Math.min(
+      1,
+      sourceSize.width / Math.max(MIN_PIXEL_SIZE, bounds.width),
+      sourceSize.height / Math.max(MIN_PIXEL_SIZE, bounds.height)
+    );
+
+    if (scale < 1) {
+      const centerX = nextElement.x + nextElement.width / 2;
+      const centerY = nextElement.y + nextElement.height / 2;
+      const width = Math.max(MIN_PIXEL_SIZE, nextElement.width * scale);
+      const height = Math.max(MIN_PIXEL_SIZE, nextElement.height * scale);
+      nextElement = {
+        ...nextElement,
+        height,
+        width,
+        x: centerX - width / 2,
+        y: centerY - height / 2
+      };
+    }
+
+    nextElement = translateElementInsideTexture(nextElement, sourceSize);
+  }
+
+  return nextElement;
+}
+
+function interpolateElement(
+  from: KizkattElement,
+  to: KizkattElement,
+  progress: number
+) {
+  const interpolate = (start: number, end: number) =>
+    start + (end - start) * progress;
+
+  return {
+    ...to,
+    angle: interpolate(from.angle, to.angle),
+    height: interpolate(from.height, to.height),
+    skewX: interpolate(from.skewX ?? 0, to.skewX ?? 0),
+    skewY: interpolate(from.skewY ?? 0, to.skewY ?? 0),
+    width: interpolate(from.width, to.width),
+    x: interpolate(from.x, to.x),
+    y: interpolate(from.y, to.y)
+  };
+}
+
+export function constrainBitmapTextureCropElement(
+  originalElement: KizkattElement,
+  candidateElement: KizkattElement,
+  sourceSize: BitmapTextureSize,
+  translateCandidate = false
+) {
+  if (isElementInsideTexture(candidateElement, sourceSize)) {
+    return candidateElement;
+  }
+
+  const candidateBounds = getElementTransformedBounds(candidateElement);
+  if (
+    translateCandidate &&
+    candidateBounds.width <= sourceSize.width &&
+    candidateBounds.height <= sourceSize.height
+  ) {
+    return translateElementInsideTexture(candidateElement, sourceSize);
+  }
+
+  const safeOriginal = isElementInsideTexture(originalElement, sourceSize)
+    ? originalElement
+    : fitElementInsideTexture(originalElement, sourceSize);
+  let minimum = 0;
+  let maximum = 1;
+  let constrainedElement = safeOriginal;
+
+  for (
+    let iteration = 0;
+    iteration < TEXTURE_CONSTRAINT_ITERATIONS;
+    iteration += 1
+  ) {
+    const progress = (minimum + maximum) / 2;
+    const interpolatedElement = interpolateElement(
+      safeOriginal,
+      candidateElement,
+      progress
+    );
+
+    if (isElementInsideTexture(interpolatedElement, sourceSize)) {
+      constrainedElement = interpolatedElement;
+      minimum = progress;
+    } else {
+      maximum = progress;
+    }
+  }
+
+  return constrainedElement;
+}
 
 export function getBitmapTexturePreviewGeometry(
   texture: BitmapTextureFill,
@@ -126,7 +272,6 @@ export function scaleBitmapTextureCrop(
 }
 
 export function getBitmapTextureTransformFromPreviewCrop(
-  texture: BitmapTextureFill,
   sourceSize: BitmapTextureSize,
   targetSize: BitmapTextureSize,
   crop: BitmapTexturePreviewGeometry["crop"]

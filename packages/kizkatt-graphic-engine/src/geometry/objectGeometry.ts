@@ -1,22 +1,38 @@
 import {
-  getDimensionFromScalePercent,
   MIN_ELEMENT_SIZE,
   PERCENT_MAX_VALUE,
-  getScalePercentFromDimension,
   VIEWPORT_CENTER_DIVISOR
-} from "kizkatt-graphic-engine";
+} from "../config/constants";
+import { getObjectBase } from "../model/element";
+import type { Bounds, KizkattElement, Point } from "../model/types";
 import {
-  getElementCenter,
-  selectionBounds
-} from "kizkatt-graphic-engine";
-import { getObjectBase } from "kizkatt-graphic-engine";
-import type { Bounds, KizkattElement, Point } from "kizkatt-graphic-engine";
-import type {
-  ObjectDimensionAxis,
-  ObjectGeometryPatch,
-  ObjectMirrorAxis,
-  ObjectPanelGeometry
-} from "./types";
+  getDimensionFromScalePercent,
+  getScalePercentFromDimension
+} from "./resize";
+import { getElementCenter } from "./primitives";
+import { selectionBounds } from "./bounds";
+
+export type ObjectPanelGeometry = {
+  angle: number;
+  baseBounds: Bounds;
+  bounds: Bounds;
+  height: number;
+  heightPercent: number;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  widthPercent: number;
+};
+
+export type ObjectGeometryPatch = Partial<
+  Pick<
+    ObjectPanelGeometry,
+    "angle" | "heightPercent" | "offsetX" | "offsetY" | "widthPercent"
+  >
+>;
+
+export type ObjectMirrorAxis = "horizontal" | "vertical";
+export type ObjectDimensionAxis = "height" | "width";
 
 export const RADIANS_PER_DEGREE = Math.PI / 180;
 const DEGREES_PER_RADIAN = 180 / Math.PI;

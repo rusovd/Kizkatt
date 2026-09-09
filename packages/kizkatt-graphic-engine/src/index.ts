@@ -1,4 +1,5 @@
-export * from "./assets/engineIcon";
+export * from "./commands/selection";
+export * from "./commands/preview";
 export * from "./config/constants";
 export * from "./export/exportBounds";
 export * from "./export/svgExport";
@@ -8,6 +9,8 @@ export * from "./model/collections";
 export * from "./model/element";
 export * from "./model/groups";
 export * from "./model/naming";
+export * from "./model/style";
+export * from "./model/textureCatalog";
 export type * from "./model/types";
 export * from "./svg/import";
 export * from "./svg/parsing";

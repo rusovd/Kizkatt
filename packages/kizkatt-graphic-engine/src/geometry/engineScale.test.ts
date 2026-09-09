@@ -31,7 +31,7 @@ import {
   type HitTestProfileSample,
   type KizkattElement,
   type Point
-} from "kizkatt-graphic-engine";
+} from "../index";
 
 function createRectangle(index: number): KizkattElement {
   const column = index % 100;
@@ -378,7 +378,6 @@ describe("engine scale safeguards", () => {
     });
     expect(
       getBitmapTextureTransformFromPreviewCrop(
-        texture,
         { height: 80, width: 200 },
         { height: 120, width: 100 },
         {

@@ -7,6 +7,7 @@ import type {
   ResizeHandle,
   StyleState
 } from "../model/types";
+import { mixHexColor } from "../geometry/colors";
 
 export const KIZKATT_STORAGE_PREFIX = "kizkatt";
 export const CANVAS_BACKGROUND_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:canvas-background`;
@@ -20,6 +21,7 @@ export const CANVAS_STATE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engin
 export const QUICK_SAVE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:quick-save`;
 export const CONTEXT_MENU_DEFAULTS_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:context-menu-defaults`;
 export const HISTORY_LIMIT = 100;
+export const MIN_RENDERED_STROKE_WIDTH = 1;
 export const MIN_ELEMENT_SIZE = 10;
 export const MIN_CREATE_DRAG_DISTANCE = 6;
 export const MIN_CREATE_HOLD_DURATION_MS = 150;
@@ -393,33 +395,6 @@ function getPaletteShadeFromRight(paletteId: string, indexFromRight: number) {
     palette.shades[Math.max(0, palette.shades.length - indexFromRight)] ??
     palette.color
   );
-}
-
-function hexToRgb(color: string) {
-  const hex = color.slice(1);
-
-  return {
-    b: Number.parseInt(hex.slice(4, 6), 16),
-    g: Number.parseInt(hex.slice(2, 4), 16),
-    r: Number.parseInt(hex.slice(0, 2), 16)
-  };
-}
-
-function rgbToHex({ b, g, r }: { b: number; g: number; r: number }) {
-  return `#${[r, g, b]
-    .map((value) => Math.round(value).toString(16).padStart(2, "0"))
-    .join("")}`;
-}
-
-function mixHexColor(color: string, target: string, amount: number) {
-  const sourceRgb = hexToRgb(color);
-  const targetRgb = hexToRgb(target);
-
-  return rgbToHex({
-    b: sourceRgb.b + (targetRgb.b - sourceRgb.b) * amount,
-    g: sourceRgb.g + (targetRgb.g - sourceRgb.g) * amount,
-    r: sourceRgb.r + (targetRgb.r - sourceRgb.r) * amount
-  });
 }
 
 function getFirstRowMiddleShade(color: string) {

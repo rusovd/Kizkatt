@@ -1,16 +1,16 @@
 import {
   MIN_ELEMENT_SIZE,
   SINGLE_SELECTION_COUNT
-} from "kizkatt-graphic-engine";
-import { getResizeCursor } from "kizkatt-graphic-engine";
-import { getElementMap, getIdSet } from "kizkatt-graphic-engine";
+} from "../config/constants";
+import { getElementMap, getIdSet } from "../model/collections";
 import type {
   Bounds,
   Interaction,
   KizkattElement,
-  Point,
-  Size
-} from "kizkatt-graphic-engine";
+  Point
+} from "../model/types";
+import type { Size } from "../import/imageSizing";
+import { getResizeCursor } from "../geometry/resize";
 
 export function getImagePlacementBounds(
   interaction: Interaction | null,
