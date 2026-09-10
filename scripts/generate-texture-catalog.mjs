@@ -14,7 +14,7 @@ const TEXTURE_EXTENSIONS = new Set([
 ]);
 const root = fileURLToPath(
   new URL(
-    "../src/graphic-editor/assets/textures/monochrome/",
+    "../src/assets/textures/monochrome/",
     import.meta.url
   )
 );
