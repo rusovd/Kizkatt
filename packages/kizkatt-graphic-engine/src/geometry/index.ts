@@ -10,6 +10,7 @@ export * from "./arrowheads";
 export {
   constrainBitmapTextureCropElement,
   createBitmapTextureFill,
+  createEmbeddedBitmapTextureFill,
   getBitmapTextureAdjustments,
   getBitmapTexturePlacement,
   getBitmapTexturePreviewGeometry,

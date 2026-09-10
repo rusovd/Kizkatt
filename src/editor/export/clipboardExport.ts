@@ -11,6 +11,7 @@ import type { CopiedPngExport } from "kizkatt-graphic-engine";
 import type { KizkattElement } from "kizkatt-graphic-engine";
 import { getExportBounds } from "kizkatt-graphic-engine";
 import type { SvgSerializeOptions } from "kizkatt-graphic-engine";
+import { embedBitmapTextureFragmentsInSvg } from "./bitmapTextureSvgEmbedding";
 
 type SerializeSvg = (
   svg: SVGSVGElement,
@@ -26,6 +27,7 @@ type ClipboardExportOptions = {
 };
 
 export async function copySelectionAsSvg({
+  dpi = DEFAULT_DPI,
   elements,
   elementIds,
   serializeSvg,
@@ -45,13 +47,18 @@ export async function copySelectionAsSvg({
     return;
   }
 
-  await navigator.clipboard.writeText(
-    serializeSvg(svg, {
-      bounds,
-      elementIds,
-      transparentBackground: true
-    })
+  const markup = serializeSvg(svg, {
+    bounds,
+    elementIds,
+    transparentBackground: true
+  });
+  const embeddedMarkup = await embedBitmapTextureFragmentsInSvg(
+    markup,
+    elements,
+    { pixelRatio: getDpiPixelRatio(dpi) }
   );
+
+  await navigator.clipboard.writeText(embeddedMarkup);
 }
 
 export async function copySelectionAsPng({

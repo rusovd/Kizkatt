@@ -742,6 +742,7 @@ export function KizkattGraphicEditorController({
 
     try {
       await copySelectionAsSvg({
+        dpi,
         elements: selectedElements,
         elementIds: canvasState.selectedIds,
         serializeSvg,

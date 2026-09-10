@@ -362,6 +362,29 @@ export function createBitmapTextureFill({
   };
 }
 
+export function createEmbeddedBitmapTextureFill({
+  name,
+  source,
+  targetSize,
+  textureId
+}: {
+  name: string;
+  source: string;
+  targetSize: BitmapTextureSize;
+  textureId: string;
+}): BitmapTextureFill {
+  return {
+    ...DEFAULT_BITMAP_TEXTURE_FILL,
+    ...getResetBitmapTextureTransform(targetSize),
+    desaturateEnabled: false,
+    fitToObject: true,
+    name,
+    source,
+    textureId,
+    transparencyEnabled: false
+  };
+}
+
 export function getResizedBitmapTextureSize(
   currentSize: BitmapTextureSize,
   dimension: "height" | "width",
