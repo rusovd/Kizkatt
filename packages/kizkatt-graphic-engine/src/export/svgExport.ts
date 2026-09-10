@@ -1,5 +1,14 @@
 import type { Bounds } from "../model/types";
 
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+const KIZKATT_SVG_METADATA_ID = "kizkatt-document-metadata";
+export const KIZKATT_SVG_DESCRIPTION = "Created with Kizkatt";
+
+export type KizkattSvgMetadata = {
+  changed?: string;
+  created?: string;
+};
+
 export type SvgSerializeOptions = {
   bounds?: Bounds;
   elementIds?: string[];
@@ -80,4 +89,32 @@ export function serializeSvg(
   }
 
   return new XMLSerializer().serializeToString(clone);
+}
+
+export function addKizkattSvgMetadata(
+  markup: string,
+  metadata: KizkattSvgMetadata = {}
+) {
+  const document = new DOMParser().parseFromString(markup, "image/svg+xml");
+  const root = document.documentElement;
+
+  if (root.localName !== "svg" || document.querySelector("parsererror")) {
+    return markup;
+  }
+
+  root.setAttribute("xmlns", SVG_NAMESPACE);
+  root.querySelector(`#${KIZKATT_SVG_METADATA_ID}`)?.remove();
+
+  const metadataElement = document.createElementNS(SVG_NAMESPACE, "metadata");
+  metadataElement.id = KIZKATT_SVG_METADATA_ID;
+  metadataElement.setAttribute("data-generator", "Kizkatt");
+  metadataElement.textContent = JSON.stringify({
+    description: KIZKATT_SVG_DESCRIPTION,
+    generator: "Kizkatt",
+    ...(metadata.created ? { created: metadata.created } : {}),
+    ...(metadata.changed ? { changed: metadata.changed } : {})
+  });
+  root.insertBefore(metadataElement, root.firstChild);
+
+  return new XMLSerializer().serializeToString(root);
 }

@@ -18,7 +18,6 @@ export const THEME_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:theme
 export const UI_SCALE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:ui-scale`;
 export const DPI_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:dpi`;
 export const CANVAS_STATE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:canvas-state`;
-export const QUICK_SAVE_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:quick-save`;
 export const CONTEXT_MENU_DEFAULTS_STORAGE_KEY = `${KIZKATT_STORAGE_PREFIX}:graphic-engine:context-menu-defaults`;
 export const HISTORY_LIMIT = 100;
 export const MIN_RENDERED_STROKE_WIDTH = 1;

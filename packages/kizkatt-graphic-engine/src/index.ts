@@ -1,6 +1,7 @@
 export * from "./commands/selection";
 export * from "./commands/preview";
 export * from "./config/constants";
+export * from "./document/sceneDocument";
 export * from "./export/exportBounds";
 export * from "./export/svgExport";
 export * from "./geometry";

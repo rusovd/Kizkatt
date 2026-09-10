@@ -1,5 +1,6 @@
 import {
   DEFAULT_BITMAP_TEXTURE_FILL,
+  DEFAULT_IMAGE_SIZE,
   MIN_ELEMENT_SIZE,
   PERCENT_MAX_VALUE,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
@@ -9,6 +10,7 @@ import {
 } from "../config/constants";
 import { normalizeGradientFill, transformSvgPathData } from "../geometry";
 import {
+  createElement,
   createId,
   normalizeFillStyle,
   normalizeElement,
@@ -31,6 +33,7 @@ import {
   getSvgElementStyle,
   getSvgNumber,
   getSvgRoot,
+  parseSvgCode,
   parseSvgDocument,
   parseSvgNumber,
   parseSvgViewBox
@@ -1937,4 +1940,54 @@ export function breakApartSvgElement(
     fallbackStyle,
     naming
   ).map(withUpdatedObjectBase);
+}
+
+export function importSvgElements(
+  svgCode: string,
+  {
+    existingElements = [],
+    fallbackStyle,
+    naming,
+    position = { x: 0, y: 0 }
+  }: {
+    existingElements?: KizkattElement[];
+    fallbackStyle: StyleState;
+    naming?: ElementNamingConfig;
+    position?: Point;
+  }
+) {
+  const parsedSvg = parseSvgCode(svgCode);
+
+  if (!parsedSvg) {
+    return null;
+  }
+
+  const insertionBounds = parsedSvg.canvasBounds;
+  const sourceElement = withUpdatedObjectBase({
+    ...createElement(
+      "image",
+      insertionBounds
+        ? { x: insertionBounds.x, y: insertionBounds.y }
+        : position,
+      fallbackStyle,
+      naming
+    ),
+    backgroundColor: TRANSPARENT_COLOR,
+    height: insertionBounds?.height ?? parsedSvg.size.height ?? DEFAULT_IMAGE_SIZE.height,
+    name: buildElementName("image", existingElements, naming),
+    svgContent: parsedSvg.content,
+    svgUseElementStyle: parsedSvg.useElementStyle,
+    svgViewBox: parsedSvg.viewBox,
+    width: insertionBounds?.width ?? parsedSvg.size.width ?? DEFAULT_IMAGE_SIZE.width
+  });
+  const importedElements = parsedSvg.useElementStyle
+    ? []
+    : breakApartSvgElement(
+        sourceElement,
+        existingElements,
+        sourceElement,
+        naming
+      );
+
+  return importedElements.length > 0 ? importedElements : [sourceElement];
 }
