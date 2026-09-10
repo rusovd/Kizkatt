@@ -11,12 +11,25 @@ import type {
 import { getElementBounds, getElementTransformedBounds } from "./bounds";
 
 const DEFAULT_TRANSPARENCY_TABLE_SAMPLE_COUNT = 32;
+const DEGREES_PER_RADIAN = 180 / Math.PI;
 const TEXTURE_BOUNDS_EPSILON = 0.000001;
 const TEXTURE_CONSTRAINT_ITERATIONS = 24;
 
 export type BitmapTextureSize = {
   height: number;
   width: number;
+};
+
+export type BitmapTextureTargetTransform = {
+  rotation: number;
+  skew: number;
+  skewY: number;
+};
+
+const DEFAULT_BITMAP_TEXTURE_TARGET_TRANSFORM: BitmapTextureTargetTransform = {
+  rotation: 0,
+  skew: 0,
+  skewY: 0
 };
 
 export type BitmapTexturePlacement = {
@@ -55,6 +68,20 @@ export type BitmapTexturePreviewGeometry = {
   };
   tileAvailable: boolean;
 };
+
+export function getBitmapTextureTargetTransform(
+  element?: KizkattElement | null
+): BitmapTextureTargetTransform {
+  if (!element) {
+    return { ...DEFAULT_BITMAP_TEXTURE_TARGET_TRANSFORM };
+  }
+
+  return {
+    rotation: element.angle * DEGREES_PER_RADIAN,
+    skew: (element.skewX ?? 0) * DEGREES_PER_RADIAN,
+    skewY: (element.skewY ?? 0) * DEGREES_PER_RADIAN
+  };
+}
 
 function isElementInsideTexture(
   element: KizkattElement,
@@ -203,7 +230,9 @@ export function constrainBitmapTextureCropElement(
 export function getBitmapTexturePreviewGeometry(
   texture: BitmapTextureFill,
   sourceSize: BitmapTextureSize,
-  targetSize: BitmapTextureSize
+  targetSize: BitmapTextureSize,
+  targetTransform: BitmapTextureTargetTransform =
+    DEFAULT_BITMAP_TEXTURE_TARGET_TRANSFORM
 ): BitmapTexturePreviewGeometry {
   const sourceWidth = Math.max(MIN_PIXEL_SIZE, sourceSize.width);
   const sourceHeight = Math.max(MIN_PIXEL_SIZE, sourceSize.height);
@@ -223,9 +252,9 @@ export function getBitmapTexturePreviewGeometry(
       centerY:
         sourceHeight / 2 - (texture.offsetY * sourceHeight) / textureHeight,
       height: (targetHeight * sourceHeight) / textureHeight,
-      rotation: -texture.rotation,
-      skew: -texture.skew,
-      skewY: texture.skewY === 0 ? 0 : -texture.skewY,
+      rotation: targetTransform.rotation - texture.rotation,
+      skew: targetTransform.skew - texture.skew,
+      skewY: targetTransform.skewY - texture.skewY,
       width: (targetWidth * sourceWidth) / textureWidth
     },
     tileAvailable:
@@ -274,7 +303,9 @@ export function scaleBitmapTextureCrop(
 export function getBitmapTextureTransformFromPreviewCrop(
   sourceSize: BitmapTextureSize,
   targetSize: BitmapTextureSize,
-  crop: BitmapTexturePreviewGeometry["crop"]
+  crop: BitmapTexturePreviewGeometry["crop"],
+  targetTransform: BitmapTextureTargetTransform =
+    DEFAULT_BITMAP_TEXTURE_TARGET_TRANSFORM
 ): Pick<
   BitmapTextureFill,
   | "fitToObject"
@@ -300,9 +331,9 @@ export function getBitmapTextureTransformFromPreviewCrop(
     height,
     offsetX: ((sourceWidth / 2 - crop.centerX) * width) / sourceWidth,
     offsetY: ((sourceHeight / 2 - crop.centerY) * height) / sourceHeight,
-    rotation: -crop.rotation,
-    skew: -crop.skew,
-    skewY: -crop.skewY,
+    rotation: targetTransform.rotation - crop.rotation,
+    skew: targetTransform.skew - crop.skew,
+    skewY: targetTransform.skewY - crop.skewY,
     width
   };
 }

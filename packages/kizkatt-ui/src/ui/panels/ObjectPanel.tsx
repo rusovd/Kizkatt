@@ -34,7 +34,6 @@ import {
   MirrorHorizontalIcon,
   MirrorVerticalIcon,
   PenNibIcon,
-  PasteIcon,
   RotationAngleIcon,
   SendBackwardIcon,
   SendToBackIcon,
@@ -121,8 +120,11 @@ function useUnitConverters(gridSettings: ObjectPanelProps["gridSettings"]) {
 
 function ObjectNumberField({
   className,
+  decimalPlaces,
   icon,
   label,
+  max,
+  min,
   onChange,
   onCommit,
   step,
@@ -131,8 +133,11 @@ function ObjectNumberField({
   value
 }: {
   className?: string;
+  decimalPlaces?: number;
   icon?: ReactNode;
   label: string;
+  max?: number;
+  min?: number;
   onChange: (value: string) => void;
   onCommit: () => void;
   step: number;
@@ -156,10 +161,15 @@ function ObjectNumberField({
       </span>
       <span className="kizkatt-object-field-control">
         <NumberInput
+          decimalPlaces={decimalPlaces}
           label={label}
+          max={max}
+          min={min}
+          showSliderPopover={Number.isFinite(min) && Number.isFinite(max)}
           step={step}
           value={value}
           onBlur={onCommit}
+          onSliderChangeEnd={onCommit}
           onValueChange={onChange}
         />
         {suffix && <small>{suffix}</small>}
@@ -230,7 +240,10 @@ function ObjectSelectField<TValue extends string>({
 }
 
 function StrokeWidthField({
+  decimalPlaces,
   label,
+  max,
+  min,
   onChange,
   onCommit,
   onPresetSelect,
@@ -243,7 +256,10 @@ function StrokeWidthField({
   title,
   value
 }: {
+  decimalPlaces?: number;
   label: string;
+  max: number;
+  min: number;
   onChange: (value: string) => void;
   onCommit: () => void;
   onPresetSelect: (value: string) => void;
@@ -262,13 +278,17 @@ function StrokeWidthField({
       title={title}
     >
       <span className="kizkatt-object-field-control">
-        <input
-          aria-label={label}
-          type="number"
+        <NumberInput
+          decimalPlaces={decimalPlaces}
+          label={label}
+          max={max}
+          min={min}
+          showSliderPopover
           step={step}
           value={value}
           onBlur={onCommit}
-          onChange={(event) => onChange(event.target.value)}
+          onSliderChangeEnd={onCommit}
+          onValueChange={onChange}
         />
         <small>{suffix}</small>
         <StrokeWidthPresetSelect
@@ -333,7 +353,6 @@ export function ObjectPanel({
   onGeometryChangeEnd,
   onLayerAction,
   onMirror,
-  onPaste,
   onStyleChange,
   onStyleChangeEnd,
   selectedElements,
@@ -708,10 +727,13 @@ export function ObjectPanel({
                 >
                   <div className="kizkatt-object-panel-stack">
                     <ObjectNumberField
+                      decimalPlaces={OBJECT_PANEL_UI_SETTINGS.percentPrecision}
                       icon={DimensionWidthIcon}
                       label={strings.objectPanel.width}
                       title={strings.objectPanel.tooltips.width}
                       step={OBJECT_PANEL_UI_SETTINGS.percentStep}
+                      min={OBJECT_PANEL_UI_SETTINGS.minScalePercent}
+                      max={OBJECT_PANEL_UI_SETTINGS.maxScalePercent}
                       suffix="%"
                       value={formatNumber(
                         geometry.widthPercent,
@@ -721,10 +743,13 @@ export function ObjectPanel({
                       onCommit={onGeometryChangeEnd}
                     />
                     <ObjectNumberField
+                      decimalPlaces={OBJECT_PANEL_UI_SETTINGS.percentPrecision}
                       icon={DimensionHeightIcon}
                       label={strings.objectPanel.height}
                       title={strings.objectPanel.tooltips.height}
                       step={OBJECT_PANEL_UI_SETTINGS.percentStep}
+                      min={OBJECT_PANEL_UI_SETTINGS.minScalePercent}
+                      max={OBJECT_PANEL_UI_SETTINGS.maxScalePercent}
                       suffix="%"
                       value={formatNumber(
                         geometry.heightPercent,
@@ -756,10 +781,13 @@ export function ObjectPanel({
                 >
                   <ObjectNumberField
                     className="kizkatt-object-field--angle"
+                    decimalPlaces={OBJECT_PANEL_UI_SETTINGS.anglePrecision}
                     icon={RotationAngleIcon}
                     label={strings.objectPanel.angle}
                     title={strings.objectPanel.tooltips.angle}
                     step={OBJECT_PANEL_UI_SETTINGS.angleStep}
+                    min={OBJECT_PANEL_UI_SETTINGS.angleMin}
+                    max={OBJECT_PANEL_UI_SETTINGS.angleMax}
                     suffix={OBJECT_PANEL_UI_SETTINGS.degreeSymbol}
                     value={formatNumber(
                       geometry.angle,
@@ -844,7 +872,10 @@ export function ObjectPanel({
                     />
                   </div>
                   <StrokeWidthField
+                    decimalPlaces={precision}
                     label={strings.objectPanel.strokeWidth}
+                    min={toDisplayUnit(OBJECT_PANEL_UI_SETTINGS.minStrokeWidth)}
+                    max={toDisplayUnit(OBJECT_PANEL_UI_SETTINGS.maxStrokeWidth)}
                     title={strings.objectPanel.tooltips.strokeWidth}
                     step={OBJECT_PANEL_UI_SETTINGS.positionStep}
                     suffix={unit}
@@ -868,6 +899,13 @@ export function ObjectPanel({
                   <LineSettingsPopover
                     canUseArrowheads={canUseArrowheads}
                     strokeStyleOptions={strokeStyleOptions}
+                    strokeWidthDecimalPlaces={precision}
+                    strokeWidthMax={toDisplayUnit(
+                      OBJECT_PANEL_UI_SETTINGS.maxStrokeWidth
+                    )}
+                    strokeWidthMin={toDisplayUnit(
+                      OBJECT_PANEL_UI_SETTINGS.minStrokeWidth
+                    )}
                     strokeWidthValue={formatNumber(
                       toDisplayUnit(strokeWidth),
                       precision
@@ -925,13 +963,6 @@ export function ObjectPanel({
                       {icon}
                     </IconButton>
                   ))}
-                  <IconButton
-                    ariaLabel={strings.stylePanel.paste}
-                    title={strings.stylePanel.tooltips.paste}
-                    onClick={() => void onPaste()}
-                  >
-                    {PasteIcon}
-                  </IconButton>
                 </FeatureGroup>
               </>
             )}

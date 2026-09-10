@@ -380,6 +380,10 @@
   gap: 7px;
 }
 
+.kizkatt-numeric-slider-control .kizkatt-numeric-slider-input {
+  grid-column: 2;
+}
+
 .kizkatt-number-control {
   display: flex;
 }

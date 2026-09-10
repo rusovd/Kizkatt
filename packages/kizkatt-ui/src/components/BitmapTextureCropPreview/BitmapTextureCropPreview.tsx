@@ -13,6 +13,7 @@ import {
   type BitmapTextureFill,
   type BitmapTexturePreviewGeometry,
   type BitmapTextureSize,
+  type BitmapTextureTargetTransform,
   type KizkattElement,
   type ResizeHandle,
   type SelectionTransformMode,
@@ -232,7 +233,8 @@ export function getBitmapTextureCropPreviewLayout(
   texture: BitmapTextureFill,
   naturalSize: BitmapTextureSize,
   targetSize: BitmapTextureSize,
-  viewportSize: BitmapTextureSize
+  viewportSize: BitmapTextureSize,
+  targetTransform?: BitmapTextureTargetTransform
 ) {
   const sourceWidth = Math.max(MIN_TEXTURE_SIZE, naturalSize.width);
   const sourceHeight = Math.max(MIN_TEXTURE_SIZE, naturalSize.height);
@@ -253,7 +255,8 @@ export function getBitmapTextureCropPreviewLayout(
   const geometry = getBitmapTexturePreviewGeometry(
     texture,
     naturalSize,
-    targetSize
+    targetSize,
+    targetTransform
   );
   const renderedWidth = sourceWidth * scale;
   const renderedHeight = sourceHeight * scale;
@@ -300,6 +303,7 @@ export function BitmapTextureCropPreview({
   shadeOverlay = true,
   source,
   targetSize,
+  targetTransform,
   texture
 }: {
   cropEnabled?: boolean;
@@ -314,6 +318,7 @@ export function BitmapTextureCropPreview({
   shadeOverlay?: boolean;
   source?: string;
   targetSize: BitmapTextureSize;
+  targetTransform?: BitmapTextureTargetTransform;
   texture: BitmapTextureFill;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -380,9 +385,10 @@ export function BitmapTextureCropPreview({
         texture,
         naturalSize,
         targetSize,
-        viewportSize
+        viewportSize,
+        targetTransform
       ),
-    [naturalSize, targetSize, texture, viewportSize]
+    [naturalSize, targetSize, targetTransform, texture, viewportSize]
   );
 
   useLayoutEffect(() => {
@@ -511,7 +517,8 @@ export function BitmapTextureCropPreview({
     const originalCrop = getBitmapTexturePreviewGeometry(
       interactiveTexture,
       naturalSize,
-      targetSize
+      targetSize,
+      targetTransform
     ).crop;
     const startPoint = getSourcePoint(event.clientX, event.clientY);
 
@@ -570,7 +577,8 @@ export function BitmapTextureCropPreview({
         getBitmapTextureTransformFromPreviewCrop(
           naturalSize,
           targetSize,
-          getCropFromElement(movedElement)
+          getCropFromElement(movedElement),
+          targetTransform
         )
       );
       return;
@@ -597,7 +605,8 @@ export function BitmapTextureCropPreview({
         getBitmapTextureTransformFromPreviewCrop(
           naturalSize,
           targetSize,
-          getCropFromElement(resizedElement)
+          getCropFromElement(resizedElement),
+          targetTransform
         )
       );
       return;
@@ -632,7 +641,8 @@ export function BitmapTextureCropPreview({
           getBitmapTextureTransformFromPreviewCrop(
             naturalSize,
             targetSize,
-            getCropFromElement(constrainedElement)
+            getCropFromElement(constrainedElement),
+            targetTransform
           )
         );
       }
@@ -672,7 +682,8 @@ export function BitmapTextureCropPreview({
       getBitmapTextureTransformFromPreviewCrop(
         naturalSize,
         targetSize,
-        getCropFromElement(constrainedElement)
+        getCropFromElement(constrainedElement),
+        targetTransform
       )
     );
   };

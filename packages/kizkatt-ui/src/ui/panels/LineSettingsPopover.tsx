@@ -7,6 +7,7 @@ import {
 } from "kizkatt-graphic-engine";
 
 import { OBJECT_PANEL_UI_SETTINGS } from "../../config/defaultSettings";
+import { NumberInput } from "../../components/NumberInput";
 import { useI18n } from "../../i18n";
 import {
   EdgeRoundIcon,
@@ -102,6 +103,9 @@ export function LineSettingsPopover({
   onStyleChange,
   onStyleChangeEnd,
   strokeStyleOptions,
+  strokeWidthDecimalPlaces,
+  strokeWidthMax,
+  strokeWidthMin,
   strokeWidthValue,
   style,
   unit
@@ -117,6 +121,9 @@ export function LineSettingsPopover({
     label: string;
     value: StrokeStyleSelectValue;
   }>;
+  strokeWidthDecimalPlaces: number;
+  strokeWidthMax: number;
+  strokeWidthMin: number;
   strokeWidthValue: string;
   style: StyleState;
   unit: string;
@@ -196,13 +203,17 @@ export function LineSettingsPopover({
         <label className="kizkatt-line-settings-row">
           <span>{labels.width}</span>
           <span className="kizkatt-line-settings-number-control">
-            <input
-              aria-label={labels.width}
-              type="number"
+            <NumberInput
+              decimalPlaces={strokeWidthDecimalPlaces}
+              label={labels.width}
+              max={strokeWidthMax}
+              min={strokeWidthMin}
+              showSliderPopover
               step={OBJECT_PANEL_UI_SETTINGS.positionStep}
               value={strokeWidthValue}
               onBlur={onStyleChangeEnd}
-              onChange={(event) => onStrokeWidthChange(event.target.value)}
+              onSliderChangeEnd={onStyleChangeEnd}
+              onValueChange={onStrokeWidthChange}
             />
             <small>{unit}</small>
           </span>
@@ -247,15 +258,17 @@ export function LineSettingsPopover({
             {SloppinessDoubleIcon}
             {labels.lines}
           </span>
-          <input
-            aria-label={labels.lines}
-            type="number"
+          <NumberInput
+            label={labels.lines}
             min="1"
             max="10"
+            showSliderPopover
             step="1"
             value={style.strokeLineCount ?? 1}
-            onChange={(event) => {
-              const count = Number.parseInt(event.target.value, 10);
+            valueType="integer"
+            onSliderChangeEnd={onStyleChangeEnd}
+            onValueChange={(nextValue) => {
+              const count = Number.parseInt(nextValue, 10);
 
               if (Number.isFinite(count)) {
                 onStyleChange({
@@ -314,18 +327,19 @@ export function LineSettingsPopover({
         <label className="kizkatt-line-settings-row">
           <span>{labels.scaling}</span>
           <span className="kizkatt-line-settings-number-control">
-            <input
-              aria-label={labels.scaling}
-              type="number"
+            <NumberInput
+              label={labels.scaling}
               min="25"
               max="400"
+              showSliderPopover
               step="5"
               disabled={!canUseArrowheads}
               value={formatNumber((style.arrowheadScale ?? 1) * 100)}
               onBlur={onStyleChangeEnd}
-              onChange={(event) =>
-                updatePercent("arrowheadScale", event.target.value, 25, 400)
-              }
+              onSliderChangeEnd={onStyleChangeEnd}
+              onValueChange={(nextValue) =>
+                updatePercent("arrowheadScale", nextValue, 25, 400)}
+              valueType="integer"
             />
             <small>%</small>
           </span>
@@ -342,18 +356,19 @@ export function LineSettingsPopover({
         <label className="kizkatt-line-settings-row">
           <span>{labels.stretch}</span>
           <span className="kizkatt-line-settings-number-control">
-            <input
-              aria-label={labels.stretch}
-              type="number"
+            <NumberInput
+              label={labels.stretch}
               min="50"
               max="300"
+              showSliderPopover
               step="5"
               disabled={!style.calligraphy}
               value={formatNumber((style.calligraphyStretch ?? 1) * 100)}
               onBlur={onStyleChangeEnd}
-              onChange={(event) =>
-                updatePercent("calligraphyStretch", event.target.value, 50, 300)
-              }
+              onSliderChangeEnd={onStyleChangeEnd}
+              onValueChange={(nextValue) =>
+                updatePercent("calligraphyStretch", nextValue, 50, 300)}
+              valueType="integer"
             />
             <small>%</small>
           </span>

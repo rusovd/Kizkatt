@@ -10,4 +10,5 @@
 @import "./styles/overlays.css";
 @import "./styles/text-editor.css";
 @import "./styles/loader.css";
+@import "./styles/number-input.css";
 @import "./components/ColorPicker/color-picker.css";

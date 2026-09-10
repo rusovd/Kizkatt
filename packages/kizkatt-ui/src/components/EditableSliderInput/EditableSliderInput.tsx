@@ -1,7 +1,6 @@
 import { Fragment } from "react";
 
 import { EditableNumberInput } from "../EditableNumberInput";
-import { Slider } from "../Slider";
 
 export function EditableSliderInput({
   ariaLabel,
@@ -34,17 +33,6 @@ export function EditableSliderInput({
         value={value}
       />
       <small>{unit}</small>
-      <Slider
-        className="kizkatt-transformation-slider"
-        label={`${ariaLabel} slider`}
-        max={max}
-        min={min}
-        step={step}
-        value={value}
-        onBlur={onChangeEnd}
-        onValueChange={onValueChange}
-        onPointerUp={onChangeEnd}
-      />
     </Fragment>
   );
 }

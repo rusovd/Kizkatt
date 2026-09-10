@@ -4,8 +4,10 @@ import type { CSSProperties } from "react";
 import {
   CANVAS_TAB_INDEX,
   DEFAULT_GRADIENT_FILL,
+  SINGLE_SELECTION_COUNT,
   canElementUseBackground,
   createBitmapTextureFillFromCatalogTexture,
+  getBitmapTextureTargetTransform,
   getTextureCatalogEntries
 } from "kizkatt-graphic-engine";
 import type {
@@ -214,6 +216,15 @@ export function KizkattGraphicEditorView({
       ),
     [stylingControls.selectedElements]
   );
+  const bitmapTextureTargetTransform = useMemo(
+    () =>
+      getBitmapTextureTargetTransform(
+        stylingControls.selectedElements.length === SINGLE_SELECTION_COUNT
+          ? stylingControls.selectedElements[0]
+          : null
+      ),
+    [stylingControls.selectedElements]
+  );
   const applyBitmapTexture = (
     texture: NonNullable<StylingPanelProps["style"]["bitmapTexture"]>,
     options?: { transient?: boolean }
@@ -381,6 +392,7 @@ export function KizkattGraphicEditorView({
           reopenKey={bitmapPatternPanelReopenKey}
           resolveTextureSource={getTextureSource}
           targetSize={bitmapTextureTargetSize}
+          targetTransform={bitmapTextureTargetTransform}
           texture={visibleBitmapTexture}
           textureTypeName={visibleBitmapTextureTypeName}
         />

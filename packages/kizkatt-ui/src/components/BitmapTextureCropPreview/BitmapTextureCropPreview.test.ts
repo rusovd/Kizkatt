@@ -74,6 +74,22 @@ describe("getBitmapTextureCropPreviewLayout", () => {
     expect(transformed.imageTop).toBe(initial.imageTop);
     expect(transformed.scale).toBe(initial.scale);
   });
+
+  it("starts the crop with the target rotation and skew", () => {
+    const layout = getBitmapTextureCropPreviewLayout(
+      DEFAULT_BITMAP_TEXTURE_FILL,
+      { height: 800, width: 1200 },
+      { height: 200, width: 300 },
+      { height: 400, width: 400 },
+      { rotation: 32, skew: 11, skewY: -7 }
+    );
+
+    expect(layout.geometry.crop).toMatchObject({
+      rotation: 32,
+      skew: 11,
+      skewY: -7
+    });
+  });
 });
 
 describe("constrainBitmapTextureCropElement", () => {

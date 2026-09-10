@@ -13,6 +13,7 @@ export {
   getBitmapTextureAdjustments,
   getBitmapTexturePlacement,
   getBitmapTexturePreviewGeometry,
+  getBitmapTextureTargetTransform,
   getBitmapTextureTransformFromPreviewCrop,
   getBitmapTextureRgbChannels,
   getBitmapTextureTransparencyTable,
@@ -24,7 +25,8 @@ export {
   scaleBitmapTextureCrop,
   type BitmapTexturePlacement,
   type BitmapTexturePreviewGeometry,
-  type BitmapTextureSize
+  type BitmapTextureSize,
+  type BitmapTextureTargetTransform
 } from "./bitmapTextures";
 export * from "./colors";
 export * from "./decorativeStroke";

@@ -14,6 +14,7 @@ import type {
   HsvaColor,
   RgbColor
 } from "kizkatt-graphic-engine";
+import { NumberInput } from "../NumberInput";
 
 export type ColorPickerMode = ColorMode;
 export { formatColorForMode, parseColorForMode } from "kizkatt-graphic-engine";
@@ -90,16 +91,23 @@ function Field({
 }) {
   return (
     <label className="kizkatt-color-picker-field">
-      <input
-        aria-label={label}
+      <NumberInput
+        decimalPlaces={
+          step < 1
+            ? Math.max(0, `${step}`.split(".")[1]?.length ?? 0)
+            : 0
+        }
+        label={label}
         max={max}
         min={min}
+        showSliderPopover
         step={step}
-        type="number"
         value={value}
         onBlur={onBlur}
-        onChange={(event) => onChange(Number(event.target.value))}
+        onSliderChangeEnd={onBlur}
+        onValueChange={(nextValue) => onChange(Number(nextValue))}
         onKeyDown={onKeyDown}
+        valueType={step < 1 ? "decimal" : "integer"}
       />
       <span>{label}</span>
     </label>

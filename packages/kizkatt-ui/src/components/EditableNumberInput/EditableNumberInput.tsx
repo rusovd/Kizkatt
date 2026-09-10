@@ -12,6 +12,7 @@ function parseEditableNumber(value: string) {
 
 export function EditableNumberInput({
   ariaLabel,
+  decimalPlaces = 3,
   disabled,
   max,
   min,
@@ -21,6 +22,7 @@ export function EditableNumberInput({
   value
 }: {
   ariaLabel: string;
+  decimalPlaces?: number;
   disabled?: boolean;
   max?: number;
   min?: number;
@@ -29,7 +31,11 @@ export function EditableNumberInput({
   step?: number;
   value: number;
 }) {
-  const externalValue = String(Number(value.toFixed(3)));
+  const normalizedDecimalPlaces = Math.max(
+    0,
+    Math.min(20, Math.trunc(decimalPlaces))
+  );
+  const externalValue = String(Number(value.toFixed(normalizedDecimalPlaces)));
   const [draft, setDraft] = useState(externalValue);
 
   useEffect(() => {
@@ -61,13 +67,16 @@ export function EditableNumberInput({
     <NumberInput
       label={ariaLabel}
       disabled={disabled}
+      decimalPlaces={normalizedDecimalPlaces}
       inputMode="decimal"
-      type="text"
+      max={max}
+      min={min}
+      showSliderPopover={Number.isFinite(min) && Number.isFinite(max)}
+      step={step}
+      valueType="decimal"
       value={draft}
-      data-max={max}
-      data-min={min}
-      data-step={step}
       onBlur={commitDraft}
+      onSliderChangeEnd={onChangeEnd}
       onValueChange={(nextDraft) => {
         const parsed = parseEditableNumber(nextDraft);
         setDraft(nextDraft);

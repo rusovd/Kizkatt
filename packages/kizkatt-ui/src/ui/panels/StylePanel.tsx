@@ -39,6 +39,7 @@ import {
 import { Panel } from "../../components/Panel";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 import { FeatureGroup } from "../../components/FeatureGroup";
+import { NumberInput } from "../../components/NumberInput";
 import {
   closeOtherFloatingPanels,
   useActiveFloatingPanel,
@@ -369,7 +370,6 @@ export function StylingPanel({
   const [activeFloatingPanel, setActiveFloatingPanelSource] = useState<
     string | null
   >(null);
-  const continuousStyleChangeActiveRef = useRef(false);
   const hasLocalPickerModeRef = useRef(readStoredPickerMode() !== null);
   const [pickerMode, setPickerMode] = useState<ColorPickerMode>(
     () => readStoredPickerMode() ?? colorMode
@@ -381,28 +381,6 @@ export function StylingPanel({
       setPickerMode(colorMode);
     }
   }, [colorMode]);
-
-  const beginContinuousStyleChange = () => {
-    continuousStyleChangeActiveRef.current = true;
-  };
-
-  const endContinuousStyleChange = () => {
-    if (!continuousStyleChangeActiveRef.current) {
-      return;
-    }
-
-    continuousStyleChangeActiveRef.current = false;
-    onStyleChangeEnd();
-  };
-
-  const applyContinuousStyleChange = (patch: Partial<StyleState>) => {
-    onStyleChange(
-      patch,
-      continuousStyleChangeActiveRef.current
-        ? { transient: true }
-        : undefined
-    );
-  };
 
   useActiveFloatingPanel(setActiveFloatingPanelSource);
   useCloseOtherFloatingPanels(
@@ -490,9 +468,6 @@ export function StylingPanel({
   };
   const updateOpacity = (value: string) => {
     onStyleChange({ opacity: normalizeOpacity(value) });
-  };
-  const updateOpacityContinuously = (value: string) => {
-    applyContinuousStyleChange({ opacity: normalizeOpacity(value) });
   };
   const backgroundControlDisabled = isBackgroundControlDisabled(
     activeTool,
@@ -681,32 +656,24 @@ export function StylingPanel({
             labelFor="opacity"
           >
             <div className="kizkatt-numeric-slider-control">
-              <input
+              <NumberInput
                 id="opacity"
-                aria-label={strings.stylePanel.opacity}
-                type="range"
-                title={tooltips.opacity}
-                min={MIN_OPACITY}
-                max={MAX_OPACITY}
-                value={style.opacity ?? DEFAULT_OPACITY}
-                onBlur={endContinuousStyleChange}
-                onChange={(event) =>
-                  updateOpacityContinuously(event.target.value)
-                }
-                onKeyDown={beginContinuousStyleChange}
-                onKeyUp={endContinuousStyleChange}
-                onPointerCancel={endContinuousStyleChange}
-                onPointerDown={beginContinuousStyleChange}
-                onPointerUp={endContinuousStyleChange}
-              />
-              <input
-                aria-label={strings.stylePanel.opacityValue}
+                className="kizkatt-numeric-slider-input"
+                label={strings.stylePanel.opacityValue}
                 title={tooltips.opacityValue}
-                type="number"
                 min={MIN_OPACITY}
                 max={MAX_OPACITY}
+                showSliderPopover
                 value={style.opacity ?? DEFAULT_OPACITY}
-                onChange={(event) => updateOpacity(event.target.value)}
+                onSliderChangeEnd={onStyleChangeEnd}
+                onSliderValueChange={(value) =>
+                  onStyleChange(
+                    { opacity: normalizeOpacity(value) },
+                    { transient: true }
+                  )
+                }
+                onValueChange={updateOpacity}
+                valueType="integer"
               />
             </div>
           </FeatureGroup>

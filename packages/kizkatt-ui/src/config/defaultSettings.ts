@@ -10,6 +10,8 @@ export const DEFAULT_GRAPHIC_EDITOR_SETTINGS = {
 
 export const OBJECT_PANEL_UI_SETTINGS = {
   anglePrecision: 1,
+  angleMax: 360,
+  angleMin: -360,
   angleStep: 0.1,
   degreeSymbol: "°",
   defaultScalePercent: 100,

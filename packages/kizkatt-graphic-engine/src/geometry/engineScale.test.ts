@@ -8,6 +8,7 @@ import {
   getBitmapTextureAdjustments,
   getBitmapTexturePlacement,
   getBitmapTexturePreviewGeometry,
+  getBitmapTextureTargetTransform,
   getBitmapTextureTransformFromPreviewCrop,
   getCoveredBitmapSourcePoint,
   getDpiPixelRatio,
@@ -400,6 +401,36 @@ describe("engine scale safeguards", () => {
       skewY: 5,
       width: 400
     });
+
+    const targetTransform = getBitmapTextureTargetTransform({
+      ...rectangle,
+      angle: Math.PI / 6,
+      skewX: Math.PI / 18,
+      skewY: -Math.PI / 36
+    });
+    expect(targetTransform.rotation).toBeCloseTo(30);
+    expect(targetTransform.skew).toBeCloseTo(10);
+    expect(targetTransform.skewY).toBeCloseTo(-5);
+
+    const transformedPreview = getBitmapTexturePreviewGeometry(
+      texture,
+      { height: 80, width: 200 },
+      { height: 120, width: 100 },
+      targetTransform
+    );
+    expect(transformedPreview.crop.rotation).toBeCloseTo(15);
+    expect(transformedPreview.crop.skew).toBeCloseTo(2);
+    expect(transformedPreview.crop.skewY).toBeCloseTo(-5);
+    const restoredTextureTransform =
+      getBitmapTextureTransformFromPreviewCrop(
+        { height: 80, width: 200 },
+        { height: 120, width: 100 },
+        transformedPreview.crop,
+        targetTransform
+      );
+    expect(restoredTextureTransform.rotation).toBeCloseTo(15);
+    expect(restoredTextureTransform.skew).toBeCloseTo(8);
+    expect(restoredTextureTransform.skewY).toBeCloseTo(0);
     expect(
       getResetBitmapTextureTransform({ height: 7360, width: 4912 })
     ).toEqual({

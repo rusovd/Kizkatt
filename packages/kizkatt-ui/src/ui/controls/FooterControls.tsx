@@ -46,6 +46,7 @@ import {
   useCloseOtherFloatingPanels
 } from "../overlays/floatingPanels";
 import { Panel } from "../../components/Panel";
+import { NumberInput } from "../../components/NumberInput";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 
 const FOOTER_SETTINGS_PANEL_SOURCE = "footer-settings";
@@ -207,18 +208,20 @@ function GridNumberInput({
   };
 
   return (
-    <input
+    <NumberInput
       id={id}
-      type="number"
+      decimalPlaces={step < 1 ? 2 : 0}
+      label={ariaLabel}
       min={min}
       max={max}
+      showSliderPopover
       step={step}
-      aria-label={ariaLabel}
       title={title}
       value={draftValue}
       onBlur={() => setDraftValue(String(value))}
       onPointerDown={stopPanelDrag}
-      onChange={(event) => commitValue(event.target.value)}
+      onValueChange={commitValue}
+      valueType={step < 1 ? "decimal" : "integer"}
     />
   );
 }

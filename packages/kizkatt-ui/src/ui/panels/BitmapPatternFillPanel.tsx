@@ -6,7 +6,8 @@ import {
   getResetBitmapTextureTransform,
   rgbToHexColor,
   type BitmapTextureFill,
-  type BitmapTextureSize
+  type BitmapTextureSize,
+  type BitmapTextureTargetTransform
 } from "kizkatt-graphic-engine";
 import { BitmapTextureCropPreview } from "../../components/BitmapTextureCropPreview";
 import { useBitmapTextureDraft } from "../../hooks/useBitmapTextureDraft";
@@ -160,6 +161,7 @@ export function BitmapPatternFillPanel({
   reopenKey,
   resolveTextureSource,
   targetSize,
+  targetTransform,
   texture: textureValue,
   textureTypeName
 }: {
@@ -173,6 +175,7 @@ export function BitmapPatternFillPanel({
   reopenKey: number;
   resolveTextureSource?: (textureId: string) => string | null;
   targetSize: BitmapTextureSize;
+  targetTransform?: BitmapTextureTargetTransform;
   texture?: BitmapTextureFill;
   textureTypeName: string;
 }) {
@@ -238,9 +241,10 @@ export function BitmapPatternFillPanel({
       getBitmapTexturePreviewGeometry(
         texture,
         sourceNaturalSize,
-        targetSize
+        targetSize,
+        targetTransform
       ),
-    [sourceNaturalSize, targetSize, texture]
+    [sourceNaturalSize, targetSize, targetTransform, texture]
   );
 
   useEffect(() => {
@@ -443,6 +447,7 @@ export function BitmapPatternFillPanel({
                 }}
                 source={source ?? undefined}
                 targetSize={targetSize}
+                targetTransform={targetTransform}
                 texture={texture}
                 pickingColor={pickingTransparencyColor}
                 shadeOverlay={overlayContrast}

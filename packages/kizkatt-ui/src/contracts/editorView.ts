@@ -119,7 +119,6 @@ export type ObjectPanelProps = {
   ) => void;
   onGeometryChangeEnd: () => void;
   onMirror: (axis: ObjectMirrorAxis) => void;
-  onPaste: () => void | Promise<void>;
   onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
   onStyleChange: (
     patch: Partial<StyleState>,

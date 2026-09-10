@@ -1787,7 +1787,6 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     const strokeWidthInput = screen.getByLabelText("Line width");
     const strokeStyleSelect = screen.getByLabelText("Stroke style");
-    const opacityRange = screen.getByLabelText("Opacity");
     const opacityInput = screen.getByLabelText("Opacity value");
 
     expect(strokeWidthInput).toHaveValue(10);
@@ -1935,9 +1934,14 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       Number(secondaryRectStroke?.getAttribute("data-sloppiness-spacing"))
     ).toBe(66);
 
-    fireEvent.change(opacityRange, {
+    fireEvent.focus(opacityInput);
+    const opacitySlider = screen.getByRole("slider", {
+      name: "Opacity value slider"
+    });
+    fireEvent.change(opacitySlider, {
       target: { value: "35" }
     });
+    fireEvent.pointerUp(opacitySlider);
     expect(elementRect).toHaveAttribute("opacity", "0.35");
     expect(opacityInput).toHaveValue(35);
 
@@ -1945,7 +1949,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       target: { value: "125" }
     });
     expect(elementRect).toHaveAttribute("opacity", "1");
-    expect(opacityRange).toHaveValue("100");
+    expect(opacitySlider).toHaveValue("100");
 
     fireEvent.change(opacityInput, {
       target: { value: "-10" }
@@ -2041,15 +2045,18 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     firePointerEvent(canvas, "pointerup");
 
     const elementRect = canvas.querySelector("[data-element-id] rect");
-    const opacityRange = screen.getByLabelText("Opacity");
+    const opacityInput = screen.getByLabelText("Opacity value");
 
     expect(elementRect).toHaveAttribute("opacity", "1");
 
-    fireEvent.pointerDown(opacityRange);
-    fireEvent.change(opacityRange, { target: { value: "80" } });
-    fireEvent.change(opacityRange, { target: { value: "65" } });
-    fireEvent.change(opacityRange, { target: { value: "50" } });
-    fireEvent.pointerUp(opacityRange);
+    fireEvent.focus(opacityInput);
+    const opacitySlider = screen.getByRole("slider", {
+      name: "Opacity value slider"
+    });
+    fireEvent.change(opacitySlider, { target: { value: "80" } });
+    fireEvent.change(opacitySlider, { target: { value: "65" } });
+    fireEvent.change(opacitySlider, { target: { value: "50" } });
+    fireEvent.pointerUp(opacitySlider);
 
     expect(elementRect).toHaveAttribute("opacity", "0.5");
 

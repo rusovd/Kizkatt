@@ -1743,10 +1743,6 @@ export function KizkattGraphicEditorController({
           onGeometryChangeEnd: endSelectedGeometryChange,
           onLayerAction: applyLayerAction,
           onMirror: mirrorSelected,
-          onPaste: () =>
-            getStoredContextMenuDefaults().paste === "svgCode"
-              ? pasteSvgCodeFromContextMenu()
-              : pasteFromContextMenu(),
           onStyleChange: updateSelectedStyle,
           onStyleChangeEnd: endSelectedStyleChange,
           selectedElements,
