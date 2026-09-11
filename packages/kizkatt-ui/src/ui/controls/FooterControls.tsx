@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import type { ReactNode } from "react";
 
 import {
+  CANVAS_BACKGROUNDS_BY_THEME,
   GRID_CALIBRATION_REFERENCE_MM,
   GRID_MM_SCALE_STEP,
   GRID_COLORS_BY_THEME,
@@ -27,12 +28,14 @@ import type {
   GridUnit,
   KizkattTheme
 } from "../../model/types";
-import { useI18n } from "../../i18n";
+import { SUPPORTED_LOCALES, useI18n, type Locale } from "../../i18n";
 import {
   ChevronRightIcon,
   EyeIcon,
+  EyedropperIcon,
   GridIcon,
   InfoIcon,
+  LanguageIcon,
   PinIcon,
   RedoIcon,
   SettingsIcon,
@@ -53,16 +56,20 @@ const FOOTER_SETTINGS_PANEL_SOURCE = "footer-settings";
 
 type FooterControlsProps = {
   activeDisplayMode: EditorDisplayMode | null;
+  canvasBackgroundColor: string;
   canRedo: boolean;
   canUndo: boolean;
   canUseGrid: boolean;
+  customCanvasBackgroundColor: string;
   dpi: Dpi;
   gridColor: string;
   gridSettings: GridSettings;
   infoMode: boolean;
+  onCanvasBackgroundChange: (color: string) => void;
   onGridColorChange: (color: string) => void;
   onGridSettingsChange: (settings: GridSettings) => void;
   onDpiChange: (dpi: Dpi) => void;
+  onPickCanvasBackground: () => void;
   onRedo: () => void;
   onToggleGrid: () => void;
   onToggleSnapToGrid: () => void;
@@ -228,14 +235,18 @@ function GridNumberInput({
 
 function EditorSettingsMenu({
   activeDisplayMode,
+  canvasBackgroundColor,
   canUseGrid,
+  customCanvasBackgroundColor,
   dpi,
   gridColor,
   gridSettings,
   infoMode,
+  onCanvasBackgroundChange,
   onGridColorChange,
   onGridSettingsChange,
   onDpiChange,
+  onPickCanvasBackground,
   onToggleGrid,
   onToggleSnapToGrid,
   onToggleDisplayMode,
@@ -249,14 +260,18 @@ function EditorSettingsMenu({
 }: Pick<
   FooterControlsProps,
   | "activeDisplayMode"
+  | "canvasBackgroundColor"
   | "canUseGrid"
+  | "customCanvasBackgroundColor"
   | "dpi"
   | "gridColor"
   | "gridSettings"
   | "infoMode"
+  | "onCanvasBackgroundChange"
   | "onGridColorChange"
   | "onGridSettingsChange"
   | "onDpiChange"
+  | "onPickCanvasBackground"
   | "onToggleGrid"
   | "onToggleSnapToGrid"
   | "onToggleDisplayMode"
@@ -279,7 +294,8 @@ function EditorSettingsMenu({
     setColorMode,
     toggleVisiblePanelsPinned
   } = useGraphicEditorSettings();
-  const { strings } = useI18n();
+  const { locale, setLocale, strings } = useI18n();
+  const canvasBackgrounds = CANVAS_BACKGROUNDS_BY_THEME[theme];
   const gridColors = GRID_COLORS_BY_THEME[theme];
   const majorGridUnit = gridSettings.unit === "mm" ? "mm" : "px";
   const minorGridUnit = gridSettings.unit === "mm" ? "mm" : "px";
@@ -336,6 +352,76 @@ function EditorSettingsMenu({
           ? strings.settings.disableAutohide
           : strings.settings.enableAutohide}
       </SettingsCheckButton>
+      <div className="kizkatt-menu-divider" />
+      <label
+        className="kizkatt-language-row"
+        htmlFor="kizkatt-footer-language"
+      >
+        <span className="kizkatt-settings-item-label">
+          {LanguageIcon}
+          <span>{strings.language.label}</span>
+        </span>
+        <select
+          id="kizkatt-footer-language"
+          aria-label={strings.language.label}
+          title={strings.language.label}
+          value={locale}
+          onPointerDown={stopPanelDrag}
+          onChange={(event) => setLocale(event.target.value as Locale)}
+        >
+          {SUPPORTED_LOCALES.map((language) => (
+            <option key={language.id} value={language.id}>
+              {language.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p>{strings.mainMenu.canvasBackground}</p>
+      <div
+        className="kizkatt-swatches kizkatt-canvas-background-swatches"
+        role="group"
+        aria-label={strings.mainMenu.canvasBackground}
+      >
+        {canvasBackgrounds.map((color) => (
+          <button
+            key={color}
+            type="button"
+            data-no-panel-drag
+            aria-label={`Canvas background ${color}`}
+            title={`${strings.mainMenu.tooltips.canvasBackgroundColor} ${color}`}
+            className={canvasBackgroundColor === color ? "is-active" : undefined}
+            style={{ backgroundColor: color }}
+            onPointerDown={stopPanelDrag}
+            onClick={() => onCanvasBackgroundChange(color)}
+          />
+        ))}
+        <button
+          type="button"
+          data-no-panel-drag
+          aria-label={`Canvas background custom ${customCanvasBackgroundColor}`}
+          title={`${strings.mainMenu.tooltips.customCanvasBackground} ${customCanvasBackgroundColor}`}
+          className={[
+            "kizkatt-custom-background-swatch",
+            canvasBackgroundColor === customCanvasBackgroundColor
+              ? "is-active"
+              : ""
+          ].join(" ")}
+          style={{ backgroundColor: customCanvasBackgroundColor }}
+          onPointerDown={stopPanelDrag}
+          onClick={() => onCanvasBackgroundChange(customCanvasBackgroundColor)}
+        />
+        <button
+          type="button"
+          data-no-panel-drag
+          aria-label={strings.mainMenu.pickCanvasBackground}
+          title={strings.mainMenu.tooltips.pickCanvasBackground}
+          className="kizkatt-eyedropper-swatch"
+          onPointerDown={stopPanelDrag}
+          onClick={onPickCanvasBackground}
+        >
+          {EyedropperIcon}
+        </button>
+      </div>
       <div className="kizkatt-menu-divider" />
       <div className="kizkatt-color-mode-settings-row">
         <span>{strings.settings.colorMode}</span>
@@ -663,16 +749,20 @@ function EditorSettingsMenu({
 
 export function FooterControls({
   activeDisplayMode,
+  canvasBackgroundColor,
   canRedo,
   canUndo,
   canUseGrid,
+  customCanvasBackgroundColor,
   dpi,
   gridColor,
   gridSettings,
   infoMode,
+  onCanvasBackgroundChange,
   onGridColorChange,
   onGridSettingsChange,
   onDpiChange,
+  onPickCanvasBackground,
   onRedo,
   onToggleGrid,
   onToggleSnapToGrid,
@@ -820,14 +910,18 @@ export function FooterControls({
         {settingsOpen && (
           <EditorSettingsMenu
             activeDisplayMode={activeDisplayMode}
+            canvasBackgroundColor={canvasBackgroundColor}
             canUseGrid={canUseGrid}
+            customCanvasBackgroundColor={customCanvasBackgroundColor}
             dpi={dpi}
             gridColor={gridColor}
             gridSettings={gridSettings}
             infoMode={infoMode}
+            onCanvasBackgroundChange={onCanvasBackgroundChange}
             onGridColorChange={onGridColorChange}
             onGridSettingsChange={onGridSettingsChange}
             onDpiChange={onDpiChange}
+            onPickCanvasBackground={onPickCanvasBackground}
             onToggleGrid={onToggleGrid}
             onToggleSnapToGrid={onToggleSnapToGrid}
             onToggleDisplayMode={onToggleDisplayMode}

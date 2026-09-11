@@ -1,55 +1,54 @@
-import { CANVAS_BACKGROUNDS_BY_THEME } from "../../config/constants";
 import { formatKeyboardShortcut } from "../../platform/keyboard";
 import type { EditorDisplayMode, KizkattTheme } from "../../model/types";
 import {
   EyeIcon,
+  ExportDocumentIcon,
   ExportIcon,
-  EyedropperIcon,
   HamburgerMenuIcon,
-  LanguageIcon,
   MoonIcon,
+  NewDocumentIcon,
   OpenIcon,
-  ResetIcon,
+  PrintIcon,
+  SaveIcon,
   SunIcon,
   WireframeIcon
 } from "../icons";
-import { SUPPORTED_LOCALES, useI18n, type Locale } from "../../i18n";
-import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
+import { useI18n } from "../../i18n";
 
 export function MainMenu({
   activeDisplayMode,
-  canvasBackgroundColor,
-  customCanvasBackgroundColor,
+  canExport,
   lastDisplayMode,
   menuOpen,
-  onCanvasBackgroundChange,
   onExport,
-  onOpen,
-  onPickCanvasBackground,
+  onImport,
+  onLoad,
+  onNew,
   onMenuOpenChange,
-  onResetCanvas,
+  onPrint,
+  onSave,
+  onSaveAs,
   onThemeChange,
   onToggleLastDisplayMode,
   theme
 }: {
   activeDisplayMode: EditorDisplayMode | null;
-  canvasBackgroundColor: string;
-  customCanvasBackgroundColor: string;
+  canExport: boolean;
   lastDisplayMode: EditorDisplayMode;
   menuOpen: boolean;
-  onCanvasBackgroundChange: (color: string) => void;
   onExport: () => void;
-  onOpen: () => void;
-  onPickCanvasBackground: () => void;
+  onImport: () => void;
+  onLoad: () => void;
+  onNew: () => void;
   onMenuOpenChange: (open: boolean) => void;
-  onResetCanvas: () => void;
+  onPrint: () => void;
+  onSave: () => void;
+  onSaveAs: () => void;
   onThemeChange: (theme: KizkattTheme) => void;
   onToggleLastDisplayMode: () => void;
   theme: KizkattTheme;
 }) {
-  const { autohideToolbar, setAutohideToolbar } = useGraphicEditorSettings();
-  const { locale, setLocale, strings } = useI18n();
-  const canvasBackgrounds = CANVAS_BACKGROUNDS_BY_THEME[theme];
+  const { strings } = useI18n();
   const lastDisplayModeLabel =
     lastDisplayMode === "preview"
       ? strings.settings.previewMode
@@ -89,35 +88,83 @@ export function MainMenu({
       {menuOpen && (
         <nav className="kizkatt-main-menu" aria-label={strings.mainMenu.ariaLabel}>
           <button
+            aria-label={strings.mainMenu.new}
             type="button"
-            title={strings.mainMenu.tooltips.open}
-            onClick={() => runMenuAction(onOpen)}
+            title={strings.mainMenu.tooltips.new}
+            onClick={() => runMenuAction(onNew)}
+          >
+            <span className="kizkatt-menu-item-label">
+              {NewDocumentIcon}
+              <span>{strings.mainMenu.new}</span>
+            </span>
+            <kbd>{formatKeyboardShortcut("n")}</kbd>
+          </button>
+          <div className="kizkatt-menu-divider" />
+          <button
+            aria-label={strings.mainMenu.load}
+            type="button"
+            title={strings.mainMenu.tooltips.load}
+            onClick={() => runMenuAction(onLoad)}
           >
             <span className="kizkatt-menu-item-label">
               {OpenIcon}
-              <span>{strings.mainMenu.open}</span>
+              <span>{strings.mainMenu.load}</span>
             </span>
             <kbd>{formatKeyboardShortcut("o")}</kbd>
           </button>
           <button
+            aria-label={strings.mainMenu.save}
             type="button"
+            title={strings.mainMenu.tooltips.save}
+            onClick={() => runMenuAction(onSave)}
+          >
+            <span className="kizkatt-menu-item-label">
+              {SaveIcon}
+              <span>{strings.mainMenu.save}</span>
+            </span>
+            <kbd>{formatKeyboardShortcut("s")}</kbd>
+          </button>
+          <button
+            type="button"
+            title={strings.mainMenu.tooltips.saveAs}
+            onClick={() => runMenuAction(onSaveAs)}
+          >
+            <span className="kizkatt-menu-item-label">
+              {SaveIcon}
+              <span>{strings.mainMenu.saveAs}</span>
+            </span>
+          </button>
+          <div className="kizkatt-menu-divider" />
+          <button
+            type="button"
+            title={strings.mainMenu.tooltips.import}
+            onClick={() => runMenuAction(onImport)}
+          >
+            <span className="kizkatt-menu-item-label">
+              {ExportIcon}
+              <span>{strings.mainMenu.import}</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={!canExport}
             title={strings.mainMenu.tooltips.export}
             onClick={() => runMenuAction(onExport)}
           >
             <span className="kizkatt-menu-item-label">
-              {ExportIcon}
+              {ExportDocumentIcon}
               <span>{strings.mainMenu.export}</span>
             </span>
           </button>
           <div className="kizkatt-menu-divider" />
           <button
             type="button"
-            title={strings.mainMenu.tooltips.reset}
-            onClick={() => runMenuAction(onResetCanvas)}
+            title={strings.mainMenu.tooltips.print}
+            onClick={() => runMenuAction(onPrint)}
           >
             <span className="kizkatt-menu-item-label">
-              {ResetIcon}
-              <span>{strings.mainMenu.reset}</span>
+              {PrintIcon}
+              <span>{strings.mainMenu.print}</span>
             </span>
           </button>
           <div className="kizkatt-menu-divider" />
@@ -147,81 +194,6 @@ export function MainMenu({
                 {MoonIcon}
               </button>
             </div>
-          </div>
-          <button
-            type="button"
-            className="kizkatt-menu-check-row"
-            aria-pressed={autohideToolbar}
-            title={strings.mainMenu.tooltips.autohideToolbar}
-            onClick={() => setAutohideToolbar(!autohideToolbar)}
-          >
-            <span>{strings.mainMenu.autohideToolbar}</span>
-            <span>
-              {autohideToolbar ? strings.mainMenu.on : strings.mainMenu.off}
-            </span>
-          </button>
-          <div className="kizkatt-menu-divider" />
-          <label className="kizkatt-language-row" htmlFor="kizkatt-language">
-            <span className="kizkatt-menu-item-label">
-              {LanguageIcon}
-              <span>{strings.language.label}</span>
-            </span>
-            <select
-              id="kizkatt-language"
-              aria-label={strings.language.label}
-              title={strings.language.label}
-              value={locale}
-              onChange={(event) => setLocale(event.target.value as Locale)}
-            >
-              {SUPPORTED_LOCALES.map((language) => (
-                <option key={language.id} value={language.id}>
-                  {language.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="kizkatt-menu-divider" />
-          <p>{strings.mainMenu.canvasBackground}</p>
-          <div
-            className="kizkatt-swatches"
-            role="group"
-            aria-label={strings.mainMenu.canvasBackground}
-          >
-            {canvasBackgrounds.map((color) => (
-              <button
-                key={color}
-                type="button"
-                aria-label={`Canvas background ${color}`}
-                title={`${strings.mainMenu.tooltips.canvasBackgroundColor} ${color}`}
-                className={canvasBackgroundColor === color ? "is-active" : undefined}
-                style={{ backgroundColor: color }}
-                onClick={() => onCanvasBackgroundChange(color)}
-              />
-            ))}
-            <button
-              type="button"
-              aria-label={`Canvas background custom ${customCanvasBackgroundColor}`}
-              title={`${strings.mainMenu.tooltips.customCanvasBackground} ${customCanvasBackgroundColor}`}
-              className={[
-                "kizkatt-custom-background-swatch",
-                canvasBackgroundColor === customCanvasBackgroundColor
-                  ? "is-active"
-                  : ""
-              ].join(" ")}
-              style={{ backgroundColor: customCanvasBackgroundColor }}
-              onClick={() =>
-                onCanvasBackgroundChange(customCanvasBackgroundColor)
-              }
-            />
-            <button
-              type="button"
-              aria-label={strings.mainMenu.pickCanvasBackground}
-              title={strings.mainMenu.tooltips.pickCanvasBackground}
-              className="kizkatt-eyedropper-swatch"
-              onClick={onPickCanvasBackground}
-            >
-              {EyedropperIcon}
-            </button>
           </div>
         </nav>
       )}

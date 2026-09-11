@@ -1,0 +1,92 @@
+.kizkatt-dialog-backdrop {
+  align-items: center;
+  background: rgb(0 0 0 / 42%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 10000;
+}
+
+.kizkatt-confirmation-dialog {
+  background: var(--kizkatt-control-bg);
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 52px rgb(0 0 0 / 35%);
+  color: var(--kizkatt-text);
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 22px;
+}
+
+.kizkatt-confirmation-dialog h2 {
+  font-size: 18px;
+  margin: 0 0 10px;
+}
+
+.kizkatt-confirmation-dialog p {
+  color: var(--kizkatt-muted-text);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.kizkatt-confirmation-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+
+.kizkatt-confirmation-dialog-actions button {
+  background: var(--kizkatt-control-bg);
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+  min-height: 36px;
+  padding: 0 14px;
+}
+
+.kizkatt-confirmation-dialog-actions button.is-primary {
+  background: var(--kizkatt-selection);
+  border-color: var(--kizkatt-selection);
+  color: white;
+}
+
+.kizkatt-file-format-dialog {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.kizkatt-file-format-options {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.kizkatt-file-format-options button {
+  align-items: center;
+  background: var(--kizkatt-control-bg);
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 9px;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 92px;
+  padding: 14px;
+}
+
+.kizkatt-file-format-options button:hover {
+  border-color: var(--kizkatt-selection);
+}
+
+.kizkatt-file-format-options strong {
+  color: var(--kizkatt-selection);
+  font-size: 18px;
+}
+
+.kizkatt-file-format-options span {
+  color: var(--kizkatt-muted-text);
+}

@@ -35,6 +35,10 @@ import type {
 
 export type { EditorDisplayMode } from "../model/types";
 
+export type DocumentFileFormat = "kk" | "svg";
+export type DocumentFormatDialogAction = "export" | "import" | "saveAs";
+export type SceneReplacementAction = "load" | "new";
+
 export type KizkattRenderElementOptions = {
   linearEndpointMode?: "node" | "resize";
   overlayVariant?: "primary" | "internal";
@@ -86,16 +90,24 @@ export type EditorCommandControls = {
 
 export type DocumentControls = {
   activeDisplayMode: EditorDisplayMode | null;
-  canvasBackgroundColor: string;
-  customCanvasBackgroundColor: string;
+  canExport: boolean;
+  formatDialogAction: DocumentFormatDialogAction | null;
   lastDisplayMode: EditorDisplayMode;
   menuOpen: boolean;
-  onCanvasBackgroundChange: (color: string) => void;
+  sceneReplacementAction: SceneReplacementAction | null;
+  onCancelFormatDialog: () => void;
+  onCancelSceneReplacement: () => void;
+  onChooseFormat: (format: DocumentFileFormat) => void;
+  onConfirmSceneReplacementWithoutSaving: () => void;
+  onConfirmSaveAndReplaceScene: () => void;
   onExport: () => void;
-  onOpen: () => void;
-  onPickCanvasBackground: () => void;
+  onImport: () => void;
+  onLoad: () => void;
   onMenuOpenChange: (open: boolean) => void;
-  onResetCanvas: () => void;
+  onNew: () => void;
+  onPrint: () => void;
+  onSave: () => void;
+  onSaveAs: () => void;
   onThemeChange: (theme: KizkattTheme) => void;
   onToggleLastDisplayMode: () => void;
   theme: KizkattTheme;
@@ -155,17 +167,21 @@ export type TextEditorProps = {
 
 export type WorkspaceControls = {
   activeDisplayMode: EditorDisplayMode | null;
+  canvasBackgroundColor: string;
   canUseGrid: boolean;
   canRedo: boolean;
   canUndo: boolean;
+  customCanvasBackgroundColor: string;
   dpi: Dpi;
   gridColor: string;
   gridSettings: GridSettings;
   infoMode: boolean;
+  onCanvasBackgroundChange: (color: string) => void;
   onRedo: () => void;
   onGridColorChange: (color: string) => void;
   onGridSettingsChange: (settings: GridSettings) => void;
   onDpiChange: (dpi: Dpi) => void;
+  onPickCanvasBackground: () => void;
   onToggleGrid: () => void;
   onToggleSnapToGrid: () => void;
   onToggleDisplayMode: (mode: EditorDisplayMode) => void;

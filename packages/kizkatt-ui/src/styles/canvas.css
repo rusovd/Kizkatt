@@ -79,3 +79,30 @@
   fill: var(--kizkatt-wireframe-stroke) !important;
   stroke: none !important;
 }
+
+@media print {
+  .kizkatt-board {
+    background: white !important;
+    height: 100vh;
+    overflow: visible;
+    width: 100vw;
+  }
+
+  .kizkatt-board > :not(.kizkatt-canvas) {
+    display: none !important;
+  }
+
+  .kizkatt-canvas {
+    background: white !important;
+    print-color-adjust: exact;
+  }
+
+  .kizkatt-canvas :is(
+    .kizkatt-grid,
+    .kizkatt-info-overlay,
+    .kizkatt-selection-overlay,
+    .kizkatt-transform-preview
+  ) {
+    display: none !important;
+  }
+}

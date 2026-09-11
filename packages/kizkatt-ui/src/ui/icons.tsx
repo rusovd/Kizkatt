@@ -726,6 +726,30 @@ export const ExportIcon = createIcon(
   { height: 20, width: 20 }
 );
 
+export const ExportDocumentIcon = createIcon(
+  <path
+    strokeWidth="1.25"
+    d="M3.333 14.167v1.666c0 .92.747 1.667 1.667 1.667h10c.92 0 1.667-.746 1.667-1.667v-1.666M5.833 7.5 10 3.333 14.167 7.5M10 3.333v10"
+  />,
+  { height: 20, width: 20 }
+);
+
+export const NewDocumentIcon = createIcon(
+  <g strokeWidth="1.25">
+    <path d="M5 2.5h7l4 4v11H5Z" />
+    <path d="M12 2.5v4h4M7.5 12h6M10.5 9v6" />
+  </g>,
+  { height: 20, width: 20 }
+);
+
+export const PrintIcon = createIcon(
+  <g strokeWidth="1.25">
+    <path d="M5.833 7.5V3.333h8.334V7.5M5.833 14.167H4.167a1.667 1.667 0 0 1-1.667-1.667V9.167A1.667 1.667 0 0 1 4.167 7.5h11.666A1.667 1.667 0 0 1 17.5 9.167V12.5a1.667 1.667 0 0 1-1.667 1.667h-1.666" />
+    <path d="M5.833 11.667h8.334v5.833H5.833Z" />
+  </g>,
+  { height: 20, width: 20 }
+);
+
 export const ResetIcon = createIcon(
   <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
