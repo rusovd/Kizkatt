@@ -27,6 +27,8 @@ import {
   EditorLoader,
   CanvasContextMenu,
   MainMenu,
+  SceneFileFormatDialog,
+  SceneLoadConfirmationDialog,
   BitmapPatternFillPanel,
   GradientFillPanel,
   GradientLibraryPopover,
@@ -352,6 +354,21 @@ export function KizkattGraphicEditorView({
 
       <CanvasContextMenu {...commandControls} />
       <MainMenu {...documentControls} />
+      {documentControls.sceneReplacementAction && (
+        <SceneLoadConfirmationDialog
+          action={documentControls.sceneReplacementAction}
+          onCancel={documentControls.onCancelSceneReplacement}
+          onDiscard={documentControls.onConfirmSceneReplacementWithoutSaving}
+          onSave={documentControls.onConfirmSaveAndReplaceScene}
+        />
+      )}
+      {documentControls.formatDialogAction && (
+        <SceneFileFormatDialog
+          action={documentControls.formatDialogAction}
+          onCancel={documentControls.onCancelFormatDialog}
+          onChoose={documentControls.onChooseFormat}
+        />
+      )}
 
       {showObjectPanel && visibleSelectionGeometryControls && (
         <ObjectPanel {...visibleSelectionGeometryControls} />

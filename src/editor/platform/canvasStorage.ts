@@ -1,6 +1,5 @@
 import {
   CANVAS_STATE_STORAGE_KEY,
-  QUICK_SAVE_STORAGE_KEY,
   getElementBends,
   normalizeElementNames,
   normalizeFillStyle
@@ -91,10 +90,6 @@ function writeCanvasState(key: string, state: CanvasState, storage: Storage) {
   }
 }
 
-export function getStoredQuickCanvasState(storage = window.localStorage) {
-  return readCanvasState(QUICK_SAVE_STORAGE_KEY, storage);
-}
-
 export function getStoredCanvasState(storage = window.localStorage) {
   return readCanvasState(CANVAS_STATE_STORAGE_KEY, storage);
 }
@@ -104,11 +99,4 @@ export function storeCanvasState(
   storage = window.localStorage
 ) {
   return writeCanvasState(CANVAS_STATE_STORAGE_KEY, state, storage);
-}
-
-export function storeQuickCanvasState(
-  state: CanvasState,
-  storage = window.localStorage
-) {
-  return writeCanvasState(QUICK_SAVE_STORAGE_KEY, state, storage);
 }

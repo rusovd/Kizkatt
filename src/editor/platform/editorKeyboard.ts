@@ -8,8 +8,12 @@ const EDITABLE_KEYBOARD_TARGET_SELECTOR =
 
 export const EDITING_SHORTCUT_KEY = {
   copy: "c",
+  load: "o",
+  new: "n",
   paste: "v",
+  print: "p",
   redo: "y",
+  save: "s",
   selectAll: "a",
   undo: "z"
 } as const;

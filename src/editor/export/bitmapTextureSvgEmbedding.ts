@@ -298,5 +298,9 @@ export async function embedBitmapTextureFragmentsInSvg(
     );
   }
 
+  
+  
+  await inlineSvgImages(document.documentElement);
+
   return new XMLSerializer().serializeToString(document.documentElement);
 }
