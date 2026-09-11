@@ -94,7 +94,7 @@ describe("KizkattGraphicEditor shell", () => {
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
     expect(canvas).toHaveStyle({ backgroundColor: "#161719" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    openEditorSettings();
     fireEvent.click(
       screen.getByRole("button", {
         name: "Canvas background #211a16"
@@ -342,15 +342,28 @@ describe("KizkattGraphicEditor shell", () => {
     );
   });
 
-  it("renders the Kizkatt main menu actions, theme picker, and canvas backgrounds", () => {
+  it("separates document actions from editor settings", () => {
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
 
-    expect(screen.getByRole("button", { name: /Open/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Load" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save as..." }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Print" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reset" })).not
+      .toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Theme" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Language" }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Canvas background" }))
+      .not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    openEditorSettings();
     expect(screen.getByRole("combobox", { name: "Language" })).toHaveValue(
       "en"
     );
@@ -363,14 +376,16 @@ describe("KizkattGraphicEditor shell", () => {
     expect(
       screen.queryByRole("button", { name: "Canvas background #f5faff" })
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Editor settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
     fireEvent.click(screen.getByRole("button", { name: "Light theme" }));
+    openEditorSettings();
     expect(
       screen.getByRole("button", { name: "Canvas background #f5faff" })
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Pick canvas background" })
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText(/UI scale/)).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Grid color" })).not
       .toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Find on canvas/ })).not
@@ -404,15 +419,17 @@ describe("KizkattGraphicEditor shell", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
 
-    expect(screen.getByRole("button", { name: /Open/ })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Load" })).toHaveAttribute(
       "title",
-      "Open a drawing file"
+      "Replace the current scene from a Kizkatt file"
     );
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    openEditorSettings();
     expect(
       screen.getByRole("button", { name: "Canvas background #161719" })
     ).toHaveAttribute("title", "Set canvas background to #161719");
 
-    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Editor settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
 
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
@@ -934,11 +951,13 @@ describe("KizkattGraphicEditor shell", () => {
       .not.toBeInTheDocument();
   });
 
-  it("duplicates toolbar autohide in the main menu", () => {
+  it("controls toolbar autohide from editor settings", () => {
     render(<KizkattGraphicEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
-    fireEvent.click(screen.getByRole("button", { name: /Autohide toolbar/ }));
+    openEditorSettings();
+    fireEvent.click(screen.getByRole("menuitemcheckbox", {
+      name: "Enable Autohide"
+    }));
 
     expect(
       window.localStorage.getItem(
@@ -994,7 +1013,19 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByRole("button", { name: "Rectangle" })).toBeInTheDocument();
   });
 
-  it("quick saves and quick loads the canvas from the main menu", () => {
+  it("saves and loads a Kizkatt scene from the main menu", async () => {
+    const writtenContents: string[] = [];
+    const showSaveFilePicker = vi.fn().mockResolvedValue({
+      createWritable: vi.fn().mockResolvedValue({
+        close: vi.fn().mockResolvedValue(undefined),
+        write: vi.fn().mockImplementation(async (contents: string) => {
+          writtenContents.push(contents);
+        })
+      }),
+      name: "drawing.kk"
+    });
+    vi.stubGlobal("showSaveFilePicker", showSaveFilePicker);
+
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
@@ -1007,21 +1038,117 @@ describe("KizkattGraphicEditor shell", () => {
     expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
-    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(
-      window.localStorage.getItem("kizkatt:graphic-engine:quick-save")
-    ).toContain('"elements"');
+    await waitFor(() => expect(writtenContents).toHaveLength(1));
+    expect(JSON.parse(writtenContents[0])).toMatchObject({
+      kk: { scene: { Objects: { Object_000001: { type: "rectangle" } } } }
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(writtenContents).toHaveLength(2));
+    expect(showSaveFilePicker).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "New" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create without saving" })
+    );
 
     expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(0);
 
-    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
-    fireEvent.click(screen.getByRole("button", { name: /Open/ }));
+    const sceneFile = {
+      name: "drawing.kk",
+      text: vi.fn().mockResolvedValue(writtenContents[0])
+    } as unknown as File;
+    const showOpenFilePicker = vi.fn().mockResolvedValue([
+      { getFile: vi.fn().mockResolvedValue(sceneFile), name: sceneFile.name }
+    ]);
+    vi.stubGlobal("showOpenFilePicker", showOpenFilePicker);
 
-    expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Load" }));
+
+    await waitFor(() => {
+      expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(1);
+    });
+  });
+
+  it("warns before replacing a non-empty scene", () => {
+    const showOpenFilePicker = vi.fn();
+    vi.stubGlobal("showOpenFilePicker", showOpenFilePicker);
+
+    render(<KizkattGraphicEditor />);
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Load" }));
+
+    expect(screen.getByRole("dialog", { name: "Save the current scene?" }))
+      .toBeInTheDocument();
+    expect(showOpenFilePicker).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("imports a Kizkatt scene and exports only the current selection", async () => {
+    const writtenContents: string[] = [];
+    const showSaveFilePicker = vi.fn().mockResolvedValue({
+      createWritable: vi.fn().mockResolvedValue({
+        close: vi.fn().mockResolvedValue(undefined),
+        write: vi.fn().mockImplementation(async (contents: string) => {
+          writtenContents.push(contents);
+        })
+      }),
+      name: "selection.kk"
+    });
+    vi.stubGlobal("showSaveFilePicker", showSaveFilePicker);
+
+    render(<KizkattGraphicEditor />);
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Kizkatt scene \(\.kk\)/ })
+    );
+
+    await waitFor(() => expect(writtenContents).toHaveLength(1));
+    expect(Object.keys(JSON.parse(writtenContents[0]).kk.scene.Objects))
+      .toHaveLength(1);
+
+    const importedFile = {
+      name: "import.kk",
+      text: vi.fn().mockResolvedValue(writtenContents[0])
+    } as unknown as File;
+    vi.stubGlobal(
+      "showOpenFilePicker",
+      vi.fn().mockResolvedValue([
+        { getFile: vi.fn().mockResolvedValue(importedFile), name: importedFile.name }
+      ])
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Kizkatt scene \(\.kk\)/ })
+    );
+
+    await waitFor(() => {
+      expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(2);
+    });
   });
 
   it("autosaves canvas changes and restores them on page load", async () => {
@@ -1090,7 +1217,7 @@ describe("KizkattGraphicEditor shell", () => {
 
     render(<KizkattGraphicEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    openEditorSettings();
     fireEvent.click(
       screen.getByRole("button", { name: "Pick canvas background" })
     );

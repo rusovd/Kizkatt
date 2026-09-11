@@ -92,4 +92,37 @@ describe("embedBitmapTextureFragmentsInSvg", () => {
       width: 120
     });
   });
+
+  it("inlines ordinary external bitmap resources in portable SVG output", async () => {
+    const dataUrl = "data:image/png;base64,cG9ydGFibGU=";
+    const fetchMock = vi.fn().mockResolvedValue({
+      blob: vi.fn().mockResolvedValue(new Blob(["portable"])),
+      ok: true
+    });
+    class StubFileReader {
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      result: string | null = null;
+
+      readAsDataURL() {
+        this.result = dataUrl;
+        this.onload?.();
+      }
+    }
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("FileReader", StubFileReader);
+
+    try {
+      const result = await embedBitmapTextureFragmentsInSvg(
+        '<svg xmlns="http://www.w3.org/2000/svg"><image href="/images/photo.png" /></svg>',
+        []
+      );
+
+      expect(fetchMock).toHaveBeenCalledWith("/images/photo.png");
+      expect(result).toContain(dataUrl);
+      expect(result).not.toContain("/images/photo.png");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
