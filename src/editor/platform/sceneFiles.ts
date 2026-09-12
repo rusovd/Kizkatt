@@ -1,15 +1,23 @@
 import {
+  decodeSceneFileContents,
+  DEFAULT_SCENE_FILE_NAME,
+  encodeSceneFileContents,
+  getSceneFileExtension,
+  getSceneFileFormat,
+  getSceneFileMimeType,
+  isKizkattSceneArchive,
   KIZKATT_SCENE_FILE_EXTENSION,
+  KIZKATT_SCENE_JSON_MIME_TYPE,
   KIZKATT_SCENE_MIME_TYPE,
-  SVG_IMAGE_MIME_TYPE
+  normalizeSceneFileBaseName,
+  SVG_FILE_EXTENSION,
+  type SceneFileFormat
 } from "kizkatt-graphic-engine";
-
-export type SceneFileFormat = "kk" | "svg";
 
 export type SceneFileHandle = {
   createWritable: () => Promise<{
     close: () => Promise<void>;
-    write: (contents: Blob | string) => Promise<void>;
+    write: (contents: Uint8Array | string) => Promise<void>;
   }>;
   getFile: () => Promise<File>;
   name: string;
@@ -38,11 +46,12 @@ type FilePickerWindow = Window & {
 
 const LOAD_PICKER_ID = "kizkatt-scene-load";
 const SAVE_PICKER_ID = "kizkatt-scene-save";
-const DEFAULT_SCENE_FILE_NAME = "untitled";
-const SVG_FILE_EXTENSION = ".svg";
 const SCENE_FILE_TYPES: FilePickerOptions["types"] = [
   {
-    accept: { [KIZKATT_SCENE_MIME_TYPE]: [KIZKATT_SCENE_FILE_EXTENSION] },
+    accept: {
+      [KIZKATT_SCENE_MIME_TYPE]: [KIZKATT_SCENE_FILE_EXTENSION],
+      [KIZKATT_SCENE_JSON_MIME_TYPE]: [KIZKATT_SCENE_FILE_EXTENSION]
+    },
     description: "Kizkatt scene"
   },
   {
@@ -65,38 +74,20 @@ function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
-function getExtension(format: SceneFileFormat) {
-  return format === "svg" ? SVG_FILE_EXTENSION : KIZKATT_SCENE_FILE_EXTENSION;
-}
-
-function getMimeType(format: SceneFileFormat) {
-  return format === "svg" ? SVG_IMAGE_MIME_TYPE : KIZKATT_SCENE_MIME_TYPE;
-}
-
-function stripSupportedExtension(fileName: string) {
-  return fileName.replace(/\.(?:kk|svg)$/i, "");
-}
-
-function normalizeBaseName(value?: string) {
-  const baseName = stripSupportedExtension(value?.trim() || DEFAULT_SCENE_FILE_NAME)
-    .replace(/[\\/:*?"<>|]+/g, "-")
-    .trim();
-
-  return baseName || DEFAULT_SCENE_FILE_NAME;
-}
-
-export function getSceneFileFormat(fileName: string): SceneFileFormat | null {
-  const normalizedName = fileName.toLowerCase();
-
-  if (normalizedName.endsWith(KIZKATT_SCENE_FILE_EXTENSION)) {
-    return "kk";
-  }
-
-  return normalizedName.endsWith(SVG_FILE_EXTENSION) ? "svg" : null;
-}
-
-function triggerDownload(contents: string, fileName: string, mimeType: string) {
-  const url = URL.createObjectURL(new Blob([contents], { type: mimeType }));
+function triggerDownload(
+  contents: Uint8Array | string,
+  fileName: string,
+  mimeType: string
+) {
+  const blobPart = typeof contents === "string"
+    ? contents
+    : contents.buffer instanceof ArrayBuffer &&
+        contents.byteOffset === 0 &&
+        contents.byteLength === contents.buffer.byteLength
+      ? contents.buffer
+      : contents.slice().buffer;
+  const blob = new Blob([blobPart], { type: mimeType });
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
 
   try {
@@ -111,29 +102,62 @@ function triggerDownload(contents: string, fileName: string, mimeType: string) {
   }
 }
 
+async function readSceneFileContents(file: File, format: SceneFileFormat) {
+  if (format === "svg") {
+    return decodeSceneFileContents({
+      contents: await file.text(),
+      format
+    });
+  }
+
+  const prefix = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+  const archived = isKizkattSceneArchive(prefix);
+
+  return decodeSceneFileContents({
+    contents: archived
+      ? new Uint8Array(await file.arrayBuffer())
+      : await file.text(),
+    format
+  });
+}
+
 export async function saveSceneFile({
+  archiveKk = true,
   format = "kk",
   getContents,
   handle,
   suggestedBaseName
 }: {
+  archiveKk?: boolean;
   format?: SceneFileFormat;
   getContents: () => Promise<string> | string;
   handle?: SceneFileHandle | null;
   suggestedBaseName?: string;
 }) {
-  const extension = getExtension(format);
-  const fileName = `${normalizeBaseName(suggestedBaseName)}${extension}`;
+  const extension = getSceneFileExtension(format);
+  const fileName = `${
+    normalizeSceneFileBaseName(suggestedBaseName)
+  }${extension}`;
   const pickerWindow = window as FilePickerWindow;
 
   try {
     if (handle) {
-      const contents = await getContents();
+      const contents = await encodeSceneFileContents({
+        contents: await getContents(),
+        fileName: handle.name,
+        format,
+        archiveKk
+      });
       const writable = await handle.createWritable();
       await writable.write(contents);
       await writable.close();
 
-      return { format, handle, name: handle.name };
+      return {
+        archived: format === "kk" && archiveKk,
+        format,
+        handle,
+        name: handle.name
+      };
     }
 
     if (pickerWindow.showSaveFilePicker) {
@@ -144,7 +168,12 @@ export async function saveSceneFile({
         suggestedName: fileName,
         types: getFileTypes(format)
       });
-      const contents = await getContents();
+      const contents = await encodeSceneFileContents({
+        contents: await getContents(),
+        fileName: selectedHandle.name,
+        format,
+        archiveKk
+      });
       const writable = await selectedHandle.createWritable();
       await writable.write(contents);
       await writable.close();
@@ -152,14 +181,28 @@ export async function saveSceneFile({
       return {
         format,
         handle: selectedHandle,
-        name: selectedHandle.name
+        name: selectedHandle.name,
+        archived: format === "kk" && archiveKk
       };
     }
 
-    const contents = await getContents();
-    triggerDownload(contents, fileName, getMimeType(format));
+    const contents = await encodeSceneFileContents({
+      contents: await getContents(),
+      fileName,
+      format,
+      archiveKk
+    });
+    triggerDownload(
+      contents,
+      fileName,
+      getSceneFileMimeType(format, archiveKk)
+    );
 
-    return { format, name: fileName };
+    return {
+      archived: format === "kk" && archiveKk,
+      format,
+      name: fileName
+    };
   } catch (error) {
     if (isAbortError(error)) {
       return null;
@@ -237,8 +280,10 @@ export async function loadSceneFile({
       return null;
     }
 
+    const fileContents = await readSceneFileContents(file, detectedFormat);
+
     return {
-      contents: await file.text(),
+      ...fileContents,
       file,
       format: detectedFormat,
       handle,

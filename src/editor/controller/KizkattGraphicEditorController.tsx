@@ -46,18 +46,19 @@ import {
   createElement,
   createDefaultKizkattSceneSettings,
   createId,
-  createKizkattSceneDocument,
+  createSceneExport,
+  DEFAULT_SCENE_FILE_NAME,
   getKizkattDocumentCanvasState,
+  importSceneElements,
   importSvgElements,
   parseKizkattSceneDocument,
-  serializeKizkattSceneDocument,
+  type SceneFileFormat,
   withUpdatedObjectBase
 } from "kizkatt-graphic-engine";
 import {
   createElementName as buildElementName,
   normalizeElementNames
 } from "kizkatt-graphic-engine";
-import { cloneElementsWithFreshIdsAndGroups } from "kizkatt-graphic-engine";
 import {
   canGroupSelection,
   canUngroupSelection,
@@ -78,7 +79,6 @@ import {
   getStoredDpi,
   getStoredGridColor,
   getStoredGridSettings,
-  getStoredContextMenuDefaults,
   getStoredTheme,
   getStoredUiScale,
   normalizeGridSettings,
@@ -102,11 +102,9 @@ import {
   storeCanvasState
 } from "../platform/canvasStorage";
 import { copySelectionAsPng, copySelectionAsSvg } from "../export/clipboardExport";
-import { exportSceneAsSvg } from "../export/sceneSvgExport";
 import {
   loadSceneFile,
   saveSceneFile,
-  type SceneFileFormat,
   type SceneFileHandle
 } from "../platform/sceneFiles";
 import { useCanvasAutosave } from "../state/useCanvasAutosave";
@@ -143,6 +141,7 @@ import {
 import { isBreakApartableSvgElement } from "kizkatt-graphic-engine";
 import type {
   DocumentFormatDialogAction,
+  DocumentFormatSelection,
   KizkattRenderElementOptions,
   EditorDisplayMode,
   SceneReplacementAction
@@ -200,8 +199,7 @@ export function KizkattGraphicEditorController({
   getCanvasCursor,
   getToolForSelectedElement,
   naming,
-  renderCanvas,
-  serializeSvg
+  renderCanvas
 }: KizkattGraphicEditorControllerProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -212,7 +210,8 @@ export function KizkattGraphicEditorController({
   >(null);
   const currentDocumentHandleRef = useRef<SceneFileHandle | null>(null);
   const currentDocumentFormatRef = useRef<SceneFileFormat | null>(null);
-  const currentDocumentNameRef = useRef("untitled");
+  const currentDocumentArchiveRef = useRef(true);
+  const currentDocumentNameRef = useRef(DEFAULT_SCENE_FILE_NAME);
   const [tool, setTool] = useState<Tool>("select");
   const [menuOpen, setMenuOpen] = useState(false);
   const [formatDialogAction, setFormatDialogAction] =
@@ -739,7 +738,6 @@ export function KizkattGraphicEditorController({
         dpi,
         elements: selectedElements,
         elementIds: canvasState.selectedIds,
-        serializeSvg,
         svg: svgRef.current
       });
     } finally {
@@ -755,7 +753,6 @@ export function KizkattGraphicEditorController({
         dpi,
         elements: selectedElements,
         elementIds: canvasState.selectedIds,
-        serializeSvg,
         svg: svgRef.current
       });
 
@@ -1063,8 +1060,9 @@ export function KizkattGraphicEditorController({
     commitState({ elements: [], selectedBend: undefined, selectedIds: [] });
     currentDocumentHandleRef.current = null;
     currentDocumentFormatRef.current = null;
+    currentDocumentArchiveRef.current = true;
     currentDocumentMetaRef.current = null;
-    currentDocumentNameRef.current = "untitled";
+    currentDocumentNameRef.current = DEFAULT_SCENE_FILE_NAME;
     setEditingTextElementId(null);
     setMenuOpen(false);
   };
@@ -1135,19 +1133,8 @@ export function KizkattGraphicEditorController({
     setZoom(settings.scale / 100);
   };
 
-  const createDocumentForElements = (
-    elements: KizkattElement[],
-    preserveCurrentMetadata: boolean
-  ) =>
-    createKizkattSceneDocument({
-      canvasState: { elements, selectedIds: [] },
-      meta: preserveCurrentMetadata
-        ? currentDocumentMetaRef.current ?? undefined
-        : undefined,
-      settings: getCurrentSceneSettings()
-    });
-
   const saveElements = async ({
+    archiveKk,
     elements,
     format,
     handle,
@@ -1155,6 +1142,7 @@ export function KizkattGraphicEditorController({
     suggestedBaseName,
     updateCurrentDocument
   }: {
+    archiveKk: boolean;
     elements: KizkattElement[];
     format: SceneFileFormat;
     handle?: SceneFileHandle | null;
@@ -1169,28 +1157,34 @@ export function KizkattGraphicEditorController({
     }
 
     const endLoading = beginLoading();
-    const savedDocument = createDocumentForElements(
-      elements,
-      preserveCurrentMetadata
-    );
+    const sceneExportState: { document: KizkattSceneDocument | null } = {
+      document: null
+    };
 
     try {
       const result = await saveSceneFile({
+        archiveKk,
         format,
         handle,
         suggestedBaseName,
         getContents: async () => {
-          if (format === "kk") {
-            return serializeKizkattSceneDocument(savedDocument);
-          }
-
-          return exportSceneAsSvg({
+          const sceneExport = await createSceneExport({
             dpi,
             elements,
-            metadata: savedDocument.kk.meta,
-            serializeSvg,
-            svg: svg as SVGSVGElement
+            format,
+            meta: preserveCurrentMetadata
+              ? currentDocumentMetaRef.current ?? undefined
+              : undefined,
+            settings: getCurrentSceneSettings(),
+            svg
           });
+
+          if (!sceneExport) {
+            throw new Error("The editor canvas is unavailable for SVG export.");
+          }
+
+          sceneExportState.document = sceneExport.document;
+          return sceneExport.contents;
         }
       });
 
@@ -1200,8 +1194,12 @@ export function KizkattGraphicEditorController({
 
       if (updateCurrentDocument) {
         currentDocumentFormatRef.current = result.format;
+        if (result.format === "kk") {
+          currentDocumentArchiveRef.current = result.archived;
+        }
         currentDocumentHandleRef.current = result.handle ?? null;
-        currentDocumentMetaRef.current = savedDocument.kk.meta;
+        currentDocumentMetaRef.current =
+          sceneExportState.document?.kk.meta ?? null;
         currentDocumentNameRef.current = result.name;
       }
 
@@ -1213,16 +1211,21 @@ export function KizkattGraphicEditorController({
   };
 
   const saveCanvas = (
-    format: SceneFileFormat = "kk",
-    { saveAs = false }: { saveAs?: boolean } = {}
+    format: SceneFileFormat = currentDocumentFormatRef.current ?? "kk",
+    {
+      archiveKk = currentDocumentFormatRef.current === "kk"
+        ? currentDocumentArchiveRef.current
+        : true,
+      saveAs = false
+    }: { archiveKk?: boolean; saveAs?: boolean } = {}
   ) =>
     saveElements({
+      archiveKk,
       elements: canvasStateRef.current.elements,
       format,
       handle:
         !saveAs &&
-        format === "kk" &&
-        currentDocumentFormatRef.current === "kk"
+        format === currentDocumentFormatRef.current
           ? currentDocumentHandleRef.current
           : null,
       preserveCurrentMetadata: true,
@@ -1230,7 +1233,10 @@ export function KizkattGraphicEditorController({
       updateCurrentDocument: true
     });
 
-  const exportSelection = (format: SceneFileFormat = "kk") => {
+  const exportSelection = (
+    format: SceneFileFormat = "kk",
+    archiveKk = true
+  ) => {
     const activeState = canvasStateRef.current;
     const selectedIds = new Set(activeState.selectedIds);
     const elements = activeState.elements.filter((element) =>
@@ -1242,6 +1248,7 @@ export function KizkattGraphicEditorController({
     }
 
     return saveElements({
+      archiveKk,
       elements,
       format,
       handle: null,
@@ -1286,6 +1293,7 @@ export function KizkattGraphicEditorController({
       applySceneSettings(document.kk.scene.Settings);
       commitState(getKizkattDocumentCanvasState(document, naming));
       currentDocumentFormatRef.current = "kk";
+      currentDocumentArchiveRef.current = loadedFile.archived;
       currentDocumentHandleRef.current = loadedFile.handle ?? null;
       currentDocumentMetaRef.current = document.kk.meta;
       currentDocumentNameRef.current = loadedFile.name;
@@ -1309,30 +1317,15 @@ export function KizkattGraphicEditorController({
       }
 
       const activeState = canvasStateRef.current;
-      let importedElements: KizkattElement[] | null = null;
-
-      if (loadedFile.format === "kk") {
-        const document = parseKizkattSceneDocument(loadedFile.contents, {
-          fallbackSettings: getUserDefaultSceneSettings(),
-          naming
-        });
-
-        if (document) {
-          importedElements = cloneElementsWithFreshIdsAndGroups(
-            getKizkattDocumentCanvasState(document, naming).elements,
-            createId,
-            0,
-            activeState.elements,
-            naming
-          ).map(withUpdatedObjectBase);
-        }
-      } else {
-        importedElements = importSvgElements(loadedFile.contents, {
-          existingElements: activeState.elements,
-          fallbackStyle: defaultStyle,
-          naming
-        });
-      }
+      const importedElements = importSceneElements({
+        contents: loadedFile.contents,
+        createElementId: createId,
+        existingElements: activeState.elements,
+        fallbackSettings: getUserDefaultSceneSettings(),
+        fallbackStyle: defaultStyle,
+        format: loadedFile.format,
+        naming
+      });
 
       if (!importedElements) {
         return false;
@@ -1384,7 +1377,7 @@ export function KizkattGraphicEditorController({
       return;
     }
 
-    if (await saveCanvas("kk")) {
+    if (await saveCanvas()) {
       runSceneReplacement(action);
     }
   };
@@ -1408,16 +1401,19 @@ export function KizkattGraphicEditorController({
     setMenuOpen(false);
   };
 
-  const chooseDocumentFormat = (format: SceneFileFormat) => {
+  const chooseDocumentFormat = ({
+    archiveKk,
+    format
+  }: DocumentFormatSelection) => {
     const action = formatDialogAction;
 
     setFormatDialogAction(null);
     if (action === "saveAs") {
-      void saveCanvas(format, { saveAs: true });
+      void saveCanvas(format, { archiveKk, saveAs: true });
     } else if (action === "import") {
       void importDocumentFromFile(format);
     } else if (action === "export") {
-      void exportSelection(format);
+      void exportSelection(format, archiveKk);
     }
   };
 
@@ -1615,7 +1611,7 @@ export function KizkattGraphicEditorController({
       } else if (key === EDITING_SHORTCUT_KEY.save && event.shiftKey) {
         openFormatDialog("saveAs");
       } else if (key === EDITING_SHORTCUT_KEY.save) {
-        void saveCanvas("kk");
+        void saveCanvas();
       } else if (key === EDITING_SHORTCUT_KEY.undo && event.shiftKey) {
         redo();
       } else if (key === EDITING_SHORTCUT_KEY.undo) {
@@ -1879,19 +1875,15 @@ export function KizkattGraphicEditorController({
       selectedIdSet
     );
   }, [cullingSourceElements, pan.x, pan.y, selectedIdSet, zoom]);
-  const elementsInViewport = visibleElementIndices
-    ? visibleElementIndices.flatMap((elementIndex) => {
-        const element = canvasState.elements[elementIndex];
+  const elementsInViewport = useMemo(
+    () => visibleElementIndices
+      ? visibleElementIndices.flatMap((elementIndex) => {
+          const element = canvasState.elements[elementIndex];
 
-        return element ? [element] : [];
-      })
-    : canvasState.elements;
-  const layerNumberById = useMemo(
-    () =>
-      new Map(
-        canvasState.elements.map((element, index) => [element.id, index + 1])
-      ),
-    [canvasState.elements]
+          return element ? [element] : [];
+        })
+      : canvasState.elements,
+    [canvasState.elements, visibleElementIndices]
   );
   const infoOverlayItems = useMemo(() => {
     if (!infoMode) {
@@ -1907,26 +1899,28 @@ export function KizkattGraphicEditorController({
       )
     );
 
-    return canvasState.elements.flatMap((element) =>
+    return canvasState.elements.flatMap((element, index) =>
       visibleElementIds.has(element.id) ||
       (element.groupId && visibleGroupIds.has(element.groupId))
         ? [
             {
               element,
-              layerNumber: layerNumberById.get(element.id) ?? 1
+              layerNumber: index + 1
             }
           ]
         : []
     );
-  }, [
-    canvasState.elements,
-    elementsInViewport,
-    infoMode,
-    layerNumberById
-  ]);
-  const displayElements = getPreviewDisplayElements(
-    elementsInViewport,
-    previewTransformInteraction
+  }, [canvasState.elements, elementsInViewport, infoMode]);
+  const displayElements = useMemo(
+    () => getPreviewDisplayElements(
+      elementsInViewport,
+      previewTransformInteraction
+    ),
+    [
+      elementsInViewport,
+      previewTransformInteraction?.originalElements,
+      previewTransformInteraction?.selectedIds
+    ]
   );
   const imagePlacementBounds =
     tool === "image" && pendingImageSrc
@@ -2074,7 +2068,7 @@ export function KizkattGraphicEditorController({
       onMenuOpenChange: setMenuOpen,
       onNew: () => requestSceneReplacement("new"),
       onPrint: printCanvas,
-      onSave: () => void saveCanvas("kk"),
+      onSave: () => void saveCanvas(),
       onSaveAs: () => openFormatDialog("saveAs"),
       onThemeChange: setStoredTheme,
       onToggleLastDisplayMode: () => toggleDisplayMode(lastDisplayMode),

@@ -1,7 +1,4 @@
-import {
-  DEFAULT_ELEMENT_STYLE_BY_THEME,
-  serializeSvg
-} from "kizkatt-graphic-engine";
+import { DEFAULT_ELEMENT_STYLE_BY_THEME } from "kizkatt-graphic-engine";
 import {
   getCanvasCursor,
   useI18n
@@ -29,7 +26,6 @@ export function KizkattGraphicEditorContent() {
       }
       getCanvasCursor={getCanvasCursor}
       renderCanvas={renderEditorCanvas}
-      serializeSvg={serializeSvg}
     >
       {(viewModel) => (
         <KizkattGraphicEditorView

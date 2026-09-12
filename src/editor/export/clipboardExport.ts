@@ -1,28 +1,21 @@
 import {
   DEFAULT_DPI,
+  embedBitmapTextureFragmentsInSvg,
   EXPORT_CANVAS_IMAGE_ERROR_MESSAGE,
   EMPTY_COLLECTION_LENGTH,
   getDpiPixelRatio,
   MIN_PIXEL_SIZE,
   PNG_IMAGE_MIME_TYPE,
+  serializeSvg,
   SVG_IMAGE_MIME_TYPE
 } from "kizkatt-graphic-engine";
 import type { CopiedPngExport } from "kizkatt-graphic-engine";
 import type { KizkattElement } from "kizkatt-graphic-engine";
 import { getExportBounds } from "kizkatt-graphic-engine";
-import type { SvgSerializeOptions } from "kizkatt-graphic-engine";
-import { embedBitmapTextureFragmentsInSvg } from "./bitmapTextureSvgEmbedding";
-
-type SerializeSvg = (
-  svg: SVGSVGElement,
-  options?: SvgSerializeOptions
-) => string;
-
 type ClipboardExportOptions = {
   dpi?: number;
   elements: KizkattElement[];
   elementIds: string[];
-  serializeSvg: SerializeSvg;
   svg: SVGSVGElement | null;
 };
 
@@ -30,7 +23,6 @@ export async function copySelectionAsSvg({
   dpi = DEFAULT_DPI,
   elements,
   elementIds,
-  serializeSvg,
   svg
 }: ClipboardExportOptions) {
   if (
@@ -65,7 +57,6 @@ export async function copySelectionAsPng({
   dpi = DEFAULT_DPI,
   elements,
   elementIds,
-  serializeSvg,
   svg
 }: ClipboardExportOptions): Promise<CopiedPngExport | null> {
   if (
