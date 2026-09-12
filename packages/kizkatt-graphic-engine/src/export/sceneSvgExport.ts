@@ -1,31 +1,26 @@
 import {
+  DEFAULT_DPI
+} from "../config/constants";
+import { getDpiPixelRatio } from "../geometry/dpi";
+import type { KizkattElement } from "../model/types";
+import { getExportBounds } from "./exportBounds";
+import {
   addKizkattSvgMetadata,
-  DEFAULT_DPI,
-  getDpiPixelRatio,
-  getExportBounds,
-  type KizkattElement,
-  type KizkattSvgMetadata,
-  type SvgSerializeOptions
-} from "kizkatt-graphic-engine";
+  serializeSvg,
+  type KizkattSvgMetadata
+} from "./svgExport";
 
 import { embedBitmapTextureFragmentsInSvg } from "./bitmapTextureSvgEmbedding";
-
-type SerializeSvg = (
-  svg: SVGSVGElement,
-  options?: SvgSerializeOptions
-) => string;
 
 export async function exportSceneAsSvg({
   dpi = DEFAULT_DPI,
   elements,
   metadata,
-  serializeSvg,
   svg
 }: {
   dpi?: number;
   elements: KizkattElement[];
   metadata?: KizkattSvgMetadata;
-  serializeSvg: SerializeSvg;
   svg: SVGSVGElement;
 }) {
   const bounds = getExportBounds(elements);

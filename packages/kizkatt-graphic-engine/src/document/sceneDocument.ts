@@ -32,7 +32,8 @@ import type {
 
 export const KIZKATT_SCENE_FORMAT_VERSION = 1;
 export const KIZKATT_SCENE_FILE_EXTENSION = ".kk";
-export const KIZKATT_SCENE_MIME_TYPE = "application/vnd.kizkatt+json";
+export const KIZKATT_SCENE_MIME_TYPE = "application/vnd.kizkatt+zip";
+export const KIZKATT_SCENE_JSON_MIME_TYPE = "application/vnd.kizkatt+json";
 export const KIZKATT_SCENE_GENERATOR = "Kizkatt Graphic Editor";
 
 const ELEMENT_TYPES = new Set<ElementType>([

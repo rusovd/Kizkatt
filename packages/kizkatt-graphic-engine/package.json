@@ -8,5 +8,8 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts"
     }
+  },
+  "dependencies": {
+    "fflate": "^0.8.3"
   }
 }

@@ -1,10 +1,12 @@
 import { GRID_CELL_SIZE, OBJECT_SNAP_DISTANCE } from "../config/constants";
 import { getIdSet } from "../model/collections";
+import { createBoundedWeakCache } from "../model/boundedWeakCache";
 import type { KizkattElement, Point } from "../model/types";
 import { getElementBounds } from "./bounds";
 import { SPATIAL_INDEX_MIN_ELEMENT_COUNT } from "./spatialIndex";
 
 const SNAP_INDEX_CELL_SIZE = 128;
+const MAX_CACHED_SNAP_INDICES = 2;
 
 type SnapPointOptions = {
   ignoredIds?: Iterable<string>;
@@ -19,8 +21,14 @@ type IndexedSnapPoint = Point & {
 
 type SnapPointIndex = Map<string, IndexedSnapPoint[]>;
 
-const cornerIndexCache = new WeakMap<KizkattElement[], SnapPointIndex>();
-const midpointIndexCache = new WeakMap<KizkattElement[], SnapPointIndex>();
+const cornerIndexCache = createBoundedWeakCache<
+  KizkattElement[],
+  SnapPointIndex
+>(MAX_CACHED_SNAP_INDICES);
+const midpointIndexCache = createBoundedWeakCache<
+  KizkattElement[],
+  SnapPointIndex
+>(MAX_CACHED_SNAP_INDICES);
 
 function getCellCoordinate(value: number) {
   return Math.floor(value / SNAP_INDEX_CELL_SIZE);

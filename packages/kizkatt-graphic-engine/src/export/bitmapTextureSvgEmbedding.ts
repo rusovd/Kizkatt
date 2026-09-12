@@ -1,11 +1,11 @@
 import {
-  createEmbeddedBitmapTextureFill,
-  getElementBounds,
   MIN_PIXEL_SIZE,
   PNG_IMAGE_MIME_TYPE,
-  SVG_IMAGE_MIME_TYPE,
-  type KizkattElement
-} from "kizkatt-graphic-engine";
+  SVG_IMAGE_MIME_TYPE
+} from "../config/constants";
+import { createEmbeddedBitmapTextureFill } from "../geometry/bitmapTextures";
+import { getElementBounds } from "../geometry/bounds";
+import type { KizkattElement } from "../model/types";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const SVG_DOCUMENT_MIME_TYPE = "image/svg+xml";

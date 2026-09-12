@@ -1,9 +1,11 @@
 import type { Bounds, KizkattElement, Point } from "../model/types";
+import { createBoundedWeakCache } from "../model/boundedWeakCache";
 import { getElementTransformedBounds } from "./bounds";
 import { boundsIntersect } from "./primitives";
 
 const SPATIAL_INDEX_CELL_SIZE = 256;
 const MAX_INDEXED_CELLS_PER_ELEMENT = 64;
+const MAX_CACHED_SCENE_INDICES = 4;
 
 export const SPATIAL_INDEX_MIN_ELEMENT_COUNT = 256;
 
@@ -14,10 +16,10 @@ type SceneSpatialIndex = {
   globalElementIndices: number[];
 };
 
-const sceneSpatialIndexCache = new WeakMap<
+const sceneSpatialIndexCache = createBoundedWeakCache<
   KizkattElement[],
   SceneSpatialIndex
->();
+>(MAX_CACHED_SCENE_INDICES);
 
 function getCellKey(x: number, y: number) {
   return `${x}:${y}`;
@@ -141,7 +143,18 @@ export function getElementIndicesInBounds(
   includedIds: ReadonlySet<string> = new Set()
 ) {
   if (elements.length < SPATIAL_INDEX_MIN_ELEMENT_COUNT) {
-    return elements.map((_, index) => index);
+    const visibleIndices: number[] = [];
+
+    elements.forEach((element, index) => {
+      if (
+        includedIds.has(element.id) ||
+        boundsIntersect(getElementTransformedBounds(element), bounds)
+      ) {
+        visibleIndices.push(index);
+      }
+    });
+
+    return visibleIndices;
   }
 
   const index = getSceneSpatialIndex(elements);
