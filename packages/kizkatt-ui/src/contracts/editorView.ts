@@ -17,6 +17,7 @@ import type {
   ObjectMirrorAxis,
   ObjectPanelGeometry,
   Point,
+  SceneFileFormat,
   SelectionAreaMode,
   SelectionTransformMode,
   StyleState,
@@ -35,8 +36,12 @@ import type {
 
 export type { EditorDisplayMode } from "../model/types";
 
-export type DocumentFileFormat = "kk" | "svg";
+export type DocumentFileFormat = SceneFileFormat;
 export type DocumentFormatDialogAction = "export" | "import" | "saveAs";
+export type DocumentFormatSelection = {
+  archiveKk: boolean;
+  format: DocumentFileFormat;
+};
 export type SceneReplacementAction = "load" | "new";
 
 export type KizkattRenderElementOptions = {
@@ -97,7 +102,7 @@ export type DocumentControls = {
   sceneReplacementAction: SceneReplacementAction | null;
   onCancelFormatDialog: () => void;
   onCancelSceneReplacement: () => void;
-  onChooseFormat: (format: DocumentFileFormat) => void;
+  onChooseFormat: (selection: DocumentFormatSelection) => void;
   onConfirmSceneReplacementWithoutSaving: () => void;
   onConfirmSaveAndReplaceScene: () => void;
   onExport: () => void;

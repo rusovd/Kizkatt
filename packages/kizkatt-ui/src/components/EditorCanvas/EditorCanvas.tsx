@@ -9,7 +9,10 @@ import {
   ARROW_MARKER_WIDTH
 } from "kizkatt-graphic-engine";
 
-import type { KizkattGraphicEditorCanvasViewModel } from "../../contracts/editorView";
+import type {
+  KizkattGraphicEditorCanvasViewModel,
+  KizkattRenderElementOptions
+} from "../../contracts/editorView";
 import { SceneElement } from "../SceneElement";
 import {
   ImagePlacementPreview,
@@ -23,6 +26,11 @@ import {
 } from "../../ui/canvas/renderElement";
 import { SelectedBounds } from "../../ui/canvas/SelectedBounds";
 import { SelectionArea } from "../../ui/canvas/SelectionArea";
+
+const DEFAULT_SCENE_ELEMENT_OPTIONS: KizkattRenderElementOptions = {};
+const WIREFRAME_SCENE_ELEMENT_OPTIONS: KizkattRenderElementOptions = {
+  wireframe: true
+};
 
 export function EditorCanvas({
   viewModel
@@ -61,6 +69,9 @@ export function EditorCanvas({
     svgRef,
     zoom
   } = viewModel;
+  const sceneElementOptions = activeDisplayMode === "wireframe"
+    ? WIREFRAME_SCENE_ELEMENT_OPTIONS
+    : DEFAULT_SCENE_ELEMENT_OPTIONS;
 
   return (
     <svg
@@ -105,19 +116,15 @@ export function EditorCanvas({
         </marker>
       </defs>
       <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
-        {displayElements.map((element) => {
-          const { options } = getElementSelectionRenderState(element);
-
-          return (
-            <SceneElement
-              key={element.id}
-              element={element}
-              options={options}
-              renderElement={renderElement}
-              selected={false}
-            />
-          );
-        })}
+        {displayElements.map((element) => (
+          <SceneElement
+            key={element.id}
+            element={element}
+            options={sceneElementOptions}
+            renderElement={renderElement}
+            selected={false}
+          />
+        ))}
         {!previewTransformInteraction &&
           selectedElements.map((element) => {
             const { options, showInternalOverlay, showPrimaryOverlay } =

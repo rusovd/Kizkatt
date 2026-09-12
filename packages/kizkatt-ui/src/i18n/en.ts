@@ -136,6 +136,7 @@ export const ENGLISH_TRANSLATIONS = {
     }
   },
   sceneFiles: {
+    archiveKizkattFile: "Archive .kk file",
     cancel: "Cancel",
     confirmLoadDescription:
       "Loading replaces the current scene. Would you like to save it first?",

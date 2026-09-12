@@ -90,3 +90,18 @@
 .kizkatt-file-format-options span {
   color: var(--kizkatt-muted-text);
 }
+
+.kizkatt-file-format-archive-option {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.kizkatt-file-format-archive-option input {
+  accent-color: var(--kizkatt-selection);
+  height: 17px;
+  margin: 0;
+  width: 17px;
+}

@@ -36,6 +36,7 @@ import {
   GridIcon,
   InfoIcon,
   LanguageIcon,
+  PaletteIcon,
   PinIcon,
   RedoIcon,
   SettingsIcon,
@@ -376,57 +377,69 @@ function EditorSettingsMenu({
           ))}
         </select>
       </label>
-      <p>{strings.mainMenu.canvasBackground}</p>
-      <div
-        className="kizkatt-swatches kizkatt-canvas-background-swatches"
-        role="group"
-        aria-label={strings.mainMenu.canvasBackground}
-      >
-        {canvasBackgrounds.map((color) => (
+      <div className="kizkatt-canvas-background-settings-row">
+        <span
+          aria-hidden="true"
+          className="kizkatt-canvas-background-icon"
+          title={strings.mainMenu.canvasBackground}
+        >
+          {PaletteIcon}
+        </span>
+        <div
+          className="kizkatt-swatches kizkatt-canvas-background-swatches"
+          role="group"
+          aria-label={strings.mainMenu.canvasBackground}
+        >
+          {canvasBackgrounds.map((color) => (
+            <button
+              key={color}
+              type="button"
+              data-no-panel-drag
+              aria-label={`Canvas background ${color}`}
+              title={`${strings.mainMenu.tooltips.canvasBackgroundColor} ${color}`}
+              className={
+                canvasBackgroundColor === color ? "is-active" : undefined
+              }
+              style={{ backgroundColor: color }}
+              onPointerDown={stopPanelDrag}
+              onClick={() => onCanvasBackgroundChange(color)}
+            />
+          ))}
           <button
-            key={color}
             type="button"
             data-no-panel-drag
-            aria-label={`Canvas background ${color}`}
-            title={`${strings.mainMenu.tooltips.canvasBackgroundColor} ${color}`}
-            className={canvasBackgroundColor === color ? "is-active" : undefined}
-            style={{ backgroundColor: color }}
+            aria-label={`Canvas background custom ${customCanvasBackgroundColor}`}
+            title={`${strings.mainMenu.tooltips.customCanvasBackground} ${customCanvasBackgroundColor}`}
+            className={[
+              "kizkatt-custom-background-swatch",
+              canvasBackgroundColor === customCanvasBackgroundColor
+                ? "is-active"
+                : ""
+            ].join(" ")}
+            style={{ backgroundColor: customCanvasBackgroundColor }}
             onPointerDown={stopPanelDrag}
-            onClick={() => onCanvasBackgroundChange(color)}
+            onClick={() =>
+              onCanvasBackgroundChange(customCanvasBackgroundColor)
+            }
           />
-        ))}
-        <button
-          type="button"
-          data-no-panel-drag
-          aria-label={`Canvas background custom ${customCanvasBackgroundColor}`}
-          title={`${strings.mainMenu.tooltips.customCanvasBackground} ${customCanvasBackgroundColor}`}
-          className={[
-            "kizkatt-custom-background-swatch",
-            canvasBackgroundColor === customCanvasBackgroundColor
-              ? "is-active"
-              : ""
-          ].join(" ")}
-          style={{ backgroundColor: customCanvasBackgroundColor }}
-          onPointerDown={stopPanelDrag}
-          onClick={() => onCanvasBackgroundChange(customCanvasBackgroundColor)}
-        />
-        <button
-          type="button"
-          data-no-panel-drag
-          aria-label={strings.mainMenu.pickCanvasBackground}
-          title={strings.mainMenu.tooltips.pickCanvasBackground}
-          className="kizkatt-eyedropper-swatch"
-          onPointerDown={stopPanelDrag}
-          onClick={onPickCanvasBackground}
-        >
-          {EyedropperIcon}
-        </button>
+          <button
+            type="button"
+            data-no-panel-drag
+            aria-label={strings.mainMenu.pickCanvasBackground}
+            title={strings.mainMenu.tooltips.pickCanvasBackground}
+            className="kizkatt-eyedropper-swatch"
+            onPointerDown={stopPanelDrag}
+            onClick={onPickCanvasBackground}
+          >
+            {EyedropperIcon}
+          </button>
+        </div>
       </div>
       <div className="kizkatt-menu-divider" />
       <div className="kizkatt-color-mode-settings-row">
         <span>{strings.settings.colorMode}</span>
         <div
-          className="kizkatt-theme-toggle kizkatt-color-mode-toggle"
+          className="kizkatt-settings-segmented kizkatt-color-mode-toggle"
           role="group"
           aria-label={strings.settings.colorMode}
           title={strings.settings.tooltips.colorMode}
@@ -449,7 +462,7 @@ function EditorSettingsMenu({
       <div className="kizkatt-grid-settings-row">
         <span>{strings.mainMenu.gridUnits}</span>
         <div
-          className="kizkatt-theme-toggle kizkatt-grid-unit-toggle"
+          className="kizkatt-settings-segmented kizkatt-grid-unit-toggle"
           role="group"
           aria-label={strings.mainMenu.gridUnits}
         >
