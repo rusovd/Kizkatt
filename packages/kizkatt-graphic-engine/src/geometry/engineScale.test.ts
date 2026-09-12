@@ -133,6 +133,22 @@ describe("engine scale safeguards", () => {
     expect(visibleIndices.at(-1)).toBe(9_999);
   });
 
+  it("culls small scenes without building a spatial index", () => {
+    const elements = [
+      createRectangle(0),
+      { ...createRectangle(1), x: 2_000, y: 2_000 },
+      { ...createRectangle(2), x: 3_000, y: 3_000 }
+    ];
+
+    expect(
+      getElementIndicesInBounds(
+        elements,
+        { height: 100, width: 100, x: 0, y: 0 },
+        new Set(["rectangle-2"])
+      )
+    ).toEqual([0, 2]);
+  });
+
   it("scales stroke width only when scale with object is enabled", () => {
     const rectangle = createRectangle(0);
     const point = {

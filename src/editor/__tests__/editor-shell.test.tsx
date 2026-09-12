@@ -1,4 +1,5 @@
 import { describe, it } from "vitest";
+import { extractKizkattSceneArchive } from "kizkatt-graphic-engine";
 import {
   DEFAULT_CANVAS_BACKGROUND,
   DEFAULT_CANVAS_BACKGROUND_BY_THEME,
@@ -1014,11 +1015,11 @@ describe("KizkattGraphicEditor shell", () => {
   });
 
   it("saves and loads a Kizkatt scene from the main menu", async () => {
-    const writtenContents: string[] = [];
+    const writtenContents: Uint8Array[] = [];
     const showSaveFilePicker = vi.fn().mockResolvedValue({
       createWritable: vi.fn().mockResolvedValue({
         close: vi.fn().mockResolvedValue(undefined),
-        write: vi.fn().mockImplementation(async (contents: string) => {
+        write: vi.fn().mockImplementation(async (contents: Uint8Array) => {
           writtenContents.push(contents);
         })
       }),
@@ -1041,7 +1042,10 @@ describe("KizkattGraphicEditor shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(writtenContents).toHaveLength(1));
-    expect(JSON.parse(writtenContents[0])).toMatchObject({
+    const savedSceneJson = await extractKizkattSceneArchive(
+      writtenContents[0]
+    );
+    expect(JSON.parse(savedSceneJson)).toMatchObject({
       kk: { scene: { Objects: { Object_000001: { type: "rectangle" } } } }
     });
 
@@ -1058,12 +1062,26 @@ describe("KizkattGraphicEditor shell", () => {
 
     expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(0);
 
+    const loadedWrite = vi.fn().mockResolvedValue(undefined);
     const sceneFile = {
+      arrayBuffer: vi.fn().mockResolvedValue(writtenContents[0].slice().buffer),
       name: "drawing.kk",
-      text: vi.fn().mockResolvedValue(writtenContents[0])
+      slice: vi.fn((start = 0, end = writtenContents[0].byteLength) => ({
+        arrayBuffer: vi.fn().mockResolvedValue(
+          writtenContents[0].slice(start, end).buffer
+        )
+      })),
+      text: vi.fn()
     } as unknown as File;
     const showOpenFilePicker = vi.fn().mockResolvedValue([
-      { getFile: vi.fn().mockResolvedValue(sceneFile), name: sceneFile.name }
+      {
+        createWritable: vi.fn().mockResolvedValue({
+          close: vi.fn().mockResolvedValue(undefined),
+          write: loadedWrite
+        }),
+        getFile: vi.fn().mockResolvedValue(sceneFile),
+        name: sceneFile.name
+      }
     ]);
     vi.stubGlobal("showOpenFilePicker", showOpenFilePicker);
 
@@ -1073,6 +1091,79 @@ describe("KizkattGraphicEditor shell", () => {
     await waitFor(() => {
       expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(1);
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(loadedWrite).toHaveBeenCalledOnce());
+    expect(showSaveFilePicker).toHaveBeenCalledTimes(1);
+    expect(loadedWrite.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
+  });
+
+  it("can save an uncompressed .kk scene from Save as", async () => {
+    const write = vi.fn().mockResolvedValue(undefined);
+    const showSaveFilePicker = vi.fn().mockResolvedValue({
+      createWritable: vi.fn().mockResolvedValue({
+        close: vi.fn().mockResolvedValue(undefined),
+        write
+      }),
+      name: "something.kk"
+    });
+    vi.stubGlobal("showSaveFilePicker", showSaveFilePicker);
+
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save as..." }));
+
+    const archiveCheckbox = screen.getByRole("checkbox", {
+      name: "Archive .kk file"
+    });
+    expect(archiveCheckbox).toBeChecked();
+    fireEvent.click(archiveCheckbox);
+    fireEvent.click(
+      screen.getByRole("button", { name: /Kizkatt scene \(\.kk\)/ })
+    );
+
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(1));
+    expect(write).toHaveBeenCalledWith(expect.stringContaining('"kk"'));
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(2));
+    expect(showSaveFilePicker).toHaveBeenCalledOnce();
+    expect(write.mock.calls[1][0]).toEqual(expect.stringContaining('"kk"'));
+  });
+
+  it("keeps the Save as format and file handle for later saves", async () => {
+    const write = vi.fn().mockResolvedValue(undefined);
+    const showSaveFilePicker = vi.fn().mockResolvedValue({
+      createWritable: vi.fn().mockResolvedValue({
+        close: vi.fn().mockResolvedValue(undefined),
+        write
+      }),
+      name: "drawing.svg"
+    });
+    vi.stubGlobal("showSaveFilePicker", showSaveFilePicker);
+
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save as..." }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /SVG image \(\.svg\)/ })
+    );
+
+    await waitFor(() => expect(write).toHaveBeenCalledOnce());
+
+    fireEvent.click(screen.getByRole("button", { name: "Main menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(2));
+    expect(showSaveFilePicker).toHaveBeenCalledOnce();
+    expect(write.mock.calls[0][0]).toEqual(expect.stringContaining("<svg"));
+    expect(write.mock.calls[1][0]).toEqual(expect.stringContaining("<svg"));
   });
 
   it("warns before replacing a non-empty scene", () => {
@@ -1099,11 +1190,11 @@ describe("KizkattGraphicEditor shell", () => {
   });
 
   it("imports a Kizkatt scene and exports only the current selection", async () => {
-    const writtenContents: string[] = [];
+    const writtenContents: Uint8Array[] = [];
     const showSaveFilePicker = vi.fn().mockResolvedValue({
       createWritable: vi.fn().mockResolvedValue({
         close: vi.fn().mockResolvedValue(undefined),
-        write: vi.fn().mockImplementation(async (contents: string) => {
+        write: vi.fn().mockImplementation(async (contents: Uint8Array) => {
           writtenContents.push(contents);
         })
       }),
@@ -1126,12 +1217,21 @@ describe("KizkattGraphicEditor shell", () => {
     );
 
     await waitFor(() => expect(writtenContents).toHaveLength(1));
-    expect(Object.keys(JSON.parse(writtenContents[0]).kk.scene.Objects))
+    const exportedSceneJson = await extractKizkattSceneArchive(
+      writtenContents[0]
+    );
+    expect(Object.keys(JSON.parse(exportedSceneJson).kk.scene.Objects))
       .toHaveLength(1);
 
     const importedFile = {
+      arrayBuffer: vi.fn().mockResolvedValue(writtenContents[0].slice().buffer),
       name: "import.kk",
-      text: vi.fn().mockResolvedValue(writtenContents[0])
+      slice: vi.fn((start = 0, end = writtenContents[0].byteLength) => ({
+        arrayBuffer: vi.fn().mockResolvedValue(
+          writtenContents[0].slice(start, end).buffer
+        )
+      })),
+      text: vi.fn()
     } as unknown as File;
     vi.stubGlobal(
       "showOpenFilePicker",

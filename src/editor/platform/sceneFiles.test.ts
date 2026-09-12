@@ -1,6 +1,29 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  createKizkattSceneArchive,
+  extractKizkattSceneArchive
+} from "kizkatt-graphic-engine";
 
 import { loadSceneFile, saveSceneFile } from "./sceneFiles";
+
+function createMockFile(name: string, contents: string | Uint8Array) {
+  const bytes = typeof contents === "string"
+    ? new TextEncoder().encode(contents)
+    : contents;
+
+  return {
+    arrayBuffer: vi.fn().mockResolvedValue(bytes.slice().buffer),
+    name,
+    slice: vi.fn((start = 0, end = bytes.byteLength) => ({
+      arrayBuffer: vi.fn().mockResolvedValue(bytes.slice(start, end).buffer)
+    })),
+    text: vi.fn().mockResolvedValue(
+      typeof contents === "string"
+        ? contents
+        : new TextDecoder().decode(contents)
+    )
+  } as unknown as File;
+}
 
 afterEach(() => {
   Reflect.deleteProperty(window, "showOpenFilePicker");
@@ -32,9 +55,40 @@ describe("scene file access", () => {
         suggestedName: "drawing.kk"
       })
     );
-    expect(write).toHaveBeenCalledWith("scene contents");
+    const archive = write.mock.calls[0][0] as Uint8Array;
+    const archivedContents = await extractKizkattSceneArchive(
+      archive
+    );
+
+    expect(archivedContents).toBe("scene contents");
     expect(close).toHaveBeenCalled();
     expect(result).toMatchObject({ format: "kk", name: "drawing.kk" });
+  });
+
+  it("saves an uncompressed .kk JSON file when archiving is disabled", async () => {
+    const write = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window, "showSaveFilePicker", {
+      configurable: true,
+      value: vi.fn().mockResolvedValue({
+        createWritable: vi.fn().mockResolvedValue({
+          close: vi.fn().mockResolvedValue(undefined),
+          write
+        }),
+        name: "something.kk"
+      })
+    });
+
+    const result = await saveSceneFile({
+      archiveKk: false,
+      getContents: () => '{"kk":{}}'
+    });
+
+    expect(write).toHaveBeenCalledWith('{"kk":{}}');
+    expect(result).toMatchObject({
+      archived: false,
+      format: "kk",
+      name: "something.kk"
+    });
   });
 
   it("saves directly through an existing .kk handle", async () => {
@@ -57,15 +111,17 @@ describe("scene file access", () => {
     });
 
     expect(showSaveFilePicker).not.toHaveBeenCalled();
-    expect(write).toHaveBeenCalledWith("updated scene");
+    const archive = write.mock.calls[0][0] as Uint8Array;
+    await expect(
+      extractKizkattSceneArchive(archive)
+    ).resolves.toBe("updated scene");
     expect(close).toHaveBeenCalled();
   });
 
   it("loads only the requested format from the remembered Downloads picker", async () => {
-    const file = {
-      name: "import.kk",
-      text: vi.fn().mockResolvedValue('{"kk":{}}')
-    } as unknown as File;
+    const documentJson = '{"kk":{}}';
+    const archive = await createKizkattSceneArchive(documentJson);
+    const file = createMockFile("import.kk", archive);
     const showOpenFilePicker = vi.fn().mockResolvedValue([
       { getFile: vi.fn().mockResolvedValue(file), name: file.name }
     ]);
@@ -85,11 +141,33 @@ describe("scene file access", () => {
     );
     expect(showOpenFilePicker.mock.calls[0][0].types).toHaveLength(1);
     expect(showOpenFilePicker.mock.calls[0][0].types[0].accept)
+      .toHaveProperty("application/vnd.kizkatt+zip");
+    expect(showOpenFilePicker.mock.calls[0][0].types[0].accept)
       .toHaveProperty("application/vnd.kizkatt+json");
     expect(result).toMatchObject({
-      contents: '{"kk":{}}',
+      archived: true,
+      contents: documentJson,
       format: "kk",
       name: "import.kk"
     });
+  });
+
+  it("keeps loading legacy uncompressed .kk JSON files", async () => {
+    const documentJson = '{"kk":{"scene":{}}}';
+    const file = createMockFile("legacy.kk", documentJson);
+    Object.defineProperty(window, "showOpenFilePicker", {
+      configurable: true,
+      value: vi.fn().mockResolvedValue([
+        { getFile: vi.fn().mockResolvedValue(file), name: file.name }
+      ])
+    });
+
+    await expect(loadSceneFile({ format: "kk" })).resolves.toMatchObject({
+      archived: false,
+      contents: documentJson,
+      format: "kk"
+    });
+    expect(file.arrayBuffer).not.toHaveBeenCalled();
+    expect(file.text).toHaveBeenCalledOnce();
   });
 });

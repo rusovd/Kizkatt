@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  DEFAULT_BITMAP_TEXTURE_FILL,
-  type KizkattElement
-} from "kizkatt-graphic-engine";
+import { DEFAULT_BITMAP_TEXTURE_FILL } from "../config/constants";
+import type { KizkattElement } from "../model/types";
 
 import { embedBitmapTextureFragmentsInSvg } from "./bitmapTextureSvgEmbedding";
 
