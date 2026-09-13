@@ -13,6 +13,7 @@ import {
   getCoveredBitmapSourcePoint,
   getDpiPixelRatio,
   getDimensionFromScalePercent,
+  getElementBounds,
   getElementIndicesInBounds,
   getElementLocalPoint,
   getResizeAnchorPoint,
@@ -190,6 +191,58 @@ describe("engine scale safeguards", () => {
       x: 0,
       y: -25
     });
+  });
+
+  it("resizes a bent line from its full visual bounds", () => {
+    const line: KizkattElement = {
+      angle: Math.PI / 4,
+      backgroundColor: "transparent",
+      bends: [
+        { x: 0, y: 300 },
+        { x: 300, y: 300 },
+        { x: 300, y: 0 }
+      ],
+      edgeStyle: "round",
+      height: 10,
+      id: "bent-line",
+      opacity: 100,
+      strokeColor: "#d6d6d6",
+      strokeStyle: "solid",
+      strokeWidth: 10,
+      type: "line",
+      width: 12,
+      x: 100,
+      y: 100
+    };
+    const originalBounds = getElementBounds(line);
+    const originalAnchor = transformElementPoint(line, {
+      x: originalBounds.x,
+      y: originalBounds.y
+    });
+    const target = transformElementPoint(line, {
+      x: originalBounds.x + originalBounds.width * 2,
+      y: originalBounds.y + originalBounds.height * 2
+    });
+    const resized = resizeElementFromHandle(line, "se", target);
+    const resizedBounds = getElementBounds(resized);
+
+    expect(resizedBounds.width).toBeCloseTo(originalBounds.width * 2);
+    expect(resizedBounds.height).toBeCloseTo(originalBounds.height * 2);
+    expect(resized.width).toBeCloseTo(line.width * 2);
+    expect(resized.height).toBeCloseTo(line.height * 2);
+    expect(
+      transformElementPoint(resized, {
+        x: resizedBounds.x,
+        y: resizedBounds.y
+      })
+    ).toEqual(originalAnchor);
+    const resizedHandle = transformElementPoint(resized, {
+      x: resizedBounds.x + resizedBounds.width,
+      y: resizedBounds.y + resizedBounds.height
+    });
+
+    expect(resizedHandle.x).toBeCloseTo(target.x);
+    expect(resizedHandle.y).toBeCloseTo(target.y);
   });
 
   it("keeps mirrored element geometry interactive", () => {

@@ -13,11 +13,14 @@ import type {
   SkewHandle
 } from "../model/types";
 import { getIdSet } from "../model/collections";
+import { getElementBounds } from "./bounds";
 import { getElementBends } from "./linearElements";
 import {
   getElementAxes,
   getElementCenter,
-  normalizeDegrees
+  getElementLocalPoint,
+  normalizeDegrees,
+  transformElementPoint
 } from "./primitives";
 import { transformSvgPathData } from "./svgPathData";
 
@@ -109,6 +112,27 @@ function getAnchoredBoundsCoordinate(
     : anchor - size / 2;
 }
 
+function getResizeBoundsAnchor(
+  bounds: Bounds,
+  sx: -1 | 0 | 1,
+  sy: -1 | 0 | 1
+) {
+  return {
+    x:
+      sx === 0
+        ? bounds.x + bounds.width / 2
+        : sx === 1
+          ? bounds.x
+          : bounds.x + bounds.width,
+    y:
+      sy === 0
+        ? bounds.y + bounds.height / 2
+        : sy === 1
+          ? bounds.y
+          : bounds.y + bounds.height
+  };
+}
+
 function scaleAnchoredCoordinate(
   coordinate: number,
   originalSize: number,
@@ -129,6 +153,12 @@ function scaleLocalPoint(point: Point, scaleX: number, scaleY: number) {
     x: point.x * scaleX,
     y: point.y * scaleY
   };
+}
+
+function scaleElementDimension(value: number, scale: number) {
+  const scaledValue = Math.max(MIN_ELEMENT_SIZE, Math.abs(value) * scale);
+
+  return value < 0 ? -scaledValue : scaledValue;
 }
 
 function getScaledStrokeWidth(
@@ -224,6 +254,38 @@ export function resizeElementFromHandle(
   point: Point,
   options: ResizeOptions = {}
 ): KizkattElement {
+  if (
+    (element.type === "line" || element.type === "arrow") &&
+    getElementBends(element).length > 0
+  ) {
+    const { sx, sy } = getResizeHandle(handle);
+    const originalBounds = getElementBounds(element);
+    const localPoint = getElementLocalPoint(element, point);
+    const resizedElement = resizeElementsFromSelectionHandle(
+      [element],
+      [element.id],
+      originalBounds,
+      handle,
+      localPoint,
+      options
+    )[0];
+    const resizedBounds = getElementBounds(resizedElement);
+    const originalAnchor = transformElementPoint(
+      element,
+      getResizeBoundsAnchor(originalBounds, sx, sy)
+    );
+    const resizedAnchor = transformElementPoint(
+      resizedElement,
+      getResizeBoundsAnchor(resizedBounds, sx, sy)
+    );
+
+    return {
+      ...resizedElement,
+      x: resizedElement.x + originalAnchor.x - resizedAnchor.x,
+      y: resizedElement.y + originalAnchor.y - resizedAnchor.y
+    };
+  }
+
   const { sx, sy } = getResizeHandle(handle);
   const anchor = getResizeAnchorPoint(element, handle);
   const { xAxis, yAxis } = getElementAxes(
@@ -313,20 +375,7 @@ export function resizeElementsFromSelectionHandle(
 ) {
   const selectedIdSet = getIdSet(selectedIds);
   const { sx, sy } = getResizeHandle(handle);
-  const anchor = {
-    x:
-      sx === 0
-        ? originalBounds.x + originalBounds.width / 2
-        : sx === 1
-        ? originalBounds.x
-        : originalBounds.x + originalBounds.width,
-    y:
-      sy === 0
-        ? originalBounds.y + originalBounds.height / 2
-        : sy === 1
-        ? originalBounds.y
-        : originalBounds.y + originalBounds.height
-  };
+  const anchor = getResizeBoundsAnchor(originalBounds, sx, sy);
   const originalWidth = Math.max(MIN_ELEMENT_SIZE, originalBounds.width);
   const originalHeight = Math.max(MIN_ELEMENT_SIZE, originalBounds.height);
   const proportionalScale = options.preserveAspectRatio
@@ -380,13 +429,13 @@ export function resizeElementsFromSelectionHandle(
             )
           : undefined,
       curve: undefined,
-      height: Math.max(MIN_ELEMENT_SIZE, element.height * scaleY),
+      height: scaleElementDimension(element.height, scaleY),
       pathData: scalePathData(element.pathData, scaleX, scaleY),
       points: element.points?.map((localPoint) =>
         scaleLocalPoint(localPoint, scaleX, scaleY)
       ),
       strokeWidth: getScaledStrokeWidth(element, scaleX, scaleY),
-      width: Math.max(MIN_ELEMENT_SIZE, element.width * scaleX),
+      width: scaleElementDimension(element.width, scaleX),
       x: nextBounds.x + (element.x - originalBounds.x) * scaleX,
       y: nextBounds.y + (element.y - originalBounds.y) * scaleY
     };
