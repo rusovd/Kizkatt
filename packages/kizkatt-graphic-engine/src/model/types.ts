@@ -1,5 +1,6 @@
 export type Tool =
   | "hand"
+  | "zoom"
   | "select"
   | "nodeEdit"
   | "rectangle"
@@ -308,6 +309,11 @@ export type Interaction =
     }
   | {
       type: "selectArea";
+      current: Point;
+      origin: Point;
+    }
+  | {
+      type: "zoomArea";
       current: Point;
       origin: Point;
     };

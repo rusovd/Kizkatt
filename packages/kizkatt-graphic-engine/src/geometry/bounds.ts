@@ -148,7 +148,7 @@ export function getSelectionTransformHandleLayout(
 }
 
 export function selectionBounds(
-  elements: KizkattElement[],
+  elements: readonly KizkattElement[],
   options: { includeRotation?: boolean } = {}
 ) {
   if (elements.length === EMPTY_COLLECTION_LENGTH) {

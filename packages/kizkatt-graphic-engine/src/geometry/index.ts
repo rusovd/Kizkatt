@@ -100,6 +100,7 @@ export {
 } from "./spatialIndex";
 export { transformSvgPathData } from "./svgPathData";
 export type { TransformedSvgPathData } from "./svgPathData";
+export * from "./viewport";
 export {
   getDimensionFromScalePercent,
   getResizeAnchorPoint,
