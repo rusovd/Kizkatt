@@ -87,6 +87,58 @@ describe("KizkattGraphicEditor shell", () => {
       });
   });
 
+  it("zooms from the navigation tool and exposes viewport fit commands", () => {
+    render(<KizkattGraphicEditor />);
+
+    chooseGroupedTool("Hand", "Zoom");
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const zoomButton = screen.getByRole("button", { name: "Zoom" });
+
+    expect(zoomButton).toHaveClass("is-active");
+    expect(zoomButton).toHaveClass("has-submenu");
+    expect(screen.getByRole("button", { name: "Zoom to selected" }))
+      .toBeDisabled();
+    expect(screen.getByRole("button", { name: "Zoom to all objects" }))
+      .toBeDisabled();
+    expect(screen.getByRole("button", { name: "Zoom to page" }))
+      .toBeEnabled();
+    expect(screen.getByRole("button", { name: "Zoom to page width" }))
+      .toBeEnabled();
+    expect(screen.getByRole("button", { name: "Zoom to page height" }))
+      .toBeEnabled();
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 100, clientY: 80 });
+    firePointerEvent(canvas, "pointerup", { clientX: 100, clientY: 80 });
+    expect(screen.getByText("125%")).toBeInTheDocument();
+    expect(
+      canvas.querySelector(":scope > g[transform]")?.getAttribute("transform")
+    ).toContain("scale(1.25)");
+
+    fireEvent.wheel(canvas, { deltaY: -100 });
+    expect(screen.getByText("135%")).toBeInTheDocument();
+  });
+
+  it("fits a dragged zoom area without applying the click increment", () => {
+    render(<KizkattGraphicEditor />);
+
+    chooseGroupedTool("Hand", "Zoom");
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 100, clientY: 100 });
+    firePointerEvent(canvas, "pointermove", { clientX: 500, clientY: 400 });
+
+    expect(canvas.querySelector(".kizkatt-area-selection"))
+      .toBeInTheDocument();
+
+    firePointerEvent(canvas, "pointerup", { clientX: 500, clientY: 400 });
+
+    expect(screen.getByText("256%")).toBeInTheDocument();
+    expect(canvas.querySelector(".kizkatt-area-selection"))
+      .not.toBeInTheDocument();
+  });
+
   it("restores and stores the canvas background in the Kizkatt namespace", () => {
     storeCanvasBackgroundColor("#161719", "dark");
 
@@ -739,6 +791,12 @@ describe("KizkattGraphicEditor shell", () => {
       "translate(40 40) scale(1)"
     );
 
+    fireEvent.wheel(canvas, { deltaX: 10, deltaY: 20 });
+    expect(canvas.querySelector(":scope > g")).toHaveAttribute(
+      "transform",
+      "translate(30 20) scale(1)"
+    );
+
     firePointerEvent(canvas, "pointerdown", { clientX: 200, clientY: 220 });
     firePointerEvent(canvas, "pointermove", { clientX: 202, clientY: 222 });
     firePointerEvent(canvas, "pointerup", { clientX: 202, clientY: 222 });
@@ -746,7 +804,7 @@ describe("KizkattGraphicEditor shell", () => {
     expect(selectButton).toHaveClass("is-active");
     expect(canvas.querySelector(":scope > g")).toHaveAttribute(
       "transform",
-      "translate(40 40) scale(1)"
+      "translate(30 20) scale(1)"
     );
   });
 
