@@ -111,6 +111,14 @@ export function updatePointerInteraction(
     return;
   }
 
+  if (activeInteraction.type === "zoomArea") {
+    updateInteraction({
+      ...activeInteraction,
+      current: worldPoint
+    });
+    return;
+  }
+
   if (activeInteraction.type === "create") {
     const activeElement = activeCanvasState.elements.find(
       (element) => element.id === activeInteraction.elementId

@@ -28,6 +28,8 @@ export type UseToolPointerHandlersArgs = {
   pan: Point;
   pendingImageSize: { height: number; width: number } | null;
   pendingImageSrc: string | null;
+  onZoomAtClientPoint: (point: Point) => void;
+  onZoomToBounds: (bounds: import("kizkatt-graphic-engine").Bounds) => void;
   replaceActiveState: (nextState: CanvasState) => void;
   selectionAreaMode: SelectionAreaMode;
   selectionTransformCenter: Point | null;

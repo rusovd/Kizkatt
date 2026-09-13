@@ -173,6 +173,13 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
     snapElementsRef.current = args.canvasStateRef.current.elements;
     startPointerInteraction(event, context);
 
+    if (
+      args.tool === "zoom" &&
+      interactionRef.current?.type === "zoomArea"
+    ) {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+
     if (!interactionRef.current) {
       snapElementsRef.current = args.canvasStateRef.current.elements;
     }

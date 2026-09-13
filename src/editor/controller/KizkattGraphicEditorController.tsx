@@ -4,7 +4,8 @@ import type {
   ClipboardEvent,
   KeyboardEvent,
   MouseEvent as ReactMouseEvent,
-  PointerEvent as ReactPointerEvent
+  PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent
 } from "react";
 
 import {
@@ -40,6 +41,7 @@ import {
   TEXT_ELEMENT_DEFAULT_WIDTH,
   TRANSPARENT_COLOR,
   VIEWPORT_CENTER_DIVISOR,
+  ZOOM_CLICK_STEP,
   ZOOM_STEP
 } from "kizkatt-graphic-engine";
 import {
@@ -68,10 +70,15 @@ import {
   getElementBends,
   getElementIndicesInBounds,
   getGridWorldSizing,
+  getElementsViewportBounds,
+  getLogicalPageBounds,
   reorderElementsByLayerAction,
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,
-  selectionBounds
+  selectionBounds,
+  fitBoundsInViewport,
+  panViewportByWheel,
+  zoomViewportAtPoint
 } from "kizkatt-graphic-engine";
 import {
   getStoredCanvasBackgroundColor,
@@ -112,6 +119,7 @@ import { useCanvasHistory } from "../state/useCanvasHistory";
 import { useToolPointerHandlers } from "../tools/pointer";
 import type {
   ContextMenuState,
+  Bounds,
   Dpi,
   GridSettings,
   KizkattElement,
@@ -122,7 +130,8 @@ import type {
   KizkattTheme,
   KizkattSceneDocument,
   KizkattSceneSettings,
-  Tool
+  Tool,
+  ViewportZoomAction
 } from "kizkatt-graphic-engine";
 import {
   COPIED_PNG_EXPORT_SIZE_TTL_MS,
@@ -234,6 +243,10 @@ export function KizkattGraphicEditorController({
   );
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pan, setPan] = useState<Point>(() => ({ ...INITIAL_PAN }));
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(pan);
+  zoomRef.current = zoom;
+  panRef.current = pan;
   const [defaultStyle, setDefaultStyle] = useState<StyleState>(
     () => defaultElementStyleByTheme[getStoredTheme()]
   );
@@ -331,6 +344,124 @@ export function KizkattGraphicEditorController({
     () =>
       canvasState.elements.filter((element) => selectedIdSet.has(element.id)),
     [canvasState.elements, selectedIdSet]
+  );
+  const getCanvasViewport = useCallback(() => {
+    const rect = svgRef.current?.getBoundingClientRect();
+
+    return {
+      left: rect?.left ?? 0,
+      top: rect?.top ?? 0,
+      size: {
+        width: rect?.width || svgRef.current?.clientWidth || window.innerWidth,
+        height:
+          rect?.height || svgRef.current?.clientHeight || window.innerHeight
+      }
+    };
+  }, []);
+  const commitViewportTransform = useCallback(
+    (nextTransform: { pan: Point; zoom: number }) => {
+      panRef.current = nextTransform.pan;
+      zoomRef.current = nextTransform.zoom;
+      setPan(nextTransform.pan);
+      setZoom(nextTransform.zoom);
+    },
+    []
+  );
+  const zoomByStepAtPoint = useCallback(
+    (step: number, pivot: Point) => {
+      commitViewportTransform(
+        zoomViewportAtPoint(
+          { pan: panRef.current, zoom: zoomRef.current },
+          zoomRef.current + step,
+          pivot
+        )
+      );
+    },
+    [commitViewportTransform]
+  );
+  const zoomAtClientPoint = useCallback(
+    (point: Point) => {
+      const viewport = getCanvasViewport();
+      zoomByStepAtPoint(ZOOM_CLICK_STEP, {
+        x: point.x - viewport.left,
+        y: point.y - viewport.top
+      });
+    },
+    [getCanvasViewport, zoomByStepAtPoint]
+  );
+  const zoomToWorldBounds = useCallback(
+    (bounds: Bounds) => {
+      const viewport = getCanvasViewport();
+      const nextTransform = fitBoundsInViewport(bounds, viewport.size, {
+        padding: 0
+      });
+
+      if (nextTransform) {
+        commitViewportTransform(nextTransform);
+      }
+    },
+    [commitViewportTransform, getCanvasViewport]
+  );
+  const onCanvasWheel = useCallback(
+    (event: ReactWheelEvent<SVGSVGElement>) => {
+      if (tool === "zoom" && event.deltaY !== 0) {
+        event.preventDefault();
+        const { size } = getCanvasViewport();
+        zoomByStepAtPoint(event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP, {
+          x: size.width / VIEWPORT_CENTER_DIVISOR,
+          y: size.height / VIEWPORT_CENTER_DIVISOR
+        });
+        return;
+      }
+
+      if (tool === "hand" && (event.deltaX !== 0 || event.deltaY !== 0)) {
+        event.preventDefault();
+        const delta = {
+          x: event.deltaX || (event.shiftKey ? event.deltaY : 0),
+          y: event.shiftKey && event.deltaX === 0 ? 0 : event.deltaY
+        };
+        const nextPan = panViewportByWheel(panRef.current, delta);
+
+        panRef.current = nextPan;
+        setPan(nextPan);
+      }
+    },
+    [getCanvasViewport, tool, zoomByStepAtPoint]
+  );
+  const applyViewportZoomAction = useCallback(
+    (action: ViewportZoomAction) => {
+      const viewport = getCanvasViewport();
+      const allElements = canvasStateRef.current.elements;
+      const isPageAction =
+        action === "page" ||
+        action === "pageWidth" ||
+        action === "pageHeight";
+      const bounds =
+        action === "selected"
+          ? getElementsViewportBounds(selectedElements)
+          : action === "all"
+            ? getElementsViewportBounds(allElements)
+            : getLogicalPageBounds(allElements, viewport.size);
+
+      if (!bounds || (!isPageAction && allElements.length === 0)) {
+        return;
+      }
+
+      const nextTransform = fitBoundsInViewport(bounds, viewport.size, {
+        mode:
+          action === "pageWidth"
+            ? "width"
+            : action === "pageHeight"
+              ? "height"
+              : "contain",
+        padding: isPageAction ? 20 : 40
+      });
+
+      if (nextTransform) {
+        commitViewportTransform(nextTransform);
+      }
+    },
+    [commitViewportTransform, getCanvasViewport, selectedElements]
   );
   const canCopySelection =
     selectedElements.length > EMPTY_COLLECTION_LENGTH;
@@ -1812,6 +1943,8 @@ export function KizkattGraphicEditorController({
       pan,
       pendingImageSize,
       pendingImageSrc,
+      onZoomAtClientPoint: zoomAtClientPoint,
+      onZoomToBounds: zoomToWorldBounds,
       replaceActiveState,
       selectionAreaMode,
       selectionTransformCenter,
@@ -2003,6 +2136,7 @@ export function KizkattGraphicEditorController({
     onPointerLeave,
     onPointerMove,
     onPointerUp,
+    onWheel: onCanvasWheel,
     pan,
     previewTransformInteraction,
     selectedElements,
@@ -2080,8 +2214,14 @@ export function KizkattGraphicEditorController({
       onChange: onImageFileChange,
       ref: imageInputRef
     },
-    selectionGeometryControls: objectPanelGeometry || canEditDefaultStroke
+    selectionGeometryControls:
+      objectPanelGeometry || canEditDefaultStroke || tool === "zoom"
       ? {
+          activeTool: tool,
+          canZoomToAll:
+            canvasState.elements.length > EMPTY_COLLECTION_LENGTH,
+          canZoomToSelected:
+            selectedElements.length > EMPTY_COLLECTION_LENGTH,
           geometry: objectPanelGeometry,
           gridSettings,
           onAction: applyElementAction,
@@ -2092,6 +2232,7 @@ export function KizkattGraphicEditorController({
           onMirror: mirrorSelected,
           onStyleChange: updateSelectedStyle,
           onStyleChangeEnd: endSelectedStyleChange,
+          onViewportZoomAction: applyViewportZoomAction,
           selectedElements,
           style: panelStyle,
           theme

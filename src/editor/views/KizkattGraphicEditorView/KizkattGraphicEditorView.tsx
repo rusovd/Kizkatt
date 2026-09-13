@@ -177,7 +177,12 @@ export function KizkattGraphicEditorView({
 
   const visibleSelectionGeometryControls =
     selectionGeometryControls ??
-    (objectPanelPinned ? lastSelectionGeometryControlsRef.current : null);
+    (objectPanelPinned && lastSelectionGeometryControlsRef.current
+      ? {
+          ...lastSelectionGeometryControlsRef.current,
+          activeTool: stylingControls.activeTool
+        }
+      : null);
   const visibleBitmapTexture =
     stylingControls.style.bitmapTexture ??
     lastBitmapTextureRef.current;

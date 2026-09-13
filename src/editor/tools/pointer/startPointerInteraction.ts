@@ -100,6 +100,15 @@ export function startPointerInteraction(
 
   closeContextMenu();
 
+  if (tool === "zoom") {
+    updateInteraction({
+      type: "zoomArea",
+      current: worldPoint,
+      origin: worldPoint
+    });
+    return;
+  }
+
   const linearEndpointTarget = getHandleTarget(target, "linear-endpoint");
   if (linearEndpointTarget) {
     const element = selectedElements[0];

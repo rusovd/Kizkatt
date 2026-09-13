@@ -2,6 +2,7 @@ import type { PointerEvent } from "react";
 
 import {
   getDistance,
+  getBoundsFromPoints,
   getElementIdsInSelectionArea,
   simplifyPolyline
 } from "kizkatt-graphic-engine";
@@ -36,7 +37,7 @@ function hasElementPreviewChanged(
 }
 
 export function finishPointerInteraction(
-  _event: PointerEvent<SVGSVGElement>,
+  event: PointerEvent<SVGSVGElement>,
   activeInteraction: Interaction,
   context: PointerHandlerContext
 ) {
@@ -46,6 +47,8 @@ export function finishPointerInteraction(
     createElementName,
     pendingImageSize,
     pendingImageSrc,
+    onZoomAtClientPoint,
+    onZoomToBounds,
     replaceActiveState,
     selectionAreaMode,
     setPendingImageSize,
@@ -58,6 +61,22 @@ export function finishPointerInteraction(
     zoom
   } = context;
   const activeCanvasState = canvasStateRef.current;
+
+  if (activeInteraction.type === "zoomArea") {
+    if (
+      getDistance(activeInteraction.origin, activeInteraction.current) >=
+      MIN_SELECT_DRAG_DISTANCE
+    ) {
+      onZoomToBounds(
+        getBoundsFromPoints(activeInteraction.origin, activeInteraction.current)
+      );
+    } else {
+      onZoomAtClientPoint({ x: event.clientX, y: event.clientY });
+    }
+
+    updateInteraction(null);
+    return;
+  }
 
   if (activeInteraction.type === "pan") {
     if (
