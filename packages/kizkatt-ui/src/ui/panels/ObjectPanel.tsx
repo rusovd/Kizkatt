@@ -37,7 +37,12 @@ import {
   RotationAngleIcon,
   SendBackwardIcon,
   SendToBackIcon,
-  TrashIcon
+  TrashIcon,
+  ZoomToAllIcon,
+  ZoomToPageHeightIcon,
+  ZoomToPageIcon,
+  ZoomToPageWidthIcon,
+  ZoomToSelectedIcon
 } from "../icons";
 import { Panel } from "../../components/Panel";
 import { FeatureGroup } from "../../components/FeatureGroup";
@@ -72,6 +77,26 @@ const LAYER_ACTIONS = [
 const ELEMENT_ACTIONS = [
   { action: "duplicate", labelKey: "duplicate", icon: DuplicateIcon },
   { action: "delete", labelKey: "delete", icon: TrashIcon }
+] as const;
+
+const VIEWPORT_ZOOM_ACTIONS = [
+  {
+    action: "selected",
+    labelKey: "zoomToSelected",
+    icon: ZoomToSelectedIcon
+  },
+  { action: "all", labelKey: "zoomToAll", icon: ZoomToAllIcon },
+  { action: "page", labelKey: "zoomToPage", icon: ZoomToPageIcon },
+  {
+    action: "pageWidth",
+    labelKey: "zoomToPageWidth",
+    icon: ZoomToPageWidthIcon
+  },
+  {
+    action: "pageHeight",
+    labelKey: "zoomToPageHeight",
+    icon: ZoomToPageHeightIcon
+  }
 ] as const;
 
 function clamp(value: number, min: number, max: number) {
@@ -182,18 +207,21 @@ function IconButton({
   active,
   ariaLabel,
   children,
+  disabled,
   onClick,
   title
 }: {
   active?: boolean;
   ariaLabel?: string;
   children: ReactNode;
+  disabled?: boolean;
   onClick: () => void;
   title: string;
 }) {
   return (
     <Button
       active={active}
+      disabled={disabled}
       label={ariaLabel ?? title}
       title={title}
       onClick={onClick}
@@ -345,6 +373,9 @@ function StrokeWidthPresetSelect({
 }
 
 export function ObjectPanel({
+  activeTool,
+  canZoomToAll,
+  canZoomToSelected,
   geometry,
   gridSettings,
   onAction,
@@ -355,6 +386,7 @@ export function ObjectPanel({
   onMirror,
   onStyleChange,
   onStyleChangeEnd,
+  onViewportZoomAction,
   selectedElements,
   style,
   theme
@@ -589,12 +621,17 @@ export function ObjectPanel({
       horizontalActionsLayout="column"
       minSize={OBJECT_PANEL_MIN_SIZE}
       pinnable
-      reopenKey={selectedElements.map((element) => element.id).join(":")}
+      reopenKey={[
+        activeTool,
+        ...selectedElements.map((element) => element.id)
+      ].join(":")}
       resizable
       title={
         geometry
           ? strings.objectPanel.objectGeometry
-          : strings.objectPanel.lineDefaults
+          : activeTool === "zoom"
+            ? strings.objectPanel.zoom
+            : strings.objectPanel.lineDefaults
       }
       topDock
     >
@@ -820,110 +857,125 @@ export function ObjectPanel({
                 </FeatureGroup>
               </>
             )}
-            <FeatureGroup
-              className="kizkatt-object-feature--edges"
-              label={
-                orientation === "vertical"
-                  ? strings.objectPanel.edges
-                  : undefined
-              }
-            >
-              {OBJECT_PANEL_UI_SETTINGS.edgeOptions.map((option) => (
-                <IconButton
-                  key={option}
-                  active={edgeStyle === option}
-                  title={
-                    strings.objectPanel.tooltips[
-                      option === "round" ? "edgeRound" : "edgeSharp"
-                    ]
+            {(activeTool !== "zoom" || geometry) && (
+              <>
+                <FeatureGroup
+                  className="kizkatt-object-feature--edges"
+                  label={
+                    orientation === "vertical"
+                      ? strings.objectPanel.edges
+                      : undefined
                   }
-                  onClick={() => updateStyle({ edgeStyle: option })}
                 >
-                  {EDGE_ICONS[option]}
-                </IconButton>
-              ))}
-            </FeatureGroup>
-            <FeatureGroup
-              className="kizkatt-object-feature--line"
-              label={
-                orientation === "vertical" ? strings.objectPanel.line : undefined
-              }
-            >
-              <div
-                ref={lineSettingsRef}
-                className="kizkatt-object-line-settings"
-              >
-                <IconButton
-                  active={lineSettingsOpen}
-                  title={strings.objectPanel.lineSettings.open}
-                  onClick={() => setLineSettingsOpen((open) => !open)}
+                  {OBJECT_PANEL_UI_SETTINGS.edgeOptions.map((option) => (
+                    <IconButton
+                      key={option}
+                      active={edgeStyle === option}
+                      title={
+                        strings.objectPanel.tooltips[
+                          option === "round" ? "edgeRound" : "edgeSharp"
+                        ]
+                      }
+                      onClick={() => updateStyle({ edgeStyle: option })}
+                    >
+                      {EDGE_ICONS[option]}
+                    </IconButton>
+                  ))}
+                </FeatureGroup>
+                <FeatureGroup
+                  className="kizkatt-object-feature--line"
+                  label={
+                    orientation === "vertical"
+                      ? strings.objectPanel.line
+                      : undefined
+                  }
                 >
-                  {PenNibIcon}
-                </IconButton>
-                <div className="kizkatt-object-panel-stack">
-                  <div className="kizkatt-line-style-row">
-                    <ObjectSelectField
-                      className="kizkatt-object-select-field--stroke-style"
-                      label={strings.objectPanel.strokeStyle}
-                      title={strings.objectPanel.tooltips.strokeStyle}
-                      value={strokeStyleValue}
-                      options={strokeStyleOptions}
-                      onChange={updateStrokeStyle}
-                    />
+                  <div
+                    ref={lineSettingsRef}
+                    className="kizkatt-object-line-settings"
+                  >
+                    <IconButton
+                      active={lineSettingsOpen}
+                      title={strings.objectPanel.lineSettings.open}
+                      onClick={() => setLineSettingsOpen((open) => !open)}
+                    >
+                      {PenNibIcon}
+                    </IconButton>
+                    <div className="kizkatt-object-panel-stack">
+                      <div className="kizkatt-line-style-row">
+                        <ObjectSelectField
+                          className="kizkatt-object-select-field--stroke-style"
+                          label={strings.objectPanel.strokeStyle}
+                          title={strings.objectPanel.tooltips.strokeStyle}
+                          value={strokeStyleValue}
+                          options={strokeStyleOptions}
+                          onChange={updateStrokeStyle}
+                        />
+                      </div>
+                      <StrokeWidthField
+                        decimalPlaces={precision}
+                        label={strings.objectPanel.strokeWidth}
+                        min={toDisplayUnit(
+                          OBJECT_PANEL_UI_SETTINGS.minStrokeWidth
+                        )}
+                        max={toDisplayUnit(
+                          OBJECT_PANEL_UI_SETTINGS.maxStrokeWidth
+                        )}
+                        title={strings.objectPanel.tooltips.strokeWidth}
+                        step={OBJECT_PANEL_UI_SETTINGS.positionStep}
+                        suffix={unit}
+                        value={formatNumber(
+                          toDisplayUnit(strokeWidth),
+                          precision
+                        )}
+                        onChange={updateStrokeWidth}
+                        onCommit={onStyleChangeEnd}
+                        onPresetSelect={(value) => {
+                          updateStrokeWidth(value);
+                          onStyleChangeEnd();
+                        }}
+                        onRemove={() => {
+                          updateStrokeWidth("0");
+                          onStyleChangeEnd();
+                        }}
+                        presetLabel={
+                          strings.objectPanel.strokeWidthPresetSelect
+                        }
+                        presetOptions={strokeWidthPresetOptions}
+                        removeLabel={strings.objectPanel.removeStroke}
+                      />
+                    </div>
+                    {lineSettingsOpen && (
+                      <LineSettingsPopover
+                        canUseArrowheads={canUseArrowheads}
+                        strokeStyleOptions={strokeStyleOptions}
+                        strokeWidthDecimalPlaces={precision}
+                        strokeWidthMax={toDisplayUnit(
+                          OBJECT_PANEL_UI_SETTINGS.maxStrokeWidth
+                        )}
+                        strokeWidthMin={toDisplayUnit(
+                          OBJECT_PANEL_UI_SETTINGS.minStrokeWidth
+                        )}
+                        strokeWidthValue={formatNumber(
+                          toDisplayUnit(strokeWidth),
+                          precision
+                        )}
+                        style={style}
+                        unit={unit}
+                        onClose={() => setLineSettingsOpen(false)}
+                        onContinuousStyleChange={(patch) =>
+                          onStyleChange(patch, { transient: true })
+                        }
+                        onStrokeWidthChange={updateStrokeWidth}
+                        onStrokeStyleChange={updateStrokeStyle}
+                        onStyleChange={updateStyle}
+                        onStyleChangeEnd={onStyleChangeEnd}
+                      />
+                    )}
                   </div>
-                  <StrokeWidthField
-                    decimalPlaces={precision}
-                    label={strings.objectPanel.strokeWidth}
-                    min={toDisplayUnit(OBJECT_PANEL_UI_SETTINGS.minStrokeWidth)}
-                    max={toDisplayUnit(OBJECT_PANEL_UI_SETTINGS.maxStrokeWidth)}
-                    title={strings.objectPanel.tooltips.strokeWidth}
-                    step={OBJECT_PANEL_UI_SETTINGS.positionStep}
-                    suffix={unit}
-                    value={formatNumber(toDisplayUnit(strokeWidth), precision)}
-                    onChange={updateStrokeWidth}
-                    onCommit={onStyleChangeEnd}
-                    onPresetSelect={(value) => {
-                      updateStrokeWidth(value);
-                      onStyleChangeEnd();
-                    }}
-                    onRemove={() => {
-                      updateStrokeWidth("0");
-                      onStyleChangeEnd();
-                    }}
-                    presetLabel={strings.objectPanel.strokeWidthPresetSelect}
-                    presetOptions={strokeWidthPresetOptions}
-                    removeLabel={strings.objectPanel.removeStroke}
-                  />
-                </div>
-                {lineSettingsOpen && (
-                  <LineSettingsPopover
-                    canUseArrowheads={canUseArrowheads}
-                    strokeStyleOptions={strokeStyleOptions}
-                    strokeWidthDecimalPlaces={precision}
-                    strokeWidthMax={toDisplayUnit(
-                      OBJECT_PANEL_UI_SETTINGS.maxStrokeWidth
-                    )}
-                    strokeWidthMin={toDisplayUnit(
-                      OBJECT_PANEL_UI_SETTINGS.minStrokeWidth
-                    )}
-                    strokeWidthValue={formatNumber(
-                      toDisplayUnit(strokeWidth),
-                      precision
-                    )}
-                    style={style}
-                    unit={unit}
-                    onClose={() => setLineSettingsOpen(false)}
-                    onContinuousStyleChange={(patch) =>
-                      onStyleChange(patch, { transient: true })
-                    }
-                    onStrokeWidthChange={updateStrokeWidth}
-                    onStrokeStyleChange={updateStrokeStyle}
-                    onStyleChange={updateStyle}
-                    onStyleChangeEnd={onStyleChangeEnd}
-                  />
-                )}
-              </div>
-            </FeatureGroup>
+                </FeatureGroup>
+              </>
+            )}
             {selectedElements.length > 0 && (
               <>
                 <FeatureGroup
@@ -965,6 +1017,34 @@ export function ObjectPanel({
                   ))}
                 </FeatureGroup>
               </>
+            )}
+            {activeTool === "zoom" && (
+              <FeatureGroup
+                className="kizkatt-object-feature--zoom"
+                label={
+                  orientation === "vertical"
+                    ? strings.objectPanel.zoom
+                    : undefined
+                }
+              >
+                {VIEWPORT_ZOOM_ACTIONS.map(({ action, labelKey, icon }) => (
+                  <IconButton
+                    key={action}
+                    ariaLabel={strings.objectPanel[labelKey]}
+                    disabled={
+                      action === "selected"
+                        ? !canZoomToSelected
+                        : action === "all"
+                          ? !canZoomToAll
+                          : false
+                    }
+                    title={strings.objectPanel.tooltips[labelKey]}
+                    onClick={() => onViewportZoomAction(action)}
+                  >
+                    {icon}
+                  </IconButton>
+                ))}
+              </FeatureGroup>
             )}
           </div>
           {actions}

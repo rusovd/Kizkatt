@@ -75,6 +75,14 @@
   grid-template-rows: repeat(2, 24px);
 }
 
+.kizkatt-object-panel--horizontal
+  .kizkatt-object-feature--zoom
+  .kizkatt-feature-group-content {
+  display: grid;
+  grid-template-columns: repeat(3, 24px);
+  grid-template-rows: repeat(2, 24px);
+}
+
 .kizkatt-object-panel-stack {
   display: grid;
   gap: 2px;
@@ -449,6 +457,11 @@
 .kizkatt-object-panel button:hover,
 .kizkatt-object-panel button.is-active {
   background: var(--kizkatt-control-bg-hover);
+}
+
+.kizkatt-object-panel button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .kizkatt-object-panel button.is-active {

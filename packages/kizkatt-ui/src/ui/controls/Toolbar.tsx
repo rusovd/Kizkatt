@@ -13,6 +13,7 @@ import {
 } from "../overlays/floatingPanels";
 import {
   LINE_TOOL_GROUP,
+  NAVIGATION_TOOL_GROUP,
   SHAPE_TOOL_GROUP,
   SINGLE_TOOL_ORDER,
   SHOW_TOOLBAR_SHORTCUTS,
@@ -21,7 +22,7 @@ import {
 import { ToolbarButton } from "./ToolbarButton";
 import { ShapeIcon } from "../icons";
 
-type ToolbarSubmenuId = "line" | "shape";
+type ToolbarSubmenuId = "line" | "navigation" | "shape";
 const TOOLBAR_FLOATING_PANEL_SOURCE = "toolbar";
 
 type ToolGroup = {
@@ -34,6 +35,12 @@ const SHAPE_GROUP: ToolGroup = {
   defaultTool: "rectangle",
   id: "shape",
   options: SHAPE_TOOL_GROUP.map((tool) => TOOL_REGISTRY_BY_ID[tool])
+};
+
+const NAVIGATION_GROUP: ToolGroup = {
+  defaultTool: "hand",
+  id: "navigation",
+  options: NAVIGATION_TOOL_GROUP.map((tool) => TOOL_REGISTRY_BY_ID[tool])
 };
 
 const LINE_GROUP: ToolGroup = {
@@ -294,7 +301,14 @@ export function Toolbar({
           aria-label={strings.toolbar.ariaLabel}
         >
           {chrome}
-          {SINGLE_TOOL_ORDER.slice(0, 3).map((tool) => (
+          <ToolGroupButton
+            activeTool={activeTool}
+            group={NAVIGATION_GROUP}
+            openSubmenu={openSubmenu}
+            onOpenSubmenuChange={openToolbarSubmenu}
+            onActivateTool={onActivateTool}
+          />
+          {SINGLE_TOOL_ORDER.slice(0, 2).map((tool) => (
             <ToolButton
               key={tool}
               active={activeTool === tool}
@@ -323,7 +337,7 @@ export function Toolbar({
             onOpenSubmenuChange={openToolbarSubmenu}
             onActivateTool={onActivateTool}
           />
-          {SINGLE_TOOL_ORDER.slice(3).map((tool) => (
+          {SINGLE_TOOL_ORDER.slice(2).map((tool) => (
             <ToolButton
               key={tool}
               active={activeTool === tool}

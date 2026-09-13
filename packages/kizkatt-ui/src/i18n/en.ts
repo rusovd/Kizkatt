@@ -209,7 +209,8 @@ export const ENGLISH_TRANSLATIONS = {
       rectangle: "Rectangle",
       shape: "Shape",
       select: "Select",
-      text: "Text"
+      text: "Text",
+      zoom: "Zoom"
     },
     tooltips: {
       arrow: "Draw an arrow",
@@ -225,7 +226,8 @@ export const ENGLISH_TRANSLATIONS = {
       rectangle: "Draw a rectangle",
       shape: "Shape tool (coming later)",
       select: "Select, move, resize, and rotate objects",
-      text: "Add text"
+      text: "Add text",
+      zoom: "Zoom into the canvas"
     }
   },
   objectPanel: {
@@ -248,6 +250,7 @@ export const ENGLISH_TRANSLATIONS = {
     objectHeight: "Object height",
     objectWidth: "Object width",
     lineDefaults: "Line defaults",
+    zoom: "Zoom",
     position: "Position",
     rotation: "Rotation",
     removeStroke: "No line",
@@ -298,6 +301,11 @@ export const ENGLISH_TRANSLATIONS = {
     strokeWidthPresetNone: "None",
     strokeWidthPresetSelect: "Line width preset",
     width: "Width",
+    zoomToAll: "Zoom to all objects",
+    zoomToPage: "Zoom to page",
+    zoomToPageHeight: "Zoom to page height",
+    zoomToPageWidth: "Zoom to page width",
+    zoomToSelected: "Zoom to selected",
     tooltips: {
       angle: "Set rotation relative to the object base",
       centerX: "Move the selection center horizontally relative to its base",
@@ -321,7 +329,12 @@ export const ENGLISH_TRANSLATIONS = {
       strokeStyleWavy: "Use wavy line style",
       strokeStyleZigzag: "Use zigzag line style",
       strokeWidth: "Set line width",
-      width: "Set width relative to the object base"
+      width: "Set width relative to the object base",
+      zoomToAll: "Fit all objects in the viewport",
+      zoomToPage: "Fit the logical page in the viewport",
+      zoomToPageHeight: "Fit the logical page height",
+      zoomToPageWidth: "Fit the logical page width",
+      zoomToSelected: "Fit selected objects in the viewport"
     }
   },
   bitmapPattern: {

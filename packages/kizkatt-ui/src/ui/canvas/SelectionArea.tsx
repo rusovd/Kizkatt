@@ -5,7 +5,7 @@ import { SVG_FILL_NONE } from "../../rendering/constants";
 
 export function SelectionArea({ interaction }: { interaction: Interaction | null }) {
   if (
-    interaction?.type !== "selectArea" ||
+    (interaction?.type !== "selectArea" && interaction?.type !== "zoomArea") ||
     getDistance(interaction.origin, interaction.current) < MIN_SELECT_DRAG_DISTANCE
   ) {
     return null;

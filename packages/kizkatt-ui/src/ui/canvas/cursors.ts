@@ -37,5 +37,9 @@ export function getCanvasCursor({
     return HAND_CURSOR;
   }
 
+  if (tool === "zoom") {
+    return "zoom-in";
+  }
+
   return "crosshair";
 }

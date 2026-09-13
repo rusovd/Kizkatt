@@ -1,8 +1,4 @@
-import type {
-  MouseEvent,
-  PointerEvent,
-  RefObject
-} from "react";
+import type { MouseEvent, PointerEvent, RefObject, WheelEvent } from "react";
 
 import type {
   Bounds,
@@ -21,7 +17,8 @@ import type {
   SelectionAreaMode,
   SelectionTransformMode,
   StyleState,
-  Tool
+  Tool,
+  ViewportZoomAction
 } from "kizkatt-graphic-engine";
 export type {
   ObjectDimensionAxis,
@@ -119,6 +116,9 @@ export type DocumentControls = {
 };
 
 export type ObjectPanelProps = {
+  activeTool: Tool;
+  canZoomToAll: boolean;
+  canZoomToSelected: boolean;
   geometry: ObjectPanelGeometry | null;
   gridSettings: GridSettings;
   onAction: (action: "delete" | "duplicate") => void;
@@ -142,6 +142,7 @@ export type ObjectPanelProps = {
     options?: { transient?: boolean }
   ) => void;
   onStyleChangeEnd: () => void;
+  onViewportZoomAction: (action: ViewportZoomAction) => void;
   selectedElements: KizkattElement[];
   style: StyleState;
   theme: KizkattTheme;
@@ -237,6 +238,7 @@ export type KizkattGraphicEditorCanvasViewModel = {
   onPointerLeave: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerUp: (event: PointerEvent<SVGSVGElement>) => void;
+  onWheel: (event: WheelEvent<SVGSVGElement>) => void;
   pan: Point;
   previewTransformInteraction: KizkattPreviewTransformInteraction | null;
   selectedElements: KizkattElement[];

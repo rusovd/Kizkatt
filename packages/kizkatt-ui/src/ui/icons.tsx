@@ -1005,3 +1005,56 @@ export const handIcon = createIcon(
     <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" />
   </g>
 );
+
+export const ZoomIcon = createIcon(
+  <g strokeWidth="1.5">
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m15.2 15.2 4.8 4.8" />
+    <path d="M10.5 7.5v6M7.5 10.5h6" />
+  </g>
+);
+
+export const ZoomToSelectedIcon = createIcon(
+  <g strokeWidth="1.4">
+    <circle cx="10" cy="10" r="6.5" />
+    <path d="m14.7 14.7 5 5" />
+    <path d="M7 7h2M7 7v2M13 7h-2M13 7v2M7 13h2M7 13v-2M13 13h-2M13 13v-2" />
+  </g>
+);
+
+export const ZoomToAllIcon = createIcon(
+  <g strokeWidth="1.4">
+    <circle cx="10" cy="10" r="6.5" />
+    <path d="m14.7 14.7 5 5" />
+    <rect x="6.5" y="9.5" width="4" height="3" rx=".5" />
+    <circle cx="12.5" cy="7.5" r="1.8" />
+  </g>
+);
+
+export const ZoomToPageIcon = createIcon(
+  <g strokeWidth="1.4">
+    <path d="M5 3h9l3 3v8" />
+    <path d="M14 3v3h3" />
+    <path d="M5 3v17h8" />
+    <circle cx="16" cy="16" r="3.5" />
+    <path d="m18.6 18.6 2.4 2.4" />
+  </g>
+);
+
+export const ZoomToPageWidthIcon = createIcon(
+  <g strokeWidth="1.4">
+    <circle cx="12" cy="12" r="5" />
+    <path d="m15.6 15.6 4 4" />
+    <path d="M1.5 4.5h21M1.5 2.5v4M22.5 2.5v4" />
+    <path d="m4.5 4.5 2-2M4.5 4.5l2 2M19.5 4.5l-2-2M19.5 4.5l-2 2" />
+  </g>
+);
+
+export const ZoomToPageHeightIcon = createIcon(
+  <g strokeWidth="1.4">
+    <circle cx="12" cy="12" r="5" />
+    <path d="m15.6 15.6 4 4" />
+    <path d="M4.5 1.5v21M2.5 1.5h4M2.5 22.5h4" />
+    <path d="m4.5 4.5-2 2M4.5 4.5l2 2M4.5 19.5l-2-2M4.5 19.5l2-2" />
+  </g>
+);

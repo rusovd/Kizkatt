@@ -59,6 +59,7 @@ export function EditorCanvas({
     onPointerLeave,
     onPointerMove,
     onPointerUp,
+    onWheel,
     pan,
     previewTransformInteraction,
     selectedElements,
@@ -94,6 +95,7 @@ export function EditorCanvas({
       onPointerLeave={onPointerLeave}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onWheel={onWheel}
       onContextMenu={onContextMenu}
     >
       <CanvasGrid

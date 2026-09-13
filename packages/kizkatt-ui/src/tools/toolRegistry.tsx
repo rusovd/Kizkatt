@@ -14,6 +14,7 @@ import {
   RectangleIcon,
   SelectionIcon,
   TextIcon,
+  ZoomIcon,
   handIcon
 } from "../ui/icons";
 
@@ -30,7 +31,8 @@ export type ToolLabelKey =
   | "polyline"
   | "rectangle"
   | "select"
-  | "text";
+  | "text"
+  | "zoom";
 
 export type ToolDefinition = {
   icon: ReactNode;
@@ -116,6 +118,11 @@ export const TOOL_REGISTRY_BY_ID: Record<Tool, ToolDefinition> = {
     labelKey: "text",
     icon: TextIcon,
     shortcut: "8"
+  },
+  zoom: {
+    id: "zoom",
+    labelKey: "zoom",
+    icon: ZoomIcon
   }
 };
 
