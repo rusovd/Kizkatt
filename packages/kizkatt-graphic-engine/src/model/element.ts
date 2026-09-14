@@ -161,6 +161,20 @@ function cloneOptionalPointList(points?: Point[]) {
   return points?.map(clonePoint);
 }
 
+function cloneOptionalLinearSegmentControls(
+  controls?: KizkattElement["linearSegmentControls"]
+) {
+  return controls?.map((control) =>
+    control
+      ? {
+          ...control,
+          cp1: cloneOptionalPoint(control.cp1),
+          cp2: cloneOptionalPoint(control.cp2)
+        }
+      : { mode: "line" as const }
+  );
+}
+
 export function getObjectBase(element: KizkattElement): ObjectBase {
   const {
     base: _base,
@@ -185,6 +199,9 @@ export function getObjectBase(element: KizkattElement): ObjectBase {
       y: y + element.height / 2
     },
     curve: cloneOptionalPoint(element.curve),
+    linearSegmentControls: cloneOptionalLinearSegmentControls(
+      element.linearSegmentControls
+    ),
     points: cloneOptionalPointList(element.points)
   };
 }
@@ -195,6 +212,9 @@ export function cloneObjectBase(base: ObjectBase): ObjectBase {
     bends: cloneOptionalPointList(base.bends),
     center: clonePoint(base.center),
     curve: cloneOptionalPoint(base.curve),
+    linearSegmentControls: cloneOptionalLinearSegmentControls(
+      base.linearSegmentControls
+    ),
     points: cloneOptionalPointList(base.points)
   };
 }

@@ -83,6 +83,8 @@ export function getActiveInteractionCursor(interaction: Interaction | null) {
 
   if (
     interaction.type === "bend" ||
+    interaction.type === "bezierControl" ||
+    interaction.type === "linearNodes" ||
     interaction.type === "linearEndpoint" ||
     interaction.type === "move" ||
     interaction.type === "rotate" ||
@@ -103,6 +105,8 @@ export function isPreviewTransformInteraction(
     interaction?.type === "rotate" ||
     interaction?.type === "skew" ||
     interaction?.type === "bend" ||
+    interaction?.type === "bezierControl" ||
+    interaction?.type === "linearNodes" ||
     interaction?.type === "linearEndpoint"
   );
 }

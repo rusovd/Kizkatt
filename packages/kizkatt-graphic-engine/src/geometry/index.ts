@@ -69,9 +69,12 @@ export * from "./objectGeometry";
 export { simplifyPolyline } from "./pathSimplification";
 export {
   getElementBends,
+  getDefaultLinearSegmentControl,
   insertLinearElementBend,
+  getLinearElementCubicControlPoints,
   getLinearElementPath,
   getLinearElementPoints,
+  getLinearElementSegmentControls,
   getLinearElementSegmentMidpoint,
   moveLinearElementEndpoint
 } from "./linearElements";

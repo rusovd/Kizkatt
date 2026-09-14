@@ -17,6 +17,7 @@ import {
 } from "../config/constants";
 import type {
   KizkattElement,
+  LinearSegmentControl,
   LinearEndpoint,
   Point
 } from "../model/types";
@@ -192,9 +193,84 @@ export function moveLinearElementEndpoint(
   };
 }
 
+export type LinearSegmentWorldControl = {
+  cp1?: Point;
+  cp2?: Point;
+  mode: "curve" | "line";
+};
+
+function toWorldControlPoint(element: KizkattElement, point?: Point) {
+  return point
+    ? {
+        x: element.x + point.x,
+        y: element.y + point.y
+      }
+    : undefined;
+}
+
+function toLocalControlPoint(element: KizkattElement, point: Point) {
+  return {
+    x: point.x - element.x,
+    y: point.y - element.y
+  };
+}
+
+export function getDefaultLinearSegmentControl(
+  element: KizkattElement,
+  segmentIndex: number,
+  points = getLinearElementPoints(element)
+): LinearSegmentControl {
+  const { cp1, cp2 } = getLinearElementCubicControlPoints(
+    points,
+    segmentIndex
+  );
+
+  return {
+    cp1: toLocalControlPoint(element, cp1),
+    cp2: toLocalControlPoint(element, cp2),
+    mode: "curve"
+  };
+}
+
+export function getLinearElementSegmentControls(
+  element: KizkattElement,
+  points = getLinearElementPoints(element)
+): LinearSegmentWorldControl[] {
+  return points.slice(0, -1).map((_, index) => {
+    const configured = element.linearSegmentControls?.[index];
+
+    if (configured?.mode === "line") {
+      return { mode: "line" };
+    }
+
+    if (configured?.mode === "curve") {
+      const fallback = getDefaultLinearSegmentControl(element, index, points);
+
+      return {
+        cp1: toWorldControlPoint(element, configured.cp1 ?? fallback.cp1),
+        cp2: toWorldControlPoint(element, configured.cp2 ?? fallback.cp2),
+        mode: "curve"
+      };
+    }
+
+    if (
+      (element.edgeStyle ?? DEFAULT_EDGE_STYLE) !== SHARP_EDGE_STYLE &&
+      points.length > LINEAR_PATH_STRAIGHT_POINT_COUNT
+    ) {
+      return {
+        ...getLinearElementCubicControlPoints(points, index),
+        mode: "curve"
+      };
+    }
+
+    return { mode: "line" };
+  });
+}
+
 export function getLinearElementPath(
   points: Point[],
-  edgeStyle: KizkattElement["edgeStyle"] = DEFAULT_EDGE_STYLE
+  edgeStyle: KizkattElement["edgeStyle"] = DEFAULT_EDGE_STYLE,
+  segmentControls?: LinearSegmentWorldControl[]
 ) {
   if (points.length === EMPTY_COLLECTION_LENGTH) {
     return EMPTY_PATH_DATA;
@@ -206,7 +282,14 @@ export function getLinearElementPath(
     }`;
   }
 
-  if (points.length === LINEAR_PATH_STRAIGHT_POINT_COUNT) {
+  const hasExplicitCurveControls = segmentControls?.some(
+    (control) => control.mode === "curve" && control.cp1 && control.cp2
+  );
+
+  if (
+    points.length === LINEAR_PATH_STRAIGHT_POINT_COUNT &&
+    !hasExplicitCurveControls
+  ) {
     return `${SVG_MOVE_COMMAND} ${points[FIRST_ARRAY_INDEX].x} ${
       points[FIRST_ARRAY_INDEX].y
     } ${SVG_LINE_COMMAND} ${points[NEXT_ARRAY_INDEX_OFFSET].x} ${
@@ -214,7 +297,7 @@ export function getLinearElementPath(
     }`;
   }
 
-  if (edgeStyle === SHARP_EDGE_STYLE) {
+  if (edgeStyle === SHARP_EDGE_STYLE && !hasExplicitCurveControls) {
     return points
       .map((point, index) => {
         const command =
@@ -237,7 +320,22 @@ export function getLinearElementPath(
     index += NEXT_ARRAY_INDEX_OFFSET
   ) {
     const next = points[index + NEXT_ARRAY_INDEX_OFFSET];
-    const { cp1, cp2 } = getLinearElementCubicControlPoints(points, index);
+    const segmentControl = segmentControls?.[index];
+
+    if (
+      segmentControl?.mode === "line" ||
+      (edgeStyle === SHARP_EDGE_STYLE && !segmentControl)
+    ) {
+      commands.push(`${SVG_LINE_COMMAND} ${next.x} ${next.y}`);
+      continue;
+    }
+
+    const { cp1, cp2 } =
+      segmentControl?.mode === "curve" &&
+      segmentControl.cp1 &&
+      segmentControl.cp2
+        ? { cp1: segmentControl.cp1, cp2: segmentControl.cp2 }
+        : getLinearElementCubicControlPoints(points, index);
 
     commands.push(
       `${SVG_CUBIC_COMMAND} ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${next.x} ${next.y}`
@@ -247,7 +345,10 @@ export function getLinearElementPath(
   return commands.join(SVG_COMMAND_SEPARATOR);
 }
 
-function getLinearElementCubicControlPoints(points: Point[], index: number) {
+export function getLinearElementCubicControlPoints(
+  points: Point[],
+  index: number
+) {
   const previous =
     points[Math.max(FIRST_ARRAY_INDEX, index - NEXT_ARRAY_INDEX_OFFSET)];
   const current = points[index];
@@ -300,12 +401,28 @@ function getCubicBezierMidpoint(
 export function getLinearElementSegmentMidpoint(
   points: Point[],
   index: number,
-  edgeStyle: KizkattElement["edgeStyle"] = DEFAULT_EDGE_STYLE
+  edgeStyle: KizkattElement["edgeStyle"] = DEFAULT_EDGE_STYLE,
+  segmentControls?: LinearSegmentWorldControl[]
 ) {
   const start = points[index];
   const end = points[index + NEXT_ARRAY_INDEX_OFFSET];
+  const segmentControl = segmentControls?.[index];
 
   if (
+    segmentControl?.mode === "curve" &&
+    segmentControl.cp1 &&
+    segmentControl.cp2
+  ) {
+    return getCubicBezierMidpoint(
+      start,
+      segmentControl.cp1,
+      segmentControl.cp2,
+      end
+    );
+  }
+
+  if (
+    segmentControl?.mode === "line" ||
     edgeStyle === SHARP_EDGE_STYLE ||
     points.length <= LINEAR_PATH_STRAIGHT_POINT_COUNT
   ) {

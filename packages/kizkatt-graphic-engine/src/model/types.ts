@@ -31,6 +31,12 @@ export type Point = {
 
 export type LinearEndpoint = "start" | "end";
 
+export type LinearSegmentControl = {
+  cp1?: Point;
+  cp2?: Point;
+  mode?: "curve" | "line";
+};
+
 export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
 export type SelectionTransformMode = "resize" | "skew";
@@ -185,6 +191,7 @@ export type KizkattElement = {
   svgViewBox?: string;
   pathData?: string;
   bends?: Point[];
+  linearSegmentControls?: LinearSegmentControl[];
   closed?: boolean;
   curve?: Point;
   points?: Point[];
@@ -212,6 +219,11 @@ export type CanvasState = {
   selectedBend?: {
     bendIndex: number;
     elementId: string;
+  };
+  selectedNodes?: {
+    elementId: string;
+    nodeIndices: number[];
+    segmentIndex?: number;
   };
   selectedIds: string[];
 };
@@ -290,6 +302,26 @@ export type Interaction =
       originalElements: KizkattElement[];
       selectedIds: string[];
       start: Point;
+    }
+  | {
+      type: "linearNodes";
+      elementId: string;
+      originalBends: Point[];
+      originalElement: KizkattElement;
+      originalElements: KizkattElement[];
+      selectedIds: string[];
+      selectedNodeIndices: number[];
+      segmentIndex?: number;
+      start: Point;
+    }
+  | {
+      type: "bezierControl";
+      control: "cp1" | "cp2";
+      elementId: string;
+      originalElement: KizkattElement;
+      originalElements: KizkattElement[];
+      selectedIds: string[];
+      segmentIndex: number;
     }
   | {
       type: "linearEndpoint";
