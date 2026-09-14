@@ -115,8 +115,20 @@ describe("KizkattGraphicEditor shell", () => {
       canvas.querySelector(":scope > g[transform]")?.getAttribute("transform")
     ).toContain("scale(1.25)");
 
+    firePointerEvent(canvas, "pointerdown", {
+      altKey: true,
+      clientX: 100,
+      clientY: 80
+    });
+    firePointerEvent(canvas, "pointerup", {
+      altKey: true,
+      clientX: 100,
+      clientY: 80
+    });
+    expect(screen.getByText("100%")).toBeInTheDocument();
+
     fireEvent.wheel(canvas, { deltaY: -100 });
-    expect(screen.getByText("135%")).toBeInTheDocument();
+    expect(screen.getByText("110%")).toBeInTheDocument();
   });
 
   it("fits a dragged zoom area without applying the click increment", () => {

@@ -380,9 +380,9 @@ export function KizkattGraphicEditorController({
     [commitViewportTransform]
   );
   const zoomAtClientPoint = useCallback(
-    (point: Point) => {
+    (point: Point, zoomOut: boolean) => {
       const viewport = getCanvasViewport();
-      zoomByStepAtPoint(ZOOM_CLICK_STEP, {
+      zoomByStepAtPoint(zoomOut ? -ZOOM_CLICK_STEP : ZOOM_CLICK_STEP, {
         x: point.x - viewport.left,
         y: point.y - viewport.top
       });

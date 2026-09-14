@@ -71,7 +71,10 @@ export function finishPointerInteraction(
         getBoundsFromPoints(activeInteraction.origin, activeInteraction.current)
       );
     } else {
-      onZoomAtClientPoint({ x: event.clientX, y: event.clientY });
+      onZoomAtClientPoint(
+        { x: event.clientX, y: event.clientY },
+        event.altKey
+      );
     }
 
     updateInteraction(null);
