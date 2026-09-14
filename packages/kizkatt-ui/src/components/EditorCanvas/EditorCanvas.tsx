@@ -159,6 +159,17 @@ export function EditorCanvas({
             wireframe={activeDisplayMode === "wireframe"}
           />
         )}
+        {previewTransformInteraction?.type === "bezierControl" &&
+          selectedElements.map((element) => {
+            const { options } = getElementSelectionRenderState(element);
+
+            return renderElementOverlay(element, {
+              ...options,
+              overlayVariant: "primary",
+              showLinearBendHandles: false,
+              showSelectionBounds: false
+            });
+          })}
         {infoMode && <InfoOverlay items={infoOverlayItems} zoom={zoom} />}
         {!previewTransformInteraction && (
           <SelectedBounds
@@ -168,6 +179,7 @@ export function EditorCanvas({
             selectionTransformMode={selectionTransformMode}
             showRotateHandle={showRotateHandle}
             showRotateHoverIcon={interaction?.type !== "rotate"}
+            zoom={zoom}
           />
         )}
       </g>

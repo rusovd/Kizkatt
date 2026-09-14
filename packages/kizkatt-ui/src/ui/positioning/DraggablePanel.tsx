@@ -107,6 +107,20 @@ function readStoredSize(
   }
 }
 
+function getMinimumPanelSize(minSize?: Partial<PanelSize>): PanelSize {
+  return {
+    height: minSize?.height ?? MIN_RESIZABLE_PANEL_HEIGHT,
+    width: minSize?.width ?? MIN_RESIZABLE_PANEL_WIDTH
+  };
+}
+
+function clampPanelSize(size: PanelSize, minimumSize: PanelSize): PanelSize {
+  return {
+    height: Math.max(minimumSize.height, size.height),
+    width: Math.max(minimumSize.width, size.width)
+  };
+}
+
 function storePosition(id: string, position: PanelPosition) {
   window.localStorage.setItem(getStorageKey(id), JSON.stringify(position));
 }
@@ -280,9 +294,12 @@ export function DraggablePanel({
   const [orientation, setOrientation] = useState<PanelOrientation>(
     initialOrientationRef.current
   );
-  const [size, setSize] = useState<PanelSize | null>(() =>
-    readStoredSize(id, initialOrientationRef.current)
-  );
+  const minimumSize = getMinimumPanelSize(minSize);
+  const [size, setSize] = useState<PanelSize | null>(() => {
+    const storedSize = readStoredSize(id, initialOrientationRef.current);
+
+    return storedSize ? clampPanelSize(storedSize, minimumSize) : null;
+  });
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
   const [temporarilyClosed, setTemporarilyClosed] = useState(false);
@@ -293,10 +310,6 @@ export function DraggablePanel({
     : undefined;
   const canResize = Boolean(resizeAxis);
   const labelsHidden = hideLabels?.[orientation] ?? false;
-  const minimumSize = {
-    height: minSize?.height ?? MIN_RESIZABLE_PANEL_HEIGHT,
-    width: minSize?.width ?? MIN_RESIZABLE_PANEL_WIDTH
-  };
 
   useEffect(() => {
     if (previousReopenKeyRef.current === reopenKey) {
@@ -634,7 +647,8 @@ export function DraggablePanel({
       orientation === "horizontal" ? "vertical" : "horizontal";
 
     setOrientation(nextOrientation);
-    setSize(readStoredSize(id, nextOrientation));
+    const storedSize = readStoredSize(id, nextOrientation);
+    setSize(storedSize ? clampPanelSize(storedSize, minimumSize) : null);
     window.localStorage.setItem(getOrientationStorageKey(id), nextOrientation);
   };
 
@@ -656,6 +670,8 @@ export function DraggablePanel({
           ...(resizeAxis !== "vertical" ? { minWidth: minimumSize.width } : {})
         }
       : {}),
+    "--kizkatt-panel-min-height": `${minimumSize.height}px`,
+    "--kizkatt-panel-min-width": `${minimumSize.width}px`,
     "--kizkatt-panel-max-cols": Math.max(1, Math.floor(maxCols)),
     "--kizkatt-panel-max-rows": Math.max(1, Math.floor(maxRows))
   } as CSSProperties;

@@ -32,9 +32,7 @@ import {
 import { ArcArrowsIcon } from "../icons";
 import { TargetPointIcon } from "../icons";
 
-const HALF_HANDLE_SIZE = SELECTION_HANDLE_SIZE / HALF_DIVISOR;
 const SKEW_HANDLE_SIZE = SELECTION_HANDLE_SIZE * SKEW_HANDLE_SIZE_MULTIPLIER;
-const HALF_SKEW_HANDLE_SIZE = SKEW_HANDLE_SIZE / HALF_DIVISOR;
 const CORNER_ROTATE_HANDLE_OFFSET =
   SELECTION_HANDLE_SIZE * CORNER_ROTATE_HANDLE_OFFSET_MULTIPLIER;
 const CORNER_ROTATE_ARROW_SHAFT_PATH =
@@ -42,6 +40,10 @@ const CORNER_ROTATE_ARROW_SHAFT_PATH =
 const CORNER_ROTATE_ARROW_HEAD_PATH = "M14 1.7 L18.6 4 L14.4 7 Z";
 const POLYGON_POINT_SEPARATOR = " ";
 const SVG_POLYGON_CLOSE_COMMAND = " Z";
+
+function getScreenScale(zoom = 1) {
+  return 1 / Math.max(zoom, Number.EPSILON);
+}
 
 function getPointListPath(points: Point[]) {
   const [firstPoint, ...remainingPoints] = points;
@@ -102,13 +104,23 @@ function getResizeHandlePoints(points: Point[]) {
   };
 }
 
-function RotateHoverIcon({ x, y }: { x: number; y: number }) {
+function RotateHoverIcon({
+  scale = 1,
+  x,
+  y
+}: {
+  scale?: number;
+  x: number;
+  y: number;
+}) {
+  const size = ROTATE_HOVER_ICON_SIZE * scale;
+
   return (
     <g
       className="kizkatt-rotate-hover-icon"
-      transform={`translate(${x - ROTATE_HOVER_ICON_SIZE / HALF_DIVISOR} ${
-        y - ROTATE_HOVER_ICON_OFFSET
-      })`}
+      transform={`translate(${x - size / HALF_DIVISOR} ${
+        y - ROTATE_HOVER_ICON_OFFSET * scale
+      }) scale(${scale})`}
     >
       {ArcArrowsIcon}
     </g>
@@ -118,11 +130,13 @@ function RotateHoverIcon({ x, y }: { x: number; y: number }) {
 export function TransformCenterMarker({
   center,
   getWorldPoint,
-  mode
+  mode,
+  scale = 1
 }: {
   center: Point;
   getWorldPoint?: (point: Point) => Point;
   mode: SelectionTransformMode;
+  scale?: number;
 }) {
   const worldPoint = getWorldPoint?.(center) ?? center;
   const isSkewMode = mode === "skew";
@@ -136,7 +150,7 @@ export function TransformCenterMarker({
         data-handle-world-y={worldPoint.y}
         transform={`translate(${center.x} ${center.y})`}
       >
-        <g transform="translate(-9 -9) scale(0.75)">
+        <g transform={`scale(${scale}) translate(-9 -9) scale(0.75)`}>
           {TargetPointIcon}
         </g>
       </g>
@@ -148,28 +162,37 @@ export function TransformCenterMarker({
       className="kizkatt-transform-center-marker kizkatt-transform-center-marker--cross"
       transform={`translate(${center.x} ${center.y})`}
     >
-      <path d="M-4 -4 4 4 M4 -4 -4 4" />
+      <path
+        d={`M${-4 * scale} ${-4 * scale} ${4 * scale} ${
+          4 * scale
+        } M${4 * scale} ${-4 * scale} ${-4 * scale} ${4 * scale}`}
+      />
     </g>
   );
 }
 
 function EdgeSkewHandle({
   bounds,
-  handle
+  handle,
+  scale = 1
 }: {
   bounds: NonNullable<ReturnType<typeof selectionBounds>>;
   handle: SkewHandle;
+  scale?: number;
 }) {
   const isHorizontal = handle === "top" || handle === "bottom";
+  const cornerRotateHandleOffset = CORNER_ROTATE_HANDLE_OFFSET * scale;
+  const skewHandleSize = SKEW_HANDLE_SIZE * scale;
+  const halfSkewHandleSize = skewHandleSize / HALF_DIVISOR;
   const x = isHorizontal
     ? bounds.x + bounds.width / HALF_DIVISOR
     : handle === "left"
-    ? bounds.x - CORNER_ROTATE_HANDLE_OFFSET
-    : bounds.x + bounds.width + CORNER_ROTATE_HANDLE_OFFSET;
+    ? bounds.x - cornerRotateHandleOffset
+    : bounds.x + bounds.width + cornerRotateHandleOffset;
   const y = isHorizontal
     ? handle === "top"
-      ? bounds.y - CORNER_ROTATE_HANDLE_OFFSET
-      : bounds.y + bounds.height + CORNER_ROTATE_HANDLE_OFFSET
+      ? bounds.y - cornerRotateHandleOffset
+      : bounds.y + bounds.height + cornerRotateHandleOffset
     : bounds.y + bounds.height / HALF_DIVISOR;
   const d = isHorizontal
     ? "M2 6 L6 2 M2 6 L6 10 M2 6 H14 M18 6 L14 2 M18 6 L14 10 M18 6 H6"
@@ -181,9 +204,9 @@ function EdgeSkewHandle({
       data-handle="skew"
       data-skew-handle={handle}
       style={{ cursor: isHorizontal ? "ew-resize" : "ns-resize" }}
-      transform={`translate(${x - HALF_SKEW_HANDLE_SIZE} ${
-        y - HALF_SKEW_HANDLE_SIZE
-      }) scale(${SKEW_HANDLE_SIZE / SKEW_HANDLE_ICON_VIEWBOX_SIZE})`}
+      transform={`translate(${x - halfSkewHandleSize} ${
+        y - halfSkewHandleSize
+      }) scale(${skewHandleSize / SKEW_HANDLE_ICON_VIEWBOX_SIZE})`}
     >
       <rect
         x="0"
@@ -199,12 +222,16 @@ function EdgeSkewHandle({
 
 function WorldEdgeSkewHandle({
   handle,
-  point
+  point,
+  scale = 1
 }: {
   handle: SkewHandle;
   point: Point;
+  scale?: number;
 }) {
   const isHorizontal = handle === "top" || handle === "bottom";
+  const skewHandleSize = SKEW_HANDLE_SIZE * scale;
+  const halfSkewHandleSize = skewHandleSize / HALF_DIVISOR;
   const d = isHorizontal
     ? "M2 6 L6 2 M2 6 L6 10 M2 6 H14 M18 6 L14 2 M18 6 L14 10 M18 6 H6"
     : "M6 2 L2 6 M6 2 L10 6 M6 2 V14 M6 18 L2 14 M6 18 L10 14 M6 18 V6";
@@ -217,9 +244,9 @@ function WorldEdgeSkewHandle({
       data-handle-world-y={point.y}
       data-skew-handle={handle}
       style={{ cursor: isHorizontal ? "ew-resize" : "ns-resize" }}
-      transform={`translate(${point.x - HALF_SKEW_HANDLE_SIZE} ${
-        point.y - HALF_SKEW_HANDLE_SIZE
-      }) scale(${SKEW_HANDLE_SIZE / SKEW_HANDLE_ICON_VIEWBOX_SIZE})`}
+      transform={`translate(${point.x - halfSkewHandleSize} ${
+        point.y - halfSkewHandleSize
+      }) scale(${skewHandleSize / SKEW_HANDLE_ICON_VIEWBOX_SIZE})`}
     >
       <rect
         x="0"
@@ -236,7 +263,8 @@ function WorldEdgeSkewHandle({
 function CornerRotateHandle({
   bounds,
   corner,
-  getWorldPoint
+  getWorldPoint,
+  scale = 1
 }: {
   bounds: NonNullable<ReturnType<typeof selectionBounds>>;
   corner: "nw" | "ne" | "se" | "sw";
@@ -244,15 +272,19 @@ function CornerRotateHandle({
     x: number;
     y: number;
   };
+  scale?: number;
 }) {
+  const cornerRotateHandleOffset = CORNER_ROTATE_HANDLE_OFFSET * scale;
+  const skewHandleSize = SKEW_HANDLE_SIZE * scale;
+  const halfSkewHandleSize = skewHandleSize / HALF_DIVISOR;
   const x =
     corner === "nw" || corner === "sw"
-      ? bounds.x - CORNER_ROTATE_HANDLE_OFFSET
-      : bounds.x + bounds.width + CORNER_ROTATE_HANDLE_OFFSET;
+      ? bounds.x - cornerRotateHandleOffset
+      : bounds.x + bounds.width + cornerRotateHandleOffset;
   const y =
     corner === "nw" || corner === "ne"
-      ? bounds.y - CORNER_ROTATE_HANDLE_OFFSET
-      : bounds.y + bounds.height + CORNER_ROTATE_HANDLE_OFFSET;
+      ? bounds.y - cornerRotateHandleOffset
+      : bounds.y + bounds.height + cornerRotateHandleOffset;
   const worldPoint = getWorldPoint?.({ x, y }) ?? { x, y };
   const iconTransformByCorner = {
     ne: "translate(20 0) scale(-1 1)",
@@ -267,9 +299,9 @@ function CornerRotateHandle({
       data-handle="rotate"
       data-handle-world-x={worldPoint.x}
       data-handle-world-y={worldPoint.y}
-      transform={`translate(${x - HALF_SKEW_HANDLE_SIZE} ${
-        y - HALF_SKEW_HANDLE_SIZE
-      }) scale(${SKEW_HANDLE_SIZE / SKEW_HANDLE_ICON_VIEWBOX_SIZE})`}
+      transform={`translate(${x - halfSkewHandleSize} ${
+        y - halfSkewHandleSize
+      }) scale(${skewHandleSize / SKEW_HANDLE_ICON_VIEWBOX_SIZE})`}
     >
       <rect
         x="0"
@@ -288,11 +320,15 @@ function CornerRotateHandle({
 
 function WorldCornerRotateHandle({
   corner,
-  point
+  point,
+  scale = 1
 }: {
   corner: "nw" | "ne" | "se" | "sw";
   point: Point;
+  scale?: number;
 }) {
+  const skewHandleSize = SKEW_HANDLE_SIZE * scale;
+  const halfSkewHandleSize = skewHandleSize / HALF_DIVISOR;
   const iconTransformByCorner = {
     ne: "translate(20 0) scale(-1 1)",
     nw: "translate(0 0)",
@@ -306,9 +342,9 @@ function WorldCornerRotateHandle({
       data-handle="rotate"
       data-handle-world-x={point.x}
       data-handle-world-y={point.y}
-      transform={`translate(${point.x - HALF_SKEW_HANDLE_SIZE} ${
-        point.y - HALF_SKEW_HANDLE_SIZE
-      }) scale(${SKEW_HANDLE_SIZE / SKEW_HANDLE_ICON_VIEWBOX_SIZE})`}
+      transform={`translate(${point.x - halfSkewHandleSize} ${
+        point.y - halfSkewHandleSize
+      }) scale(${skewHandleSize / SKEW_HANDLE_ICON_VIEWBOX_SIZE})`}
     >
       <rect
         x="0"
@@ -327,18 +363,27 @@ function WorldCornerRotateHandle({
 
 export function SkewOverlayHandles({
   bounds,
-  getWorldPoint
+  getWorldPoint,
+  zoom = 1
 }: {
   bounds: NonNullable<ReturnType<typeof selectionBounds>>;
   getWorldPoint?: (point: { x: number; y: number }) => {
     x: number;
     y: number;
   };
+  zoom?: number;
 }) {
+  const screenScale = getScreenScale(zoom);
+
   return (
     <>
       {(["top", "right", "bottom", "left"] as const).map((handle) => (
-        <EdgeSkewHandle key={handle} bounds={bounds} handle={handle} />
+        <EdgeSkewHandle
+          key={handle}
+          bounds={bounds}
+          handle={handle}
+          scale={screenScale}
+        />
       ))}
       {(["nw", "ne", "se", "sw"] as const).map((corner) => (
         <CornerRotateHandle
@@ -346,6 +391,7 @@ export function SkewOverlayHandles({
           bounds={bounds}
           corner={corner}
           getWorldPoint={getWorldPoint}
+          scale={screenScale}
         />
       ))}
     </>
@@ -354,10 +400,12 @@ export function SkewOverlayHandles({
 
 export function WorldSkewOverlay({
   center,
-  points
+  points,
+  zoom = 1
 }: {
   center?: Point;
   points: Point[];
+  zoom?: number;
 }) {
   if (points.length < 4) {
     return null;
@@ -370,6 +418,7 @@ export function WorldSkewOverlay({
   }
 
   const { maxX, maxY, minX, minY } = pointBounds;
+  const screenScale = getScreenScale(zoom);
   const handleLayout = getSelectionTransformHandleLayout(
     {
       height: maxY - minY,
@@ -377,7 +426,7 @@ export function WorldSkewOverlay({
       x: minX,
       y: minY
     },
-    CORNER_ROTATE_HANDLE_OFFSET
+    CORNER_ROTATE_HANDLE_OFFSET * screenScale
   );
   const edgeHandles = (["top", "right", "bottom", "left"] as const).map(
     (handle) => ({ handle, point: handleLayout.edges[handle] })
@@ -394,22 +443,40 @@ export function WorldSkewOverlay({
         fill={SVG_FILL_NONE}
       />
       {edgeHandles.map(({ handle, point }) => (
-        <WorldEdgeSkewHandle key={handle} handle={handle} point={point} />
+        <WorldEdgeSkewHandle
+          key={handle}
+          handle={handle}
+          point={point}
+          scale={screenScale}
+        />
       ))}
       {cornerHandles.map(({ corner, point }) => (
-        <WorldCornerRotateHandle key={corner} corner={corner} point={point} />
+        <WorldCornerRotateHandle
+          key={corner}
+          corner={corner}
+          point={point}
+          scale={screenScale}
+        />
       ))}
-      {center && <TransformCenterMarker center={center} mode="skew" />}
+      {center && (
+        <TransformCenterMarker
+          center={center}
+          mode="skew"
+          scale={screenScale}
+        />
+      )}
     </g>
   );
 }
 
 export function WorldResizeOverlay({
   center,
-  element
+  element,
+  zoom = 1
 }: {
   center?: Point | null;
   element: KizkattElement;
+  zoom?: number;
 }) {
   const points = getElementTransformedCorners(element);
 
@@ -418,6 +485,9 @@ export function WorldResizeOverlay({
   }
 
   const handlePoints = getResizeHandlePoints(points);
+  const screenScale = getScreenScale(zoom);
+  const handleSize = SELECTION_HANDLE_SIZE * screenScale;
+  const halfHandleSize = handleSize / HALF_DIVISOR;
 
   return (
     <g
@@ -447,16 +517,17 @@ export function WorldResizeOverlay({
                 element.flipY
               )
             }}
-            x={point.x - HALF_HANDLE_SIZE}
-            y={point.y - HALF_HANDLE_SIZE}
-            width={SELECTION_HANDLE_SIZE}
-            height={SELECTION_HANDLE_SIZE}
+            x={point.x - halfHandleSize}
+            y={point.y - halfHandleSize}
+            width={handleSize}
+            height={handleSize}
           />
         );
       })}
       <TransformCenterMarker
         center={center ?? getElementCenter(element)}
         mode="resize"
+        scale={screenScale}
       />
     </g>
   );
@@ -470,7 +541,8 @@ export function ElementOverlay({
   showBounds = true,
   showResizeHandles = true,
   showRotateHoverIcon = true,
-  showRotateHandle = true
+  showRotateHandle = true,
+  zoom = 1
 }: {
   element: KizkattElement;
   internal?: boolean;
@@ -480,6 +552,7 @@ export function ElementOverlay({
   showResizeHandles?: boolean;
   showRotateHoverIcon?: boolean;
   showRotateHandle?: boolean;
+  zoom?: number;
 }) {
   const bounds = selectionBounds([element]);
 
@@ -487,9 +560,14 @@ export function ElementOverlay({
     return null;
   }
 
+  const screenScale = getScreenScale(zoom);
+  const handleSize = SELECTION_HANDLE_SIZE * screenScale;
+  const halfHandleSize = handleSize / HALF_DIVISOR;
+  const rotateHandleOffset = ROTATE_HANDLE_OFFSET * screenScale;
+  const rotateHandleRadius = ROTATE_HANDLE_RADIUS * screenScale;
   const rotateHandle = {
     x: bounds.x + bounds.width / HALF_DIVISOR,
-    y: bounds.y - ROTATE_HANDLE_OFFSET
+    y: bounds.y - rotateHandleOffset
   };
   const rotateHandleWorldPoint = rotatePointAroundPoint(
     rotateHandle,
@@ -538,22 +616,23 @@ export function ElementOverlay({
                   bounds.x +
                   ((sx + SELECTION_HANDLE_ALIGNMENT_OFFSET) * bounds.width) /
                     HALF_DIVISOR -
-                  HALF_HANDLE_SIZE
+                  halfHandleSize
                 }
                 y={
                   bounds.y +
                   ((sy + SELECTION_HANDLE_ALIGNMENT_OFFSET) * bounds.height) /
                     HALF_DIVISOR -
-                  HALF_HANDLE_SIZE
+                  halfHandleSize
                 }
-                width={SELECTION_HANDLE_SIZE}
-                height={SELECTION_HANDLE_SIZE}
+                width={handleSize}
+                height={handleSize}
               />
             ))}
           {showResizeHandles && isSkewMode && (
             <SkewOverlayHandles
               bounds={bounds}
               getWorldPoint={(point) => transformElementPoint(element, point)}
+              zoom={zoom}
             />
           )}
         </>
@@ -563,6 +642,7 @@ export function ElementOverlay({
           center={centerMarkerPoint}
           getWorldPoint={(point) => transformElementPoint(element, point)}
           mode={selectionTransformMode}
+          scale={screenScale}
         />
       )}
       {showRotateHandle && !isSkewMode && (
@@ -574,10 +654,14 @@ export function ElementOverlay({
             data-handle-world-y={rotateHandleWorldPoint.y}
             cx={rotateHandle.x}
             cy={rotateHandle.y}
-            r={ROTATE_HANDLE_RADIUS}
+            r={rotateHandleRadius}
           />
           {showRotateHoverIcon && (
-            <RotateHoverIcon x={rotateHandle.x} y={rotateHandle.y} />
+            <RotateHoverIcon
+              scale={screenScale}
+              x={rotateHandle.x}
+              y={rotateHandle.y}
+            />
           )}
         </>
       )}

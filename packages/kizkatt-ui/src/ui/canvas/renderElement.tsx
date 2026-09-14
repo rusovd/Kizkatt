@@ -6,6 +6,7 @@ import {
   getElementBends,
   getElementCenter,
   getElementTransformedCorners,
+  getLinearElementSegmentControls,
   getLinearElementPath,
   getLinearElementPoints
 } from "kizkatt-graphic-engine";
@@ -680,6 +681,7 @@ function SelectedElementOverlay({
       showBounds={options.showSelectionBounds ?? true}
       showRotateHoverIcon={options.showRotateHoverIcon ?? true}
       showRotateHandle={options.showRotateHandle ?? true}
+      zoom={options.zoom}
     />
   );
 }
@@ -898,6 +900,7 @@ export function renderElementOverlay(
         key={`overlay-${element.id}`}
         center={options.selectionTransformCenter ?? getElementCenter(element)}
         points={getElementTransformedCorners(element)}
+        zoom={options.zoom}
       />
     );
   }
@@ -912,6 +915,7 @@ export function renderElementOverlay(
         key={`overlay-${element.id}`}
         center={options.selectionTransformCenter}
         element={element}
+        zoom={options.zoom}
       />
     );
   }
@@ -933,6 +937,7 @@ export function renderElementOverlay(
           showBounds={options.showSelectionBounds ?? true}
           showResizeHandles={false}
           showRotateHandle={false}
+          zoom={options.zoom}
         />
       </g>
     );
@@ -959,19 +964,25 @@ export function renderElementOverlay(
             showBounds={options.showSelectionBounds ?? true}
             showRotateHoverIcon={options.showRotateHoverIcon ?? true}
             showRotateHandle={options.showRotateHandle ?? true}
+            zoom={options.zoom}
           />
         ) : null}
         {!isSkewMode && (
           <LinearElementOverlay
+            canvasBackgroundColor={options.canvasBackgroundColor}
             element={element}
             bends={bends}
             endpointMode={options.linearEndpointMode}
             linePoints={linePoints}
             selectedBendIndex={options.selectedBendIndex}
+            selectedNodeIndices={options.selectedNodeIndices}
+            selectedSegmentIndex={options.selectedSegmentIndex}
             showBounds={options.showSelectionBounds ?? true}
             showBendHandles={options.showLinearBendHandles ?? true}
+            showBezierHandles={options.showLinearBezierHandles ?? false}
             showRotateHoverIcon={options.showRotateHoverIcon ?? true}
             showRotateHandle={!hasBends && (options.showRotateHandle ?? true)}
+            zoom={options.zoom}
           />
         )}
       </g>
@@ -1124,7 +1135,11 @@ function WireframeElement({
       endArrowheadGeometry
     );
     const canUseFill = canElementUseBackground(element);
-    const pathData = getLinearElementPath(renderedLinePoints, element.edgeStyle);
+    const pathData = getLinearElementPath(
+      renderedLinePoints,
+      element.edgeStyle,
+      getLinearElementSegmentControls(element, renderedLinePoints)
+    );
 
     shape = (
       <>
@@ -1363,7 +1378,8 @@ export function renderElement(
     const canUseFill = canElementUseBackground(element);
     const pathData = getLinearElementPath(
       renderedLinePoints,
-      element.edgeStyle
+      element.edgeStyle,
+      getLinearElementSegmentControls(element, renderedLinePoints)
     );
     return (
       <ElementGroup key={element.id} element={element}>
@@ -1430,18 +1446,24 @@ export function renderElement(
                 selectionTransformMode={options.selectionTransformMode}
                 showBounds={options.showSelectionBounds ?? true}
                 showRotateHandle={options.showRotateHandle ?? true}
+                zoom={options.zoom}
               />
             ) : null}
             {!isSkewMode && (
               <LinearElementOverlay
+                canvasBackgroundColor={options.canvasBackgroundColor}
                 element={element}
                 bends={bends}
                 endpointMode={options.linearEndpointMode}
                 linePoints={linePoints}
                 selectedBendIndex={options.selectedBendIndex}
+                selectedNodeIndices={options.selectedNodeIndices}
+                selectedSegmentIndex={options.selectedSegmentIndex}
                 showBounds={options.showSelectionBounds ?? true}
                 showBendHandles={options.showLinearBendHandles ?? true}
+                showBezierHandles={options.showLinearBezierHandles ?? false}
                 showRotateHandle={!hasBends && (options.showRotateHandle ?? true)}
+                zoom={options.zoom}
               />
             )}
           </>

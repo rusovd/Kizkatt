@@ -1,6 +1,7 @@
 import { EMPTY_COLLECTION_LENGTH } from "kizkatt-graphic-engine";
 import {
   getElementCenter,
+  getLinearElementSegmentControls,
   getLinearElementPath,
   getLinearElementPoints,
   isElementPathClosed,
@@ -51,7 +52,8 @@ function TransformPreviewContour({
       : linePoints;
     const pathData = getLinearElementPath(
       renderedLinePoints,
-      element.edgeStyle
+      element.edgeStyle,
+      getLinearElementSegmentControls(element, renderedLinePoints)
     );
 
     return (

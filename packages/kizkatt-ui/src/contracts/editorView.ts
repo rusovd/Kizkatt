@@ -42,16 +42,21 @@ export type DocumentFormatSelection = {
 export type SceneReplacementAction = "load" | "new";
 
 export type KizkattRenderElementOptions = {
+  canvasBackgroundColor?: string;
   linearEndpointMode?: "node" | "resize";
   overlayVariant?: "primary" | "internal";
   selectedBendIndex?: number;
+  selectedNodeIndices?: number[];
+  selectedSegmentIndex?: number;
   selectionTransformCenter?: Point | null;
   selectionTransformMode?: SelectionTransformMode;
   showLinearBendHandles?: boolean;
+  showLinearBezierHandles?: boolean;
   showRotateHoverIcon?: boolean;
   showRotateHandle?: boolean;
   showSelectionBounds?: boolean;
   wireframe?: boolean;
+  zoom?: number;
 };
 
 export type ToolControls = {
@@ -117,6 +122,7 @@ export type DocumentControls = {
 
 export type ObjectPanelProps = {
   activeTool: Tool;
+  canUseNodeAction?: (action: NodeEditorAction) => boolean;
   canZoomToAll: boolean;
   canZoomToSelected: boolean;
   geometry: ObjectPanelGeometry | null;
@@ -136,6 +142,7 @@ export type ObjectPanelProps = {
   ) => void;
   onGeometryChangeEnd: () => void;
   onMirror: (axis: ObjectMirrorAxis) => void;
+  onNodeAction?: (action: NodeEditorAction) => void;
   onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
   onStyleChange: (
     patch: Partial<StyleState>,
@@ -147,6 +154,14 @@ export type ObjectPanelProps = {
   style: StyleState;
   theme: KizkattTheme;
 };
+
+export type NodeEditorAction =
+  | "addPointBefore"
+  | "deletePoints"
+  | "mergePoints"
+  | "splitPoint"
+  | "segmentToLine"
+  | "segmentToCurve";
 
 export type StylingPanelProps = {
   activeTool: Tool;

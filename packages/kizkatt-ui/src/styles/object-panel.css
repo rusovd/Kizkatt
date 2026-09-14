@@ -2,6 +2,7 @@
   position: relative;
   display: flex;
   width: max-content;
+  min-width: var(--kizkatt-panel-min-width, 0);
   max-width: calc(100vw - 24px);
   min-height: 34px;
   border-radius: 8px;
@@ -80,6 +81,14 @@
   .kizkatt-feature-group-content {
   display: grid;
   grid-template-columns: repeat(3, 24px);
+  grid-template-rows: repeat(2, 24px);
+}
+
+.kizkatt-object-panel--horizontal
+  .kizkatt-object-feature--node-editor
+  .kizkatt-feature-group-content {
+  display: grid;
+  grid-auto-flow: column;
   grid-template-rows: repeat(2, 24px);
 }
 
@@ -475,6 +484,7 @@
 
 .kizkatt-object-panel--vertical {
   width: max-content;
+  min-height: var(--kizkatt-panel-min-height, 0);
   flex-direction: column;
   container-name: kizkatt-object-panel;
   container-type: inline-size;

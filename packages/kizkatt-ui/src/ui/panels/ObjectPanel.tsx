@@ -33,6 +33,12 @@ import {
   GlobeIcon,
   MirrorHorizontalIcon,
   MirrorVerticalIcon,
+  NodeAddPointIcon,
+  NodeCurveSegmentIcon,
+  NodeDeletePointIcon,
+  NodeMergePointsIcon,
+  NodeSplitPointIcon,
+  NodeStraightSegmentIcon,
   PenNibIcon,
   RotationAngleIcon,
   SendBackwardIcon,
@@ -96,6 +102,39 @@ const VIEWPORT_ZOOM_ACTIONS = [
     action: "pageHeight",
     labelKey: "zoomToPageHeight",
     icon: ZoomToPageHeightIcon
+  }
+] as const;
+
+const NODE_EDITOR_ACTIONS = [
+  {
+    action: "addPointBefore",
+    labelKey: "nodeAddPointBefore",
+    icon: NodeAddPointIcon
+  },
+  {
+    action: "deletePoints",
+    labelKey: "nodeDeletePoints",
+    icon: NodeDeletePointIcon
+  },
+  {
+    action: "mergePoints",
+    labelKey: "nodeMergePoints",
+    icon: NodeMergePointsIcon
+  },
+  {
+    action: "splitPoint",
+    labelKey: "nodeSplitPoint",
+    icon: NodeSplitPointIcon
+  },
+  {
+    action: "segmentToLine",
+    labelKey: "nodeSegmentToLine",
+    icon: NodeStraightSegmentIcon
+  },
+  {
+    action: "segmentToCurve",
+    labelKey: "nodeSegmentToCurve",
+    icon: NodeCurveSegmentIcon
   }
 ] as const;
 
@@ -374,6 +413,7 @@ function StrokeWidthPresetSelect({
 
 export function ObjectPanel({
   activeTool,
+  canUseNodeAction,
   canZoomToAll,
   canZoomToSelected,
   geometry,
@@ -384,6 +424,7 @@ export function ObjectPanel({
   onGeometryChangeEnd,
   onLayerAction,
   onMirror,
+  onNodeAction,
   onStyleChange,
   onStyleChangeEnd,
   onViewportZoomAction,
@@ -1017,6 +1058,28 @@ export function ObjectPanel({
                   ))}
                 </FeatureGroup>
               </>
+            )}
+            {activeTool === "nodeEdit" && onNodeAction && (
+              <FeatureGroup
+                className="kizkatt-object-feature--node-editor"
+                label={
+                  orientation === "vertical"
+                    ? strings.objectPanel.nodeEditor
+                    : undefined
+                }
+              >
+                {NODE_EDITOR_ACTIONS.map(({ action, labelKey, icon }) => (
+                  <IconButton
+                    key={action}
+                    ariaLabel={strings.objectPanel[labelKey]}
+                    disabled={canUseNodeAction?.(action) === false}
+                    title={strings.objectPanel.tooltips[labelKey]}
+                    onClick={() => onNodeAction(action)}
+                  >
+                    {icon}
+                  </IconButton>
+                ))}
+              </FeatureGroup>
             )}
             {activeTool === "zoom" && (
               <FeatureGroup

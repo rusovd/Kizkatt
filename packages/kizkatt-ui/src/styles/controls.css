@@ -605,8 +605,9 @@
   right: 0;
   bottom: calc(100% + 8px);
   z-index: 8;
+  box-sizing: border-box;
   display: grid;
-  width: 326px;
+  width: min(490px, calc(100vw - 24px));
   overflow: visible;
   padding: 9px;
   border-radius: 8px;
@@ -795,7 +796,7 @@
 
 .kizkatt-footer-settings-menu .kizkatt-canvas-background-swatches {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
 }
 

@@ -20,7 +20,9 @@ import {
   TransformCenterMarker
 } from "./ElementOverlay";
 
-const HALF_HANDLE_SIZE = SELECTION_HANDLE_SIZE / HALF_DIVISOR;
+function getScreenScale(zoom = 1) {
+  return 1 / Math.max(zoom, Number.EPSILON);
+}
 
 export function SelectedBounds({
   elements,
@@ -28,7 +30,8 @@ export function SelectedBounds({
   selectionTransformCenter = null,
   selectionTransformMode = "resize",
   showRotateHandle = true,
-  showRotateHoverIcon = true
+  showRotateHoverIcon = true,
+  zoom = 1
 }: {
   elements: KizkattElement[];
   interaction: Interaction | null;
@@ -36,6 +39,7 @@ export function SelectedBounds({
   selectionTransformMode?: SelectionTransformMode;
   showRotateHandle?: boolean;
   showRotateHoverIcon?: boolean;
+  zoom?: number;
 }) {
   const bounds = selectionBounds(elements, { includeRotation: true });
 
@@ -45,6 +49,11 @@ export function SelectedBounds({
   const isRotating = interaction?.type === "rotate";
   const isSkewing = interaction?.type === "skew";
   const isSkewMode = selectionTransformMode === "skew";
+  const screenScale = getScreenScale(zoom);
+  const handleSize = SELECTION_HANDLE_SIZE * screenScale;
+  const halfHandleSize = handleSize / HALF_DIVISOR;
+  const rotateHandleOffset = ROTATE_HANDLE_OFFSET * screenScale;
+  const rotateHandleRadius = ROTATE_HANDLE_RADIUS * screenScale;
   const center = selectionTransformCenter ?? {
     x: bounds.x + bounds.width / HALF_DIVISOR,
     y: bounds.y + bounds.height / HALF_DIVISOR
@@ -57,7 +66,7 @@ export function SelectedBounds({
     y: isRotating
       ? interaction.center.y +
         Math.sin(interaction.currentAngle) * interaction.handleRadius
-      : bounds.y - ROTATE_HANDLE_OFFSET
+      : bounds.y - rotateHandleOffset
   };
 
   return (
@@ -73,7 +82,7 @@ export function SelectedBounds({
             fill={SVG_FILL_NONE}
           />
           {isSkewMode ? (
-            <SkewOverlayHandles bounds={bounds} />
+            <SkewOverlayHandles bounds={bounds} zoom={zoom} />
           ) : (
             RESIZE_HANDLES.map(({ id, sx, sy }) => (
               <rect
@@ -87,22 +96,26 @@ export function SelectedBounds({
                   bounds.x +
                   ((sx + SELECTION_HANDLE_ALIGNMENT_OFFSET) * bounds.width) /
                     HALF_DIVISOR -
-                  HALF_HANDLE_SIZE
+                  halfHandleSize
                 }
                 y={
                   bounds.y +
                   ((sy + SELECTION_HANDLE_ALIGNMENT_OFFSET) * bounds.height) /
                     HALF_DIVISOR -
-                  HALF_HANDLE_SIZE
+                  halfHandleSize
                 }
-                width={SELECTION_HANDLE_SIZE}
-                height={SELECTION_HANDLE_SIZE}
+                width={handleSize}
+                height={handleSize}
               />
             ))
           )}
         </>
       )}
-      <TransformCenterMarker center={center} mode={selectionTransformMode} />
+      <TransformCenterMarker
+        center={center}
+        mode={selectionTransformMode}
+        scale={screenScale}
+      />
       {showRotateHandle && !isSkewMode && (
         <>
           <circle
@@ -113,10 +126,14 @@ export function SelectedBounds({
             data-handle-world-y={rotateHandle.y}
             cx={rotateHandle.x}
             cy={rotateHandle.y}
-            r={ROTATE_HANDLE_RADIUS}
+            r={rotateHandleRadius}
           />
           {showRotateHoverIcon && !isRotating && (
-            <RotateHoverIcon x={rotateHandle.x} y={rotateHandle.y} />
+            <RotateHoverIcon
+              scale={screenScale}
+              x={rotateHandle.x}
+              y={rotateHandle.y}
+            />
           )}
         </>
       )}

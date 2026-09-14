@@ -111,33 +111,82 @@
 }
 
 .kizkatt-endpoint-handle {
-  fill: var(--kizkatt-handle-bg);
   stroke: var(--kizkatt-selection-strong);
+  stroke-width: 1.2;
   cursor: move;
   pointer-events: all;
   vector-effect: non-scaling-stroke;
 }
 
+.kizkatt-endpoint-handle.is-selected {
+  stroke: #f3f4f6;
+  stroke-width: 1.6;
+}
+
 .kizkatt-bend-handle {
-  fill: rgba(105, 101, 219, 0.55);
   stroke: var(--kizkatt-selection);
+  stroke-width: 1.2;
   cursor: grab;
   pointer-events: all;
   vector-effect: non-scaling-stroke;
 }
 
 .kizkatt-bend-point-handle {
-  fill: rgba(105, 101, 219, 0.75);
   stroke: #a7a4ff;
+  stroke-width: 1.2;
   cursor: grab;
   pointer-events: all;
   vector-effect: non-scaling-stroke;
 }
 
 .kizkatt-bend-point-handle.is-selected {
-  fill: #050505;
   stroke: #f3f4f6;
+  stroke-width: 1.7;
+}
+
+.kizkatt-linear-segment-hit {
+  stroke: transparent;
+  cursor: pointer;
+  pointer-events: stroke;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-linear-segment-hit.is-selected {
+  stroke: var(--kizkatt-selection-strong);
+  stroke-dasharray: 4 4;
+  opacity: 0.78;
+}
+
+.kizkatt-bezier-handles {
+  pointer-events: none;
+}
+
+.kizkatt-bezier-handle-line {
+  stroke: var(--kizkatt-selection-strong);
+  stroke-dasharray: 4 4;
   stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-bezier-control-handle {
+  color: var(--kizkatt-selection-strong);
+  cursor: move;
+  pointer-events: all;
+}
+
+.kizkatt-bezier-control-hit {
+  fill: transparent;
+  stroke: transparent;
+}
+
+.kizkatt-bezier-control-arrow {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.4;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
 }
 
 .kizkatt-rotate-handle {

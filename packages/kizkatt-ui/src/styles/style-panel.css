@@ -2,6 +2,7 @@
   position: relative;
   display: grid;
   width: 198px;
+  min-width: var(--kizkatt-panel-min-width, 198px);
   gap: 7px;
   padding: 10px;
   border-radius: 8px;
@@ -18,6 +19,7 @@
 .kizkatt-style-panel--vertical {
   width: max-content;
   max-width: calc(100vw - 24px);
+  min-height: var(--kizkatt-panel-min-height, 0);
   align-content: start;
   grid-template-columns:
     repeat(var(--kizkatt-panel-max-cols), minmax(0, 1fr));

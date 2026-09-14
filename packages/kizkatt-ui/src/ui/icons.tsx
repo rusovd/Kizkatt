@@ -353,6 +353,66 @@ export const NodeEditIcon = createIcon(
   </g>
 );
 
+export const NodeAddPointIcon = createIcon(
+  <g strokeWidth="1.4">
+    <path d="M4 16h5l3-7 3 7h5" />
+    <circle cx="4" cy="16" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="20" cy="16" r="1.3" fill="currentColor" stroke="none" />
+    <path d="M12 3v6M9 6h6" />
+  </g>,
+  { height: 20, width: 20 }
+);
+
+export const NodeDeletePointIcon = createIcon(
+  <g strokeWidth="1.4">
+    <path d="M4 16h5l3-7 3 7h5" />
+    <circle cx="4" cy="16" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="20" cy="16" r="1.3" fill="currentColor" stroke="none" />
+    <path d="M9 6h6" />
+  </g>,
+  { height: 20, width: 20 }
+);
+
+export const NodeMergePointsIcon = createIcon(
+  <g strokeWidth="1.4">
+    <path d="M5 7h5M14 7h5M10 7l4 4M14 7l-4 4" />
+    <circle cx="10" cy="7" r="1.4" fill="currentColor" stroke="none" />
+    <circle cx="14" cy="7" r="1.4" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none" />
+    <path d="M12 11v4" />
+  </g>,
+  { height: 20, width: 20 }
+);
+
+export const NodeSplitPointIcon = createIcon(
+  <g strokeWidth="1.4">
+    <circle cx="12" cy="7" r="1.6" fill="currentColor" stroke="none" />
+    <path d="M12 9v3M12 12l-4 4M12 12l4 4" />
+    <circle cx="8" cy="16" r="1.4" fill="currentColor" stroke="none" />
+    <circle cx="16" cy="16" r="1.4" fill="currentColor" stroke="none" />
+  </g>,
+  { height: 20, width: 20 }
+);
+
+export const NodeStraightSegmentIcon = createIcon(
+  <g strokeWidth="1.4">
+    <path d="M5 16 19 5" />
+    <circle cx="5" cy="16" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="19" cy="5" r="1.5" fill="currentColor" stroke="none" />
+  </g>,
+  { height: 20, width: 20 }
+);
+
+export const NodeCurveSegmentIcon = createIcon(
+  <g strokeWidth="1.4">
+    <path d="M5 16c5-10 9 1 14-9" />
+    <circle cx="5" cy="16" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="19" cy="7" r="1.5" fill="currentColor" stroke="none" />
+    <path d="M9 9h.01M15 14h.01" strokeWidth="2.4" />
+  </g>,
+  { height: 20, width: 20 }
+);
+
 export const TargetPointIcon = createIcon(
   <g fill="none" stroke="currentColor" strokeWidth="1.5">
     <circle cx="12" cy="12" r="5" />
