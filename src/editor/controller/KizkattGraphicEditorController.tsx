@@ -68,6 +68,9 @@ import {
 } from "kizkatt-graphic-engine";
 import {
   getElementBends,
+  getDefaultLinearSegmentControl,
+  getLinearElementPoints,
+  getLinearElementSegmentMidpoint,
   getElementIndicesInBounds,
   getGridWorldSizing,
   getElementsViewportBounds,
@@ -134,6 +137,10 @@ import type {
   ViewportZoomAction
 } from "kizkatt-graphic-engine";
 import {
+  getInteractionCursor,
+  type NodeEditorAction
+} from "kizkatt-ui";
+import {
   COPIED_PNG_EXPORT_SIZE_TTL_MS,
   getFittedImageSize,
   getImageSize,
@@ -142,7 +149,6 @@ import {
   type Size
 } from "kizkatt-graphic-engine";
 import {
-  getActiveInteractionCursor,
   getImagePlacementBounds,
   getPreviewDisplayElements,
   isPreviewTransformInteraction
@@ -404,7 +410,10 @@ export function KizkattGraphicEditorController({
   );
   const onCanvasWheel = useCallback(
     (event: ReactWheelEvent<SVGSVGElement>) => {
-      if (tool === "zoom" && event.deltaY !== 0) {
+      if (
+        (tool === "select" || tool === "nodeEdit" || tool === "zoom") &&
+        event.deltaY !== 0
+      ) {
         event.preventDefault();
         const { size } = getCanvasViewport();
         zoomByStepAtPoint(event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP, {
@@ -766,6 +775,44 @@ export function KizkattGraphicEditorController({
   );
 
   const deleteSelected = useCallback(() => {
+    if (canvasState.selectedNodes) {
+      const { elementId, nodeIndices } = canvasState.selectedNodes;
+      const selectedNodeElement = canvasState.elements.find(
+        (element) => element.id === elementId
+      );
+      const bends = selectedNodeElement
+        ? getElementBends(selectedNodeElement)
+        : [];
+      const bendIndicesToDelete = new Set(
+        nodeIndices
+          .map((nodeIndex) => nodeIndex - 1)
+          .filter((bendIndex) => bendIndex >= 0 && bendIndex < bends.length)
+      );
+
+      commitState({
+        ...canvasState,
+        elements:
+          selectedNodeElement && bendIndicesToDelete.size > 0
+            ? canvasState.elements.map((element) =>
+                element.id === elementId
+                  ? {
+                      ...element,
+                      bends: bends.filter(
+                        (_, index) => !bendIndicesToDelete.has(index)
+                      ),
+                      curve: undefined,
+                      linearSegmentControls: undefined
+                    }
+                  : element
+              )
+            : canvasState.elements,
+        selectedBend: undefined,
+        selectedIds: selectedNodeElement ? [elementId] : canvasState.selectedIds,
+        selectedNodes: undefined
+      });
+      return;
+    }
+
     if (canvasState.selectedBend) {
       const { bendIndex, elementId } = canvasState.selectedBend;
       const selectedBendElement = canvasState.elements.find(
@@ -784,13 +831,15 @@ export function KizkattGraphicEditorController({
                   ? {
                       ...element,
                       bends: bends.filter((_, index) => index !== bendIndex),
-                      curve: undefined
+                      curve: undefined,
+                      linearSegmentControls: undefined
                     }
                   : element
               )
             : canvasState.elements,
         selectedBend: undefined,
-        selectedIds: selectedBendElement ? [elementId] : canvasState.selectedIds
+        selectedIds: selectedBendElement ? [elementId] : canvasState.selectedIds,
+        selectedNodes: undefined
       });
       return;
     }
@@ -804,10 +853,254 @@ export function KizkattGraphicEditorController({
         (element) => !selectedIdSet.has(element.id)
       ),
       selectedBend: undefined,
+      selectedNodes: undefined,
       selectedIds: []
     });
     setEditingTextElementId(null);
   }, [canvasState, commitState, selectedIdSet]);
+
+  const getSelectedLinearNodeState = useCallback(() => {
+    const elementId =
+      canvasState.selectedNodes?.elementId ??
+      canvasState.selectedBend?.elementId ??
+      selectedElements[0]?.id;
+    const element = canvasState.elements.find(
+      (item) =>
+        item.id === elementId &&
+        (item.type === "line" || item.type === "arrow")
+    );
+
+    if (!element) {
+      return null;
+    }
+
+    const bends = getElementBends(element);
+    const nodeIndices =
+      canvasState.selectedNodes?.elementId === element.id
+        ? canvasState.selectedNodes.nodeIndices
+        : canvasState.selectedBend?.elementId === element.id
+          ? [canvasState.selectedBend.bendIndex + 1]
+          : [];
+    const bendIndices = nodeIndices
+      .map((nodeIndex) => nodeIndex - 1)
+      .filter((bendIndex) => bendIndex >= 0 && bendIndex < bends.length);
+
+    return {
+      bends,
+      bendIndices,
+      element,
+      nodeIndices
+    };
+  }, [
+    canvasState.elements,
+    canvasState.selectedBend,
+    canvasState.selectedNodes,
+    selectedElements
+  ]);
+
+  const canUseNodeAction = useCallback(
+    (action: NodeEditorAction) => {
+      const nodeState = getSelectedLinearNodeState();
+
+      if (!nodeState) {
+        return false;
+      }
+
+      if (action === "segmentToCurve" || action === "segmentToLine") {
+        return true;
+      }
+
+      if (action === "addPointBefore") {
+        return nodeState.nodeIndices.length === 1 && nodeState.nodeIndices[0] > 0;
+      }
+
+      if (action === "deletePoints") {
+        return nodeState.bendIndices.length > 0;
+      }
+
+      if (action === "mergePoints") {
+        return nodeState.bendIndices.length === 2;
+      }
+
+      if (action === "splitPoint") {
+        return nodeState.bendIndices.length === 1;
+      }
+
+      return false;
+    },
+    [getSelectedLinearNodeState]
+  );
+
+  const applyNodeAction = useCallback(
+    (action: NodeEditorAction) => {
+      const nodeState = getSelectedLinearNodeState();
+
+      if (!nodeState || !canUseNodeAction(action)) {
+        return;
+      }
+
+      const { bends, bendIndices, element, nodeIndices } = nodeState;
+
+      if (action === "segmentToCurve" || action === "segmentToLine") {
+        const segmentIndex =
+          canvasState.selectedNodes?.elementId === element.id &&
+          canvasState.selectedNodes.segmentIndex !== undefined
+            ? canvasState.selectedNodes.segmentIndex
+            : nodeIndices[0] !== undefined
+              ? Math.max(0, Math.min(nodeIndices[0] - 1, bends.length))
+              : 0;
+        const nextControls = [...(element.linearSegmentControls ?? [])];
+
+        nextControls[segmentIndex] =
+          action === "segmentToCurve"
+            ? getDefaultLinearSegmentControl(element, segmentIndex)
+            : { mode: "line" };
+
+        commitState({
+          ...canvasState,
+          elements: canvasState.elements.map((item) =>
+            item.id === element.id
+              ? {
+                  ...item,
+                  linearSegmentControls: nextControls
+                }
+              : item
+          ),
+          selectedNodes: {
+            elementId: element.id,
+            nodeIndices,
+            segmentIndex
+          },
+          selectedIds: [element.id]
+        });
+        return;
+      }
+
+      if (action === "deletePoints") {
+        deleteSelected();
+        return;
+      }
+
+      if (action === "addPointBefore") {
+        const nodeIndex = nodeIndices[0];
+        const segmentIndex = Math.max(0, nodeIndex - 1);
+        const linePoints = getLinearElementPoints(element, bends);
+        const midpoint = getLinearElementSegmentMidpoint(
+          linePoints,
+          segmentIndex,
+          element.edgeStyle
+        );
+        const nextBend = {
+          x: midpoint.x - element.x,
+          y: midpoint.y - element.y
+        };
+        const nextBends = [
+          ...bends.slice(0, segmentIndex),
+          nextBend,
+          ...bends.slice(segmentIndex)
+        ];
+
+        commitState({
+          ...canvasState,
+          elements: canvasState.elements.map((item) =>
+            item.id === element.id
+              ? {
+                  ...item,
+                  bends: nextBends,
+                  curve: undefined,
+                  linearSegmentControls: undefined
+                }
+              : item
+          ),
+          selectedBend: { bendIndex: segmentIndex, elementId: element.id },
+          selectedIds: [element.id],
+          selectedNodes: {
+            elementId: element.id,
+            nodeIndices: [segmentIndex + 1],
+            segmentIndex
+          }
+        });
+        return;
+      }
+
+      if (action === "mergePoints") {
+        const sortedBendIndices = [...bendIndices].sort(
+          (first, second) => first - second
+        );
+        const firstIndex = sortedBendIndices[0];
+        const secondIndex = sortedBendIndices[1];
+        const mergedBend = {
+          x: (bends[firstIndex].x + bends[secondIndex].x) / 2,
+          y: (bends[firstIndex].y + bends[secondIndex].y) / 2
+        };
+        const nextBends = bends
+          .map((bend, index) => (index === firstIndex ? mergedBend : bend))
+          .filter((_, index) => index !== secondIndex);
+
+        commitState({
+          ...canvasState,
+          elements: canvasState.elements.map((item) =>
+            item.id === element.id
+              ? {
+                  ...item,
+                  bends: nextBends,
+                  curve: undefined,
+                  linearSegmentControls: undefined
+                }
+              : item
+          ),
+          selectedBend: { bendIndex: firstIndex, elementId: element.id },
+          selectedIds: [element.id],
+          selectedNodes: {
+            elementId: element.id,
+            nodeIndices: [firstIndex + 1],
+            segmentIndex: firstIndex
+          }
+        });
+        return;
+      }
+
+      if (action === "splitPoint") {
+        const bendIndex = bendIndices[0];
+        const bend = bends[bendIndex];
+        const offset = Math.max(4, element.strokeWidth);
+        const nextBends = [
+          ...bends.slice(0, bendIndex),
+          { x: bend.x - offset, y: bend.y },
+          { x: bend.x + offset, y: bend.y },
+          ...bends.slice(bendIndex + 1)
+        ];
+
+        commitState({
+          ...canvasState,
+          elements: canvasState.elements.map((item) =>
+            item.id === element.id
+              ? {
+                  ...item,
+                  bends: nextBends,
+                  curve: undefined,
+                  linearSegmentControls: undefined
+                }
+              : item
+          ),
+          selectedBend: { bendIndex, elementId: element.id },
+          selectedIds: [element.id],
+          selectedNodes: {
+            elementId: element.id,
+            nodeIndices: [bendIndex + 1, bendIndex + 2],
+            segmentIndex: bendIndex
+          }
+        });
+      }
+    },
+    [
+      canUseNodeAction,
+      canvasState,
+      commitState,
+      deleteSelected,
+      getSelectedLinearNodeState
+    ]
+  );
 
   const groupSelected = useCallback(() => {
     if (!canGroup) {
@@ -1974,7 +2267,7 @@ export function KizkattGraphicEditorController({
   });
 
   const canvasCursor =
-    getActiveInteractionCursor(interaction) ??
+    getInteractionCursor(interaction) ??
     getCanvasCursor({
       isPanning: interaction?.type === "pan",
       tool
@@ -2091,19 +2384,38 @@ export function KizkattGraphicEditorController({
     const isRotatingSelection = interaction?.type === "rotate";
 
     const options: KizkattRenderElementOptions = {
+      canvasBackgroundColor:
+        activeDisplayMode === "wireframe"
+          ? "var(--kizkatt-wireframe-canvas)"
+          : canvasBackgroundColor,
       linearEndpointMode: tool === "nodeEdit" ? "node" : "resize",
       selectedBendIndex:
         canvasState.selectedBend?.elementId === element.id
           ? canvasState.selectedBend.bendIndex
           : undefined,
+      selectedNodeIndices:
+        canvasState.selectedNodes?.elementId === element.id
+          ? canvasState.selectedNodes.nodeIndices
+          : canvasState.selectedBend?.elementId === element.id
+            ? [canvasState.selectedBend.bendIndex + 1]
+            : undefined,
+      selectedSegmentIndex:
+        canvasState.selectedNodes?.elementId === element.id
+          ? canvasState.selectedNodes.segmentIndex
+          : canvasState.selectedBend?.elementId === element.id
+            ? canvasState.selectedBend.bendIndex
+            : undefined,
       selectionTransformCenter,
       selectionTransformMode,
       showLinearBendHandles:
         tool === "nodeEdit" && !isCreatingLinearElement,
+      showLinearBezierHandles:
+        tool === "nodeEdit" && !isCreatingLinearElement,
       showRotateHoverIcon: !isRotatingSelection,
       showRotateHandle: DEFAULT_SHOW_ROTATE_HANDLE && !isCreatingElement,
       showSelectionBounds: !isRotatingSelection,
-      wireframe: activeDisplayMode === "wireframe"
+      wireframe: activeDisplayMode === "wireframe",
+      zoom
     };
 
     return {
@@ -2218,6 +2530,7 @@ export function KizkattGraphicEditorController({
       objectPanelGeometry || canEditDefaultStroke || tool === "zoom"
       ? {
           activeTool: tool,
+          canUseNodeAction,
           canZoomToAll:
             canvasState.elements.length > EMPTY_COLLECTION_LENGTH,
           canZoomToSelected:
@@ -2230,6 +2543,7 @@ export function KizkattGraphicEditorController({
           onGeometryChangeEnd: endSelectedGeometryChange,
           onLayerAction: applyLayerAction,
           onMirror: mirrorSelected,
+          onNodeAction: applyNodeAction,
           onStyleChange: updateSelectedStyle,
           onStyleChangeEnd: endSelectedStyleChange,
           onViewportZoomAction: applyViewportZoomAction,

@@ -57,6 +57,24 @@ function haveSameSelection(first: string[], second: string[]) {
   return first.every((id) => secondIds.has(id));
 }
 
+function getNextNodeSelection(
+  currentIndices: number[],
+  nextIndex: number,
+  mode: "add" | "remove" | "replace"
+) {
+  if (mode === "replace") {
+    return currentIndices.includes(nextIndex) ? currentIndices : [nextIndex];
+  }
+
+  if (mode === "remove") {
+    return currentIndices.filter((index) => index !== nextIndex);
+  }
+
+  return currentIndices.includes(nextIndex)
+    ? currentIndices
+    : [...currentIndices, nextIndex].sort((first, second) => first - second);
+}
+
 function getHandleWorldPoint(target: Element | null, fallback: { x: number; y: number }) {
   const x = Number(target?.getAttribute("data-handle-world-x"));
   const y = Number(target?.getAttribute("data-handle-world-y"));
@@ -122,6 +140,21 @@ export function startPointerInteraction(
       replaceActiveState({
         ...canvasState,
         selectedBend: undefined,
+        selectedNodes:
+          tool === "nodeEdit"
+            ? {
+                elementId: element.id,
+                nodeIndices: [
+                  endpoint === "start"
+                    ? 0
+                    : getElementBends(element).length + 1
+                ],
+                segmentIndex:
+                  endpoint === "start"
+                    ? 0
+                    : getElementBends(element).length
+              }
+            : undefined,
         selectedIds: [element.id]
       });
       updateInteraction({
@@ -208,11 +241,81 @@ export function startPointerInteraction(
     return;
   }
 
+  const bezierControlTarget = getHandleTarget(target, "bezier-control");
+  if (bezierControlTarget) {
+    const element = selectedElements[0];
+    const control = bezierControlTarget.getAttribute("data-control-point");
+    const segmentIndex = Number(
+      bezierControlTarget.getAttribute("data-segment-index")
+    );
+
+    if (
+      element &&
+      (element.type === "line" || element.type === "arrow") &&
+      (control === "cp1" || control === "cp2") &&
+      Number.isInteger(segmentIndex)
+    ) {
+      replaceActiveState({
+        ...canvasState,
+        selectedBend: undefined,
+        selectedIds: [element.id],
+        selectedNodes: {
+          elementId: element.id,
+          nodeIndices:
+            canvasState.selectedNodes?.elementId === element.id
+              ? canvasState.selectedNodes.nodeIndices
+              : [],
+          segmentIndex
+        }
+      });
+      updateInteraction({
+        type: "bezierControl",
+        control,
+        elementId: element.id,
+        originalElement: element,
+        originalElements: context.canvasStateRef.current.elements,
+        selectedIds: [element.id],
+        segmentIndex
+      });
+    }
+
+    return;
+  }
+
+  const linearSegmentTarget = getHandleTarget(target, "linear-segment");
+  if (linearSegmentTarget) {
+    const element = selectedElements[0];
+    const segmentIndex = Number(
+      linearSegmentTarget.getAttribute("data-segment-index")
+    );
+
+    if (
+      tool === "nodeEdit" &&
+      element &&
+      (element.type === "line" || element.type === "arrow") &&
+      Number.isInteger(segmentIndex)
+    ) {
+      replaceActiveState({
+        ...context.canvasStateRef.current,
+        selectedBend: undefined,
+        selectedIds: [element.id],
+        selectedNodes: {
+          elementId: element.id,
+          nodeIndices: [],
+          segmentIndex
+        }
+      });
+    }
+
+    return;
+  }
+
   const bendTarget = getHandleTarget(target, "bend");
   if (bendTarget) {
     const element = selectedElements[0];
 
     if (element) {
+      const activeCanvasState = context.canvasStateRef.current;
       const bendIndexAttribute = bendTarget.getAttribute("data-bend-index");
       const segmentIndexAttribute = bendTarget.getAttribute("data-segment-index");
       const existingBends = getElementBends(element);
@@ -237,24 +340,55 @@ export function startPointerInteraction(
               ...existingBends.slice(bendIndex)
             ]
           : existingBends;
+      const nodeIndex = bendIndex + 1;
+      const currentSelectedNodes =
+        activeCanvasState.selectedNodes?.elementId === element.id
+          ? activeCanvasState.selectedNodes.nodeIndices
+          : [];
+      const selectionMode = event.shiftKey
+        ? "add"
+        : event.ctrlKey
+        ? "remove"
+        : "replace";
+      const selectedNodeIndices = getNextNodeSelection(
+        currentSelectedNodes,
+        nodeIndex,
+        selectionMode
+      );
+      const selectedBendIndex =
+        selectedNodeIndices.length === 1 &&
+        selectedNodeIndices[0] > 0 &&
+        selectedNodeIndices[0] < originalBends.length + 1
+          ? selectedNodeIndices[0] - 1
+          : bendIndex;
 
       replaceActiveState({
-        ...canvasState,
+        ...activeCanvasState,
         selectedBend: {
-          bendIndex,
+          bendIndex: selectedBendIndex,
           elementId: element.id
+        },
+        selectedNodes: {
+          elementId: element.id,
+          nodeIndices: selectedNodeIndices,
+          segmentIndex: Math.max(0, nodeIndex - 1)
         },
         selectedIds: [element.id]
       });
 
+      if (event.shiftKey || event.ctrlKey) {
+        return;
+      }
+
       updateInteraction({
-        type: "bend",
-        bendIndex,
+        type: "linearNodes",
         elementId: element.id,
         originalBends,
         originalElement: element,
-        originalElements: canvasState.elements,
+        originalElements: activeCanvasState.elements,
         selectedIds: [element.id],
+        selectedNodeIndices,
+        segmentIndex: Math.max(0, nodeIndex - 1),
         start: worldPoint
       });
     }

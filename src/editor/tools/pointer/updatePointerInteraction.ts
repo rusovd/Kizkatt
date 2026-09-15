@@ -4,8 +4,10 @@ import {
   constrainPointToAspectRatio,
   DEFAULT_IMAGE_SIZE,
   getClientPoint,
+  getDefaultLinearSegmentControl,
   getDistance,
   getElementIdsInSelectionArea,
+  getElementLocalPoint,
   getElementLocalVector,
   moveLinearElementEndpoint,
   resizeElementFromHandle,
@@ -276,12 +278,15 @@ export function updatePointerInteraction(
       ...activeCanvasState,
       elements: activeInteraction.originalElements.map((element) =>
         element.id === activeInteraction.elementId
-          ? moveLinearElementEndpoint(
-              activeInteraction.originalElement,
-              activeInteraction.endpoint,
-              worldPoint,
-              activeInteraction.mode
-            )
+          ? {
+              ...moveLinearElementEndpoint(
+                activeInteraction.originalElement,
+                activeInteraction.endpoint,
+                worldPoint,
+                activeInteraction.mode
+              ),
+              linearSegmentControls: undefined
+            }
           : element
       ),
       selectedBend: undefined,
@@ -373,13 +378,114 @@ export function updatePointerInteraction(
                     }
                   : bend
               ),
-              curve: undefined
+              curve: undefined,
+              linearSegmentControls: undefined
             }
           : element
       ),
       selectedBend: {
         bendIndex: activeInteraction.bendIndex,
         elementId: activeInteraction.elementId
+      }
+    });
+    return;
+  }
+
+  if (activeInteraction.type === "linearNodes") {
+    const localDelta = getElementLocalVector(activeInteraction.originalElement, {
+      x: worldPoint.x - activeInteraction.start.x,
+      y: worldPoint.y - activeInteraction.start.y
+    });
+    const selectedNodeSet = new Set(activeInteraction.selectedNodeIndices);
+    const selectedBendIndices = activeInteraction.selectedNodeIndices
+      .map((nodeIndex) => nodeIndex - 1)
+      .filter(
+        (bendIndex) =>
+          bendIndex >= 0 && bendIndex < activeInteraction.originalBends.length
+      );
+    const selectedBendIndex =
+      selectedBendIndices.length === 1 ? selectedBendIndices[0] : undefined;
+
+    replaceActiveState({
+      ...activeCanvasState,
+      elements: activeCanvasState.elements.map((element) =>
+        element.id === activeInteraction.elementId
+          ? {
+              ...element,
+              bends: activeInteraction.originalBends.map((bend, index) =>
+                selectedNodeSet.has(index + 1)
+                  ? {
+                      x: bend.x + localDelta.x,
+                      y: bend.y + localDelta.y
+                    }
+                  : bend
+              ),
+              curve: undefined,
+              linearSegmentControls: undefined
+            }
+          : element
+      ),
+      selectedBend:
+        selectedBendIndex === undefined
+          ? undefined
+          : {
+              bendIndex: selectedBendIndex,
+              elementId: activeInteraction.elementId
+            },
+      selectedNodes: {
+        elementId: activeInteraction.elementId,
+        nodeIndices: activeInteraction.selectedNodeIndices,
+        segmentIndex: activeInteraction.segmentIndex
+      }
+    });
+    return;
+  }
+
+  if (activeInteraction.type === "bezierControl") {
+    const localPoint = getElementLocalPoint(
+      activeInteraction.originalElement,
+      worldPoint
+    );
+    const originalControls =
+      activeInteraction.originalElement.linearSegmentControls ?? [];
+    const fallbackControl = getDefaultLinearSegmentControl(
+      activeInteraction.originalElement,
+      activeInteraction.segmentIndex
+    );
+    const currentControl =
+      originalControls[activeInteraction.segmentIndex] ?? fallbackControl;
+    const nextControl = {
+      ...fallbackControl,
+      ...currentControl,
+      [activeInteraction.control]: {
+        x: localPoint.x - activeInteraction.originalElement.x,
+        y: localPoint.y - activeInteraction.originalElement.y
+      },
+      mode: "curve" as const
+    };
+    const nextControls = [...originalControls];
+
+    nextControls[activeInteraction.segmentIndex] = nextControl;
+    replaceActiveState({
+      ...activeCanvasState,
+      elements: activeCanvasState.elements.map((element) =>
+        element.id === activeInteraction.elementId
+          ? {
+              ...element,
+              edgeStyle: element.edgeStyle ?? "round",
+              linearSegmentControls: nextControls
+            }
+          : element
+      ),
+      selectedIds: activeInteraction.selectedIds,
+      selectedNodes: {
+        elementId: activeInteraction.elementId,
+        nodeIndices:
+          activeCanvasState.selectedNodes?.elementId ===
+          activeInteraction.elementId
+            ? activeCanvasState.selectedNodes.nodeIndices
+            : [],
+        segmentIndex: activeInteraction.segmentIndex
       }
     });
     return;

@@ -318,5 +318,33 @@ export function finishPointerInteraction(
     commitState(activeCanvasState, { baseState });
   }
 
+  if (activeInteraction.type === "linearNodes") {
+    const baseState: CanvasState = {
+      ...activeCanvasState,
+      elements: activeCanvasState.elements.map((element) =>
+        element.id === activeInteraction.elementId
+          ? activeInteraction.originalElement
+          : element
+      ),
+      selectedBend: undefined,
+      selectedNodes: undefined
+    };
+
+    commitState(activeCanvasState, { baseState });
+  }
+
+  if (activeInteraction.type === "bezierControl") {
+    const baseState: CanvasState = {
+      ...activeCanvasState,
+      elements: activeCanvasState.elements.map((element) =>
+        element.id === activeInteraction.elementId
+          ? activeInteraction.originalElement
+          : element
+      )
+    };
+
+    commitState(activeCanvasState, { baseState });
+  }
+
   updateInteraction(null);
 }
