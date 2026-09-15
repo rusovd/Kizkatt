@@ -159,14 +159,27 @@ export function EditorCanvas({
             wireframe={activeDisplayMode === "wireframe"}
           />
         )}
-        {previewTransformInteraction?.type === "bezierControl" &&
+        {(previewTransformInteraction?.type === "bezierControl" ||
+          previewTransformInteraction?.type === "linearSegmentBend") &&
           selectedElements.map((element) => {
             const { options } = getElementSelectionRenderState(element);
+            const isActiveLinearSegmentBend =
+              previewTransformInteraction?.type === "linearSegmentBend" &&
+              previewTransformInteraction.elementId === element.id;
 
             return renderElementOverlay(element, {
               ...options,
               overlayVariant: "primary",
-              showLinearBendHandles: false,
+              selectedSegmentIndex: isActiveLinearSegmentBend
+                ? previewTransformInteraction.segmentIndex
+                : options.selectedSegmentIndex,
+              segmentBendHandlePoint: isActiveLinearSegmentBend
+                ? previewTransformInteraction.handlePoint
+                : undefined,
+              showLinearBezierHandles: isActiveLinearSegmentBend
+                ? false
+                : options.showLinearBezierHandles,
+              showLinearBendHandles: isActiveLinearSegmentBend,
               showSelectionBounds: false
             });
           })}

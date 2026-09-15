@@ -83,11 +83,18 @@
 
 .kizkatt-transform-center-marker {
   color: var(--kizkatt-transform-icon);
+  pointer-events: none;
   vector-effect: non-scaling-stroke;
 }
 
-.kizkatt-transform-center-marker--cross {
-  pointer-events: none;
+.kizkatt-transform-center-marker.is-interactive {
+  cursor: grab;
+  pointer-events: all;
+}
+
+.kizkatt-transform-center-marker-hit {
+  fill: transparent;
+  pointer-events: all;
 }
 
 .kizkatt-transform-center-marker--cross path {
@@ -99,8 +106,7 @@
 }
 
 .kizkatt-transform-center-marker--target {
-  cursor: move;
-  pointer-events: all;
+  cursor: grab;
 }
 
 .kizkatt-transform-center-marker--target .kizkatt-tool-icon {
@@ -114,6 +120,7 @@
   stroke: var(--kizkatt-selection-strong);
   stroke-width: 1.2;
   cursor: move;
+  filter: var(--kizkatt-node-edit-halo);
   pointer-events: all;
   vector-effect: non-scaling-stroke;
 }
@@ -127,6 +134,7 @@
   stroke: var(--kizkatt-selection);
   stroke-width: 1.2;
   cursor: grab;
+  filter: var(--kizkatt-node-edit-halo);
   pointer-events: all;
   vector-effect: non-scaling-stroke;
 }
@@ -135,6 +143,7 @@
   stroke: #a7a4ff;
   stroke-width: 1.2;
   cursor: grab;
+  filter: var(--kizkatt-node-edit-halo);
   pointer-events: all;
   vector-effect: non-scaling-stroke;
 }
@@ -142,6 +151,19 @@
 .kizkatt-bend-point-handle.is-selected {
   stroke: #f3f4f6;
   stroke-width: 1.7;
+}
+
+.kizkatt-linear-node-preview {
+  filter: var(--kizkatt-node-edit-halo);
+  pointer-events: none;
+  shape-rendering: crispEdges;
+  stroke: #0b0b0d;
+  stroke-width: 0.75;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-linear-node-preview:not([data-node-shape="triangle"]) {
+  fill: #f7f7fb;
 }
 
 .kizkatt-linear-segment-hit {
@@ -152,9 +174,32 @@
 }
 
 .kizkatt-linear-segment-hit.is-selected {
+  stroke: transparent;
+}
+
+.kizkatt-linear-path-overlay {
+  fill: none;
+  filter: var(--kizkatt-node-edit-halo);
+  pointer-events: none;
   stroke: var(--kizkatt-selection-strong);
   stroke-dasharray: 4 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.2;
+  opacity: 0.84;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-linear-segment-selection {
+  fill: none;
+  filter: var(--kizkatt-node-edit-halo);
+  pointer-events: none;
+  stroke: var(--kizkatt-selection-strong);
+  stroke-dasharray: 4 4;
+  stroke-linecap: round;
+  stroke-width: 1.2;
   opacity: 0.78;
+  vector-effect: non-scaling-stroke;
 }
 
 .kizkatt-bezier-handles {
@@ -162,6 +207,7 @@
 }
 
 .kizkatt-bezier-handle-line {
+  filter: var(--kizkatt-node-edit-halo);
   stroke: var(--kizkatt-selection-strong);
   stroke-dasharray: 4 4;
   stroke-width: 1;
@@ -181,6 +227,7 @@
 
 .kizkatt-bezier-control-arrow {
   fill: none;
+  filter: var(--kizkatt-node-edit-halo);
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;

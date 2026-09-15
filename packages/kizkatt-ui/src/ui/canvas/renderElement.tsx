@@ -8,7 +8,8 @@ import {
   getElementTransformedCorners,
   getLinearElementSegmentControls,
   getLinearElementPath,
-  getLinearElementPoints
+  getLinearElementPoints,
+  transformElementPoint
 } from "kizkatt-graphic-engine";
 import {
   canElementUseBackground,
@@ -122,6 +123,65 @@ import type { RenderElementOptions } from "./types";
 
 const WIREFRAME_STROKE = "var(--kizkatt-wireframe-stroke)";
 const WIREFRAME_STROKE_WIDTH = 1;
+
+function getLineOverlayGeometry(
+  element: KizkattElement,
+  bends: ReturnType<typeof getElementBends>
+) {
+  const linePoints = getLinearElementPoints(element, bends);
+  const renderedLinePoints = linePoints.map((point) =>
+    transformElementPoint(element, point)
+  );
+  const start = renderedLinePoints[0];
+  const end = renderedLinePoints[renderedLinePoints.length - 1];
+  const segmentControls = getLinearElementSegmentControls(element, linePoints);
+  const overlayBends = renderedLinePoints.slice(1, -1).map((point) => ({
+    x: point.x - start.x,
+    y: point.y - start.y
+  }));
+  const overlayControls: KizkattElement["linearSegmentControls"] =
+    segmentControls.map((control) => {
+      if (control.mode === "curve" && control.cp1 && control.cp2) {
+        const cp1 = transformElementPoint(element, control.cp1);
+        const cp2 = transformElementPoint(element, control.cp2);
+
+        return {
+          cp1: {
+            x: cp1.x - start.x,
+            y: cp1.y - start.y
+          },
+          cp2: {
+            x: cp2.x - start.x,
+            y: cp2.y - start.y
+          },
+          mode: "curve" as const
+        };
+      }
+
+      return { mode: control.mode };
+    });
+  const overlayElement: KizkattElement = {
+    ...element,
+    angle: 0,
+    bends: overlayBends,
+    curve: undefined,
+    flipX: false,
+    flipY: false,
+    height: end.y - start.y,
+    linearSegmentControls: overlayControls,
+    skewX: 0,
+    skewY: 0,
+    width: end.x - start.x,
+    x: start.x,
+    y: start.y
+  };
+
+  return {
+    bends: overlayBends,
+    element: overlayElement,
+    linePoints: getLinearElementPoints(overlayElement, overlayBends)
+  };
+}
 
 function hashElementId(id: string) {
   return id.split("").reduce((hash, character) => {
@@ -836,7 +896,9 @@ function SecondaryLineStroke({
           x: point.x,
           y: point.y + offset
         })),
-        element.edgeStyle
+        element.edgeStyle,
+        undefined,
+        Boolean(element.closed)
       );
 
       return <path key={lineIndex} d={d} {...secondaryProps} />;
@@ -945,8 +1007,8 @@ export function renderElementOverlay(
 
   if (element.type === "line" || element.type === "arrow") {
     const bends = getElementBends(element);
-    const linePoints = getLinearElementPoints(element, bends);
     const hasBends = bends.length > ZERO_COORDINATE;
+    const lineOverlay = getLineOverlayGeometry(element, bends);
 
     return (
       <g
@@ -954,34 +1016,42 @@ export function renderElementOverlay(
         className="kizkatt-element-overlay-layer"
         data-element-overlay-id={element.id}
         data-element-overlay-variant="primary"
-        transform={getElementTransform(element)}
       >
         {!isNodeEditMode && (hasBends || isSkewMode) ? (
-          <ElementOverlay
-            element={element}
-            selectionTransformCenter={options.selectionTransformCenter}
-            selectionTransformMode={options.selectionTransformMode}
-            showBounds={options.showSelectionBounds ?? true}
-            showRotateHoverIcon={options.showRotateHoverIcon ?? true}
-            showRotateHandle={options.showRotateHandle ?? true}
-            zoom={options.zoom}
-          />
+          <g transform={getElementTransform(element)}>
+            <ElementOverlay
+              element={element}
+              selectionTransformCenter={options.selectionTransformCenter}
+              selectionTransformMode={options.selectionTransformMode}
+              showBounds={options.showSelectionBounds ?? true}
+              showRotateHoverIcon={options.showRotateHoverIcon ?? true}
+              showRotateHandle={options.showRotateHandle ?? true}
+              zoom={options.zoom}
+            />
+          </g>
         ) : null}
         {!isSkewMode && (
           <LinearElementOverlay
             canvasBackgroundColor={options.canvasBackgroundColor}
-            element={element}
-            bends={bends}
+            element={lineOverlay.element}
+            bends={lineOverlay.bends}
             endpointMode={options.linearEndpointMode}
-            linePoints={linePoints}
+            linePoints={lineOverlay.linePoints}
             selectedBendIndex={options.selectedBendIndex}
             selectedNodeIndices={options.selectedNodeIndices}
             selectedSegmentIndex={options.selectedSegmentIndex}
+            segmentBendActive={options.segmentBendActive}
+            segmentBendHandlePoint={options.segmentBendHandlePoint}
             showBounds={options.showSelectionBounds ?? true}
             showBendHandles={options.showLinearBendHandles ?? true}
             showBezierHandles={options.showLinearBezierHandles ?? false}
+            showNodePreview={
+              hasBends && (options.showLinearNodePreview ?? false)
+            }
             showRotateHoverIcon={options.showRotateHoverIcon ?? true}
             showRotateHandle={!hasBends && (options.showRotateHandle ?? true)}
+            showTransformCenter={!hasBends}
+            theme={options.theme}
             zoom={options.zoom}
           />
         )}
@@ -1138,7 +1208,8 @@ function WireframeElement({
     const pathData = getLinearElementPath(
       renderedLinePoints,
       element.edgeStyle,
-      getLinearElementSegmentControls(element, renderedLinePoints)
+      getLinearElementSegmentControls(element, renderedLinePoints),
+      Boolean(element.closed)
     );
 
     shape = (
@@ -1376,10 +1447,18 @@ export function renderElement(
     const isSkewMode =
       options.selectionTransformMode === "skew" && !isNodeEditMode;
     const canUseFill = canElementUseBackground(element);
+    const segmentControls = getLinearElementSegmentControls(
+      element,
+      renderedLinePoints
+    );
+    const hasCurvedSegments = segmentControls.some(
+      (control) => control.mode === "curve" && control.cp1 && control.cp2
+    );
     const pathData = getLinearElementPath(
       renderedLinePoints,
       element.edgeStyle,
-      getLinearElementSegmentControls(element, renderedLinePoints)
+      segmentControls,
+      Boolean(element.closed)
     );
     return (
       <ElementGroup key={element.id} element={element}>
@@ -1401,7 +1480,7 @@ export function renderElement(
             linePoints={renderedLinePoints}
           />
         )}
-        {hasBends || canUseFill ? (
+        {hasBends || canUseFill || hasCurvedSegments ? (
           <path
             d={`${pathData}${canUseFill ? SVG_PATH_CLOSE_COMMAND : ""}`}
             fill={canUseFill ? getElementFill(element) : SVG_FILL_NONE}
@@ -1459,10 +1538,17 @@ export function renderElement(
                 selectedBendIndex={options.selectedBendIndex}
                 selectedNodeIndices={options.selectedNodeIndices}
                 selectedSegmentIndex={options.selectedSegmentIndex}
+                segmentBendActive={options.segmentBendActive}
+                segmentBendHandlePoint={options.segmentBendHandlePoint}
                 showBounds={options.showSelectionBounds ?? true}
                 showBendHandles={options.showLinearBendHandles ?? true}
                 showBezierHandles={options.showLinearBezierHandles ?? false}
+                showNodePreview={
+                  hasBends && (options.showLinearNodePreview ?? false)
+                }
                 showRotateHandle={!hasBends && (options.showRotateHandle ?? true)}
+                showTransformCenter={!hasBends}
+                theme={options.theme}
                 zoom={options.zoom}
               />
             )}

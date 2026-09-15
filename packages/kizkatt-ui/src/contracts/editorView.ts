@@ -48,13 +48,17 @@ export type KizkattRenderElementOptions = {
   selectedBendIndex?: number;
   selectedNodeIndices?: number[];
   selectedSegmentIndex?: number;
+  segmentBendActive?: boolean;
+  segmentBendHandlePoint?: Point;
   selectionTransformCenter?: Point | null;
   selectionTransformMode?: SelectionTransformMode;
   showLinearBendHandles?: boolean;
   showLinearBezierHandles?: boolean;
+  showLinearNodePreview?: boolean;
   showRotateHoverIcon?: boolean;
   showRotateHandle?: boolean;
   showSelectionBounds?: boolean;
+  theme?: KizkattTheme;
   wireframe?: boolean;
   zoom?: number;
 };
@@ -67,6 +71,7 @@ export type ToolControls = {
 export type EditorCommandControls = {
   arrowBinding: boolean;
   canBreakApart: boolean;
+  canCombineLines: boolean;
   canCopySelection: boolean;
   canGroup: boolean;
   canRevertObjectBase: boolean;
@@ -78,6 +83,7 @@ export type EditorCommandControls = {
   onCopy: () => void;
   onCopyPng: () => Promise<void>;
   onCopySvg: () => Promise<void>;
+  onCombineLines: () => void;
   onGroup: () => void;
   onPaste: () => void | Promise<void>;
   onPasteSvgCode: () => void | Promise<void>;
@@ -93,6 +99,7 @@ export type EditorCommandControls = {
   setSnapToObjects: (updater: (value: boolean) => boolean) => void;
   snapToMidpoints: boolean;
   snapToObjects: boolean;
+  showCombineLines: boolean;
 };
 
 export type DocumentControls = {

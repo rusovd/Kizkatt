@@ -130,11 +130,13 @@ function RotateHoverIcon({
 export function TransformCenterMarker({
   center,
   getWorldPoint,
+  interactive = false,
   mode,
   scale = 1
 }: {
   center: Point;
   getWorldPoint?: (point: Point) => Point;
+  interactive?: boolean;
   mode: SelectionTransformMode;
   scale?: number;
 }) {
@@ -144,12 +146,27 @@ export function TransformCenterMarker({
   if (isSkewMode) {
     return (
       <g
-        className="kizkatt-transform-center-marker kizkatt-transform-center-marker--target"
-        data-handle="transform-center"
+        className={[
+          "kizkatt-transform-center-marker",
+          "kizkatt-transform-center-marker--target",
+          interactive ? "is-interactive" : ""
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        data-handle={interactive ? "transform-center" : undefined}
         data-handle-world-x={worldPoint.x}
         data-handle-world-y={worldPoint.y}
         transform={`translate(${center.x} ${center.y})`}
       >
+        {interactive && (
+          <circle
+            className="kizkatt-transform-center-marker-hit"
+            data-handle="transform-center"
+            data-handle-world-x={worldPoint.x}
+            data-handle-world-y={worldPoint.y}
+            r={12 * scale}
+          />
+        )}
         <g transform={`scale(${scale}) translate(-9 -9) scale(0.75)`}>
           {TargetPointIcon}
         </g>
@@ -159,9 +176,24 @@ export function TransformCenterMarker({
 
   return (
     <g
-      className="kizkatt-transform-center-marker kizkatt-transform-center-marker--cross"
+      className={[
+        "kizkatt-transform-center-marker",
+        "kizkatt-transform-center-marker--cross",
+        interactive ? "is-interactive" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-handle={interactive ? "transform-center" : undefined}
+      data-handle-world-x={worldPoint.x}
+      data-handle-world-y={worldPoint.y}
       transform={`translate(${center.x} ${center.y})`}
     >
+      {interactive && (
+        <circle
+          className="kizkatt-transform-center-marker-hit"
+          r={10 * scale}
+        />
+      )}
       <path
         d={`M${-4 * scale} ${-4 * scale} ${4 * scale} ${
           4 * scale
@@ -461,6 +493,7 @@ export function WorldSkewOverlay({
       {center && (
         <TransformCenterMarker
           center={center}
+          interactive
           mode="skew"
           scale={screenScale}
         />
@@ -526,6 +559,7 @@ export function WorldResizeOverlay({
       })}
       <TransformCenterMarker
         center={center ?? getElementCenter(element)}
+        interactive={false}
         mode="resize"
         scale={screenScale}
       />
@@ -641,6 +675,7 @@ export function ElementOverlay({
         <TransformCenterMarker
           center={centerMarkerPoint}
           getWorldPoint={(point) => transformElementPoint(element, point)}
+          interactive={isSkewMode}
           mode={selectionTransformMode}
           scale={screenScale}
         />

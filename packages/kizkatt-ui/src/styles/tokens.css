@@ -10,6 +10,7 @@
   --kizkatt-info-border: rgba(214, 214, 223, 0.48);
   --kizkatt-info-text: #f5f5f8;
   --kizkatt-muted-text: #9f9fab;
+  --kizkatt-node-edit-halo: drop-shadow(0 0 0.65px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 1.25px rgba(0, 0, 0, 0.58));
   --kizkatt-panel-label: #c9c9d3;
   --kizkatt-selection: #6965db;
   --kizkatt-selection-strong: #8f8cf6;
@@ -41,6 +42,7 @@
   --kizkatt-info-border: rgba(52, 52, 63, 0.38);
   --kizkatt-info-text: #1e1e28;
   --kizkatt-muted-text: #6f6f7a;
+  --kizkatt-node-edit-halo: drop-shadow(0 0 0.65px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 1.25px rgba(0, 0, 0, 0.58));
   --kizkatt-panel-label: #2c2c36;
   --kizkatt-selection: #6965db;
   --kizkatt-selection-strong: #5753d9;

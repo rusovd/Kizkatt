@@ -42,8 +42,10 @@ function isSameRenderOptions(
       first.selectionTransformCenter,
       second.selectionTransformCenter
     ) &&
+    isSamePoint(first.segmentBendHandlePoint, second.segmentBendHandlePoint) &&
     first.selectionTransformMode === second.selectionTransformMode &&
     first.showLinearBendHandles === second.showLinearBendHandles &&
+    first.showLinearNodePreview === second.showLinearNodePreview &&
     first.showRotateHoverIcon === second.showRotateHoverIcon &&
     first.showRotateHandle === second.showRotateHandle &&
     first.showSelectionBounds === second.showSelectionBounds &&

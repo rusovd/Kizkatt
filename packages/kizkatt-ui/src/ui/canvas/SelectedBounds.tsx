@@ -113,6 +113,7 @@ export function SelectedBounds({
       )}
       <TransformCenterMarker
         center={center}
+        interactive={isSkewMode}
         mode={selectionTransformMode}
         scale={screenScale}
       />

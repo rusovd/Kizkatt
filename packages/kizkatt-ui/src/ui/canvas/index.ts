@@ -1,7 +1,20 @@
 export { CanvasGrid } from "./CanvasGrid";
 export {
+  CENTER_DRAG_CURSOR,
   getCanvasCursor,
+  getCenterDragCursor,
+  getGrabbingCursor,
+  getHandCursor,
   getInteractionCursor,
+  getNodeEditCursor,
+  getNodeEditLineCursor,
+  getNodeEditPointCursor,
+  getNodeEditSelectionCursor,
+  getObjectDragCursor,
+  NODE_EDIT_CURSOR,
+  NODE_EDIT_LINE_CURSOR,
+  NODE_EDIT_POINT_CURSOR,
+  NODE_EDIT_SELECTION_CURSOR,
   NODE_DRAG_CURSOR,
   OBJECT_DRAG_CURSOR
 } from "./cursors";

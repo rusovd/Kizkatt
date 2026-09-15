@@ -36,6 +36,7 @@ import {
 type CanvasContextMenuProps = {
   arrowBinding: boolean;
   canBreakApart: boolean;
+  canCombineLines: boolean;
   canCopySelection: boolean;
   canGroup: boolean;
   canRevertObjectBase: boolean;
@@ -47,6 +48,7 @@ type CanvasContextMenuProps = {
   onCopy: () => void;
   onCopyPng: () => Promise<void>;
   onCopySvg: () => Promise<void>;
+  onCombineLines: () => void;
   onGroup: () => void;
   onPaste: () => void | Promise<void>;
   onPasteSvgCode: () => void | Promise<void>;
@@ -62,6 +64,7 @@ type CanvasContextMenuProps = {
   setSnapToObjects: (updater: (value: boolean) => boolean) => void;
   snapToMidpoints: boolean;
   snapToObjects: boolean;
+  showCombineLines: boolean;
 };
 
 type MenuRole = "menuitem" | "menuitemcheckbox" | "menuitemradio";
@@ -243,6 +246,7 @@ function SubmenuMenuItem<Id extends string>({
 export function CanvasContextMenu({
   arrowBinding,
   canBreakApart,
+  canCombineLines,
   canCopySelection,
   canGroup,
   canRevertObjectBase,
@@ -254,6 +258,7 @@ export function CanvasContextMenu({
   onCopy,
   onCopyPng,
   onCopySvg,
+  onCombineLines,
   onGroup,
   onPaste,
   onPasteSvgCode,
@@ -268,7 +273,8 @@ export function CanvasContextMenu({
   setSnapToMidpoints,
   setSnapToObjects,
   snapToMidpoints,
-  snapToObjects
+  snapToObjects,
+  showCombineLines
 }: CanvasContextMenuProps) {
   const [openSubmenu, setOpenSubmenu] = useState<SubmenuId | null>(null);
   const [menuDefaults, setMenuDefaults] = useState(
@@ -515,18 +521,9 @@ export function CanvasContextMenu({
           </MenuButton>
         ))}
       </SubmenuMenuItem>
-      {(canGroup || canUngroup || canBreakApart) && (
+      {(showCombineLines || canGroup || canUngroup || canBreakApart) && (
         <>
           <div className="kizkatt-context-divider" />
-          {canBreakApart && (
-            <MenuButton
-              icon={UngroupIcon}
-              title={tooltips.breakApart}
-              onClick={() => onCloseAndRun(onBreakApart)}
-            >
-              {strings.contextMenu.breakApart}
-            </MenuButton>
-          )}
           {canGroup && (
             <MenuButton
               icon={GroupIcon}
@@ -534,6 +531,25 @@ export function CanvasContextMenu({
               onClick={() => onCloseAndRun(onGroup)}
             >
               {strings.contextMenu.group}
+            </MenuButton>
+          )}
+          {showCombineLines && (
+            <MenuButton
+              disabled={!canCombineLines}
+              icon={GroupIcon}
+              title={tooltips.combineLines}
+              onClick={() => onCloseAndRun(onCombineLines)}
+            >
+              {strings.contextMenu.combineLines}
+            </MenuButton>
+          )}
+          {canBreakApart && (
+            <MenuButton
+              icon={UngroupIcon}
+              title={tooltips.breakApart}
+              onClick={() => onCloseAndRun(onBreakApart)}
+            >
+              {strings.contextMenu.breakApart}
             </MenuButton>
           )}
           {canUngroup && (

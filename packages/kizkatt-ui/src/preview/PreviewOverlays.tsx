@@ -4,8 +4,7 @@ import {
   getLinearElementSegmentControls,
   getLinearElementPath,
   getLinearElementPoints,
-  isElementPathClosed,
-  transformElementPoint
+  isElementPathClosed
 } from "kizkatt-graphic-engine";
 import type {
   Bounds,
@@ -43,9 +42,7 @@ function TransformPreviewContour({
     .join(" ");
 
   if (element.type === "line" || element.type === "arrow") {
-    const linePoints = getLinearElementPoints(element).map((point) =>
-      transformElementPoint(element, point)
-    );
+    const linePoints = getLinearElementPoints(element);
     const arrowheadGeometry = getArrowheadGeometry(element, linePoints);
     const renderedLinePoints = arrowheadGeometry
       ? shortenLinePoints(linePoints, arrowheadGeometry.length)
@@ -53,12 +50,18 @@ function TransformPreviewContour({
     const pathData = getLinearElementPath(
       renderedLinePoints,
       element.edgeStyle,
-      getLinearElementSegmentControls(element, renderedLinePoints)
+      getLinearElementSegmentControls(element, renderedLinePoints),
+      Boolean(element.closed)
     );
+    const closedPathData = `${pathData}${
+      element.closed && !pathData.trimEnd().endsWith("Z")
+        ? SVG_CLOSE_PATH_COMMAND
+        : ""
+    }`;
 
     return (
-      <>
-        <path className={className} d={pathData} />
+      <g transform={getElementTransform(element)}>
+        <path className={className} d={closedPathData} />
         {arrowheadGeometry && (
           <path
             className="kizkatt-transform-preview-contour kizkatt-transform-preview-arrowhead"
@@ -66,7 +69,7 @@ function TransformPreviewContour({
             transform={`translate(${arrowheadGeometry.end.x} ${arrowheadGeometry.end.y}) rotate(${arrowheadGeometry.angle}) scale(${arrowheadGeometry.scaleX} ${arrowheadGeometry.scaleY}) translate(${-ARROW_MARKER_REF_Y * 2} ${-ARROW_MARKER_REF_Y})`}
           />
         )}
-      </>
+      </g>
     );
   }
 

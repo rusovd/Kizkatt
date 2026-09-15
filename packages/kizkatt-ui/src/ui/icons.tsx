@@ -354,42 +354,35 @@ export const NodeEditIcon = createIcon(
 );
 
 export const NodeAddPointIcon = createIcon(
-  <g strokeWidth="1.4">
-    <path d="M4 16h5l3-7 3 7h5" />
-    <circle cx="4" cy="16" r="1.3" fill="currentColor" stroke="none" />
-    <circle cx="20" cy="16" r="1.3" fill="currentColor" stroke="none" />
-    <path d="M12 3v6M9 6h6" />
+  <g strokeWidth="1.7">
+    <path d="M4.5 4.5h7v7h-7z" />
+    <path d="M16 11v8M12 15h8" strokeWidth="2.8" />
   </g>,
   { height: 20, width: 20 }
 );
 
 export const NodeDeletePointIcon = createIcon(
-  <g strokeWidth="1.4">
-    <path d="M4 16h5l3-7 3 7h5" />
-    <circle cx="4" cy="16" r="1.3" fill="currentColor" stroke="none" />
-    <circle cx="20" cy="16" r="1.3" fill="currentColor" stroke="none" />
-    <path d="M9 6h6" />
+  <g strokeWidth="1.7">
+    <path d="M4.5 4.5h7v7h-7z" />
+    <path d="M12 15h8" strokeWidth="2.8" />
   </g>,
   { height: 20, width: 20 }
 );
 
 export const NodeMergePointsIcon = createIcon(
   <g strokeWidth="1.4">
-    <path d="M5 7h5M14 7h5M10 7l4 4M14 7l-4 4" />
-    <circle cx="10" cy="7" r="1.4" fill="currentColor" stroke="none" />
-    <circle cx="14" cy="7" r="1.4" fill="currentColor" stroke="none" />
-    <circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none" />
-    <path d="M12 11v4" />
+    <path d="M6 6h4.5l3 3M6 14h4.5l3-3M13.5 10h3" />
+    <path d="M3.5 4.5h3v3h-3zM3.5 12.5h3v3h-3zM16.5 8.5h3v3h-3z" />
+    <path d="m13.2 7.5 3 2.5-3 2.5z" fill="currentColor" stroke="none" />
   </g>,
   { height: 20, width: 20 }
 );
 
 export const NodeSplitPointIcon = createIcon(
   <g strokeWidth="1.4">
-    <circle cx="12" cy="7" r="1.6" fill="currentColor" stroke="none" />
-    <path d="M12 9v3M12 12l-4 4M12 12l4 4" />
-    <circle cx="8" cy="16" r="1.4" fill="currentColor" stroke="none" />
-    <circle cx="16" cy="16" r="1.4" fill="currentColor" stroke="none" />
+    <path d="M6.5 10h3M9.5 10l3-3H17M9.5 10l3 3H17" />
+    <path d="M3.5 8.5h3v3h-3zM16.5 4.5h3v3h-3zM16.5 12.5h3v3h-3z" />
+    <path d="m12.1 7.5 3-2.5v5zM12.1 12.5l3 2.5v-5z" fill="currentColor" stroke="none" />
   </g>,
   { height: 20, width: 20 }
 );
