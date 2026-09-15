@@ -131,6 +131,26 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.getByText("110%")).toBeInTheDocument();
   });
 
+  it("zooms with the mouse wheel in select and node edit modes", () => {
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.wheel(canvas, { deltaY: -100 });
+    expect(screen.getByText("110%")).toBeInTheDocument();
+    expect(
+      canvas.querySelector(":scope > g[transform]")?.getAttribute("transform")
+    ).toContain("scale(1.1)");
+
+    fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
+    fireEvent.wheel(canvas, { deltaY: 100 });
+
+    expect(screen.getByText("100%")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Node edit" })).toHaveClass(
+      "is-active"
+    );
+  });
+
   it("fits a dragged zoom area without applying the click increment", () => {
     render(<KizkattGraphicEditor />);
 

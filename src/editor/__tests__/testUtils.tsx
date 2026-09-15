@@ -46,7 +46,11 @@ export {
 } from "kizkatt-graphic-engine";
 export { selectionBounds } from "kizkatt-graphic-engine";
 export type { KizkattElement } from "kizkatt-graphic-engine";
-export { renderElement } from "kizkatt-ui";
+export {
+  NODE_DRAG_CURSOR,
+  OBJECT_DRAG_CURSOR,
+  renderElement
+} from "kizkatt-ui";
 export * as Icons from "kizkatt-ui";
 
 export function getCirclePoint(circle: Element | null) {

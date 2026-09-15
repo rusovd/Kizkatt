@@ -9,6 +9,7 @@ import {
   fireEvent,
   firePointerEvent,
   getCirclePoint,
+  OBJECT_DRAG_CURSOR,
   getResizeAnchorPoint,
   getResizeCursor,
   render,
@@ -30,6 +31,13 @@ function getTranslatePoint(element: Element | null) {
     x: Number(match?.[1] ?? 0),
     y: Number(match?.[2] ?? 0)
   };
+}
+
+function getTransformScale(element: Element | null) {
+  return Number(
+    /scale\(([-\d.]+)/.exec(element?.getAttribute("transform") ?? "")?.[1] ??
+      1
+  );
 }
 
 describe("KizkattGraphicEditor drawing and style panel", () => {
@@ -1123,6 +1131,53 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(resizeHandles).toEqual(["nw", "n", "ne", "e", "se", "s", "sw", "w"]);
   });
 
+  it("keeps transform handles visually stable while zooming", () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+
+    const initialResizeWidth = Number(
+      canvas
+        .querySelector("[data-resize-handle='se']")
+        ?.getAttribute("width")
+    );
+
+    fireEvent.wheel(canvas, { deltaY: -100 });
+
+    const zoomedResizeWidth = Number(
+      canvas
+        .querySelector("[data-resize-handle='se']")
+        ?.getAttribute("width")
+    );
+
+    expect(screen.getByText("110%")).toBeInTheDocument();
+    expect(zoomedResizeWidth * 1.1).toBeCloseTo(initialResizeWidth);
+
+    const rectangle = canvas.querySelector("[data-element-id] rect");
+    firePointerEvent(rectangle as Element, "pointerdown", {
+      clientX: 100,
+      clientY: 80
+    });
+    firePointerEvent(canvas, "pointerup");
+
+    const initialRotateIconScale = getTransformScale(
+      canvas.querySelector(".kizkatt-corner-rotate-handle")
+    );
+
+    fireEvent.wheel(canvas, { deltaY: -100 });
+
+    expect(screen.getByText("120%")).toBeInTheDocument();
+    expect(
+      getTransformScale(canvas.querySelector(".kizkatt-corner-rotate-handle")) *
+        (1.2 / 1.1)
+    ).toBeCloseTo(initialRotateIconScale);
+  });
+
   it("recomputes the selection center and keeps resize handles screen-aligned after resize", () => {
     render(<KizkattGraphicEditor />);
 
@@ -1213,6 +1268,12 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(canvas).toHaveStyle({ cursor: "default" });
 
     firePointerEvent(canvas, "pointerdown", { clientX: 100, clientY: 80 });
+    firePointerEvent(canvas, "pointermove", { clientX: 112, clientY: 92 });
+
+    expect(canvas).toHaveStyle({ cursor: OBJECT_DRAG_CURSOR });
+
+    firePointerEvent(canvas, "pointerup");
+    firePointerEvent(canvas, "pointerdown", { clientX: 112, clientY: 92 });
     firePointerEvent(canvas, "pointerup");
 
     const rotateHandle = canvas.querySelector("[data-handle='rotate']");

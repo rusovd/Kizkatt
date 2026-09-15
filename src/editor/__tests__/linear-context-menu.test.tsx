@@ -10,6 +10,7 @@ import {
   expect,
   fireEvent,
   firePointerEvent,
+  NODE_DRAG_CURSOR,
   render,
   screen,
   vi
@@ -109,6 +110,15 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
       .toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
+    expect(canvas.querySelector(".kizkatt-bend-handle")).not
+      .toBeInTheDocument();
+
+    const startEndpoint = canvas.querySelector("[data-line-endpoint='start']");
+    firePointerEvent(startEndpoint as Element, "pointerdown", {
+      clientX: 40,
+      clientY: 50
+    });
+    firePointerEvent(canvas, "pointerup", { clientX: 40, clientY: 50 });
     expect(canvas.querySelector(".kizkatt-bend-handle")).toBeInTheDocument();
 
     const bendHandle = canvas.querySelector(".kizkatt-bend-handle");
@@ -132,7 +142,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(1);
     expect(canvas.querySelector(".kizkatt-bend-point-handle.is-selected"))
       .toBeInTheDocument();
-    expect(canvas.querySelectorAll(".kizkatt-bend-handle")).toHaveLength(2);
+    expect(canvas.querySelectorAll(".kizkatt-bend-handle")).toHaveLength(1);
     expect(canvas.querySelector(".kizkatt-selection-overlay")).not
       .toBeInTheDocument();
     expect(canvas.querySelector(".kizkatt-bend-handle")).toBeInTheDocument();
@@ -242,7 +252,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
       .toHaveAttribute("d", "M 20 30 L 120 100 L 180 140");
     expect(canvas.querySelector(".kizkatt-transform-preview-bounds"))
       .not.toBeInTheDocument();
-    expect(canvas).toHaveStyle({ cursor: "move" });
+    expect(canvas).toHaveStyle({ cursor: NODE_DRAG_CURSOR });
 
     firePointerEvent(canvas, "pointerup", { clientX: 20, clientY: 30 });
 
@@ -265,6 +275,226 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
       "d",
       "M 20 30 L 120 100 L 200 140"
     );
+  });
+
+  it("selects and moves multiple bend points in node edit mode", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          bends: [
+            { x: 60, y: 0 },
+            { x: 80, y: 40 }
+          ],
+          edgeStyle: "sharp",
+          height: 60,
+          id: "line",
+          opacity: 100,
+          sloppiness: "architect",
+          strokeColor: "#111111",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          type: "line",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["line"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
+
+    expect(canvas.querySelectorAll(".kizkatt-endpoint-handle"))
+      .toHaveLength(2);
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
+      .toHaveLength(2);
+    expect(canvas.querySelectorAll(".kizkatt-bend-handle"))
+      .toHaveLength(0);
+
+    firePointerEvent(
+      canvas.querySelectorAll(".kizkatt-bend-point-handle")[0],
+      "pointerdown",
+      { clientX: 100, clientY: 50 }
+    );
+    firePointerEvent(canvas, "pointerup", { clientX: 100, clientY: 50 });
+    expect(canvas.querySelectorAll(".kizkatt-bend-handle"))
+      .toHaveLength(1);
+    expect(canvas.querySelector(".kizkatt-bend-handle"))
+      .toHaveAttribute("data-segment-index", "0");
+
+    firePointerEvent(
+      canvas.querySelectorAll(".kizkatt-bend-point-handle")[1],
+      "pointerdown",
+      {
+        clientX: 120,
+        clientY: 90,
+        shiftKey: true
+      }
+    );
+
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle.is-selected"))
+      .toHaveLength(2);
+    expect(canvas.querySelectorAll(".kizkatt-bend-handle"))
+      .toHaveLength(1);
+    expect(canvas.querySelector(".kizkatt-bend-handle"))
+      .toHaveAttribute("data-segment-index", "1");
+
+    const linePath = canvas.querySelector("[data-element-type='line'] > path");
+    firePointerEvent(
+      canvas.querySelectorAll(".kizkatt-bend-point-handle")[0],
+      "pointerdown",
+      { clientX: 100, clientY: 50 }
+    );
+    firePointerEvent(canvas, "pointermove", { clientX: 110, clientY: 65 });
+
+    expect(linePath).toHaveAttribute(
+      "d",
+      "M 40 50 L 100 50 L 120 90 L 160 110"
+    );
+    expect(canvas.querySelector(".kizkatt-transform-preview-line"))
+      .toHaveAttribute("d", "M 40 50 L 110 65 L 130 105 L 160 110");
+
+    firePointerEvent(canvas, "pointerup", { clientX: 110, clientY: 65 });
+    expect(linePath).toHaveAttribute(
+      "d",
+      "M 40 50 L 110 65 L 130 105 L 160 110"
+    );
+  });
+
+  it("shows node editor actions for bend point editing", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          bends: [{ x: 60, y: 30 }],
+          edgeStyle: "sharp",
+          height: 70,
+          id: "line",
+          opacity: 100,
+          sloppiness: "architect",
+          strokeColor: "#111111",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          type: "line",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["line"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
+
+    const bendHandle = canvas.querySelector(".kizkatt-bend-point-handle");
+    firePointerEvent(bendHandle as Element, "pointerdown", {
+      clientX: 100,
+      clientY: 80
+    });
+    firePointerEvent(canvas, "pointerup", { clientX: 100, clientY: 80 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Split point" }));
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
+      .toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Merge points" }));
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
+      .toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Make segment curved" }));
+    expect(canvas.querySelector("[data-element-type='line'] > path")
+      ?.getAttribute("d")).toContain(" C ");
+    expect(canvas.querySelectorAll(".kizkatt-bezier-control-handle"))
+      .toHaveLength(2);
+
+    const curvePathBeforeDrag = canvas
+      .querySelector("[data-element-type='line'] > path")
+      ?.getAttribute("d");
+    const firstBezierHandle = canvas.querySelector(
+      ".kizkatt-bezier-control-handle[data-control-point='cp1']"
+    );
+
+    firePointerEvent(firstBezierHandle as Element, "pointerdown", {
+      clientX: 80,
+      clientY: 70
+    });
+    expect(canvas.querySelectorAll(".kizkatt-bezier-control-handle"))
+      .toHaveLength(2);
+    firePointerEvent(canvas, "pointermove", { clientX: 70, clientY: 40 });
+    expect(canvas.querySelector("[data-element-type='line'] > path")
+      ?.getAttribute("d")).toBe(curvePathBeforeDrag);
+    expect(canvas.querySelector(".kizkatt-transform-preview-line")
+      ?.getAttribute("d")).not.toBe(curvePathBeforeDrag);
+    expect(canvas.querySelectorAll(".kizkatt-bezier-control-handle"))
+      .toHaveLength(2);
+    firePointerEvent(canvas, "pointerup", { clientX: 70, clientY: 40 });
+    expect(canvas.querySelector("[data-element-type='line'] > path")
+      ?.getAttribute("d")).not.toBe(curvePathBeforeDrag);
+
+    fireEvent.click(screen.getByRole("button", { name: "Make segment straight" }));
+    expect(canvas.querySelector("[data-element-type='line'] > path")
+      ?.getAttribute("d")).toContain(" L ");
+  });
+
+  it("selects an arbitrary linear segment for node editor segment actions", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          bends: [
+            { x: 50, y: 0 },
+            { x: 95, y: 45 }
+          ],
+          edgeStyle: "sharp",
+          height: 70,
+          id: "line",
+          opacity: 100,
+          sloppiness: "architect",
+          strokeColor: "#111111",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          type: "line",
+          width: 140,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["line"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
+
+    const secondSegment = canvas.querySelector(
+      ".kizkatt-linear-segment-hit[data-segment-index='1']"
+    );
+    firePointerEvent(secondSegment as Element, "pointerdown", {
+      clientX: 112,
+      clientY: 72
+    });
+    firePointerEvent(canvas, "pointerup", { clientX: 112, clientY: 72 });
+
+    expect(canvas.querySelector(".kizkatt-linear-segment-hit.is-selected"))
+      .toHaveAttribute("data-segment-index", "1");
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle.is-selected"))
+      .toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Make segment curved" }));
+    expect(canvas.querySelector("[data-element-type='line'] > path")
+      ?.getAttribute("d")).toContain(" L 90 50 C ");
+
+    fireEvent.click(screen.getByRole("button", { name: "Make segment straight" }));
+    expect(canvas.querySelector("[data-element-type='line'] > path")
+      ?.getAttribute("d")).toContain(" L 90 50 L 135 95");
   });
 
   it("moves non-linear objects without leaving node edit mode", () => {
