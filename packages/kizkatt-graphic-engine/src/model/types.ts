@@ -37,6 +37,12 @@ export type LinearSegmentControl = {
   mode?: "curve" | "line";
 };
 
+export type LinearNodeSelection = {
+  elementId: string;
+  nodeIndices: number[];
+  segmentIndex?: number;
+};
+
 export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
 export type SelectionTransformMode = "resize" | "skew";
@@ -145,6 +151,7 @@ export type KizkattElement = {
   base?: ObjectBase;
   groupId?: string;
   groupName?: string;
+  lineCombinationId?: string;
   name?: string;
   type: ElementType;
   x: number;
@@ -203,6 +210,7 @@ export type ObjectBase = Omit<
   | "groupId"
   | "groupName"
   | "id"
+  | "lineCombinationId"
   | "name"
   | "src"
   | "svgContent"
@@ -222,6 +230,7 @@ export type CanvasState = {
   };
   selectedNodes?: {
     elementId: string;
+    lineSelections?: LinearNodeSelection[];
     nodeIndices: number[];
     segmentIndex?: number;
   };
@@ -315,6 +324,17 @@ export type Interaction =
       start: Point;
     }
   | {
+      type: "linearSegmentBend";
+      elementId: string;
+      hasMoved: boolean;
+      handlePoint: Point;
+      originalElement: KizkattElement;
+      originalElements: KizkattElement[];
+      selectedIds: string[];
+      segmentIndex: number;
+      start: Point;
+    }
+  | {
       type: "bezierControl";
       control: "cp1" | "cp2";
       elementId: string;
@@ -343,6 +363,7 @@ export type Interaction =
       type: "selectArea";
       current: Point;
       origin: Point;
+      selectedIds: string[];
     }
   | {
       type: "zoomArea";

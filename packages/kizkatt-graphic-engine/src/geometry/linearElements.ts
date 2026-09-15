@@ -22,7 +22,6 @@ import type {
   Point
 } from "../model/types";
 import {
-  distanceSquaredToSegment,
   getElementEnd,
   getElementLocalPoint,
   getElementLocalVector,
@@ -31,6 +30,183 @@ import {
 } from "./primitives";
 
 const MIN_LINEAR_SCALE_DENOMINATOR = 0.000001;
+const CUBIC_SEGMENT_HIT_SAMPLES = 64;
+
+function getProjectedPointOnSegment(
+  point: Point,
+  start: Point,
+  end: Point
+) {
+  const segmentX = end.x - start.x;
+  const segmentY = end.y - start.y;
+  const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
+  const t =
+    segmentLengthSquared === 0
+      ? 0
+      : Math.max(
+          0,
+          Math.min(
+            1,
+            ((point.x - start.x) * segmentX +
+              (point.y - start.y) * segmentY) /
+              segmentLengthSquared
+          )
+        );
+  const projectedPoint = {
+    x: start.x + t * segmentX,
+    y: start.y + t * segmentY
+  };
+
+  return {
+    distanceSquared:
+      (point.x - projectedPoint.x) * (point.x - projectedPoint.x) +
+      (point.y - projectedPoint.y) * (point.y - projectedPoint.y),
+    point: projectedPoint,
+    t
+  };
+}
+
+function getNearestLinearSegmentPosition(
+  point: Point,
+  linePoints: Point[],
+  segmentControls: LinearSegmentWorldControl[],
+  closed = false
+) {
+  let nearestSegmentIndex = FIRST_ARRAY_INDEX;
+  let nearestSegmentPosition = 0;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  const segmentCount =
+    hasImplicitClosingSegment(linePoints, closed)
+      ? linePoints.length
+      : Math.max(0, linePoints.length - NEXT_ARRAY_INDEX_OFFSET);
+
+  for (
+    let index = FIRST_ARRAY_INDEX;
+    index < segmentCount;
+    index += NEXT_ARRAY_INDEX_OFFSET
+  ) {
+    const start = linePoints[index];
+    const end =
+      index === linePoints.length - NEXT_ARRAY_INDEX_OFFSET
+        ? linePoints[FIRST_ARRAY_INDEX]
+        : linePoints[index + NEXT_ARRAY_INDEX_OFFSET];
+    const segmentControl = segmentControls[index];
+
+    if (
+      segmentControl?.mode === "curve" &&
+      segmentControl.cp1 &&
+      segmentControl.cp2
+    ) {
+      let previousPoint = start;
+
+      for (
+        let sampleIndex = 1;
+        sampleIndex <= CUBIC_SEGMENT_HIT_SAMPLES;
+        sampleIndex += 1
+      ) {
+        const samplePosition = sampleIndex / CUBIC_SEGMENT_HIT_SAMPLES;
+        const samplePoint = getCubicBezierPoint(
+          start,
+          segmentControl.cp1,
+          segmentControl.cp2,
+          end,
+          samplePosition
+        );
+        const projection = getProjectedPointOnSegment(
+          point,
+          previousPoint,
+          samplePoint
+        );
+
+        if (projection.distanceSquared < nearestDistance) {
+          nearestDistance = projection.distanceSquared;
+          nearestSegmentIndex = index;
+          nearestSegmentPosition =
+            (sampleIndex - 1 + projection.t) / CUBIC_SEGMENT_HIT_SAMPLES;
+        }
+
+        previousPoint = samplePoint;
+      }
+
+      continue;
+    }
+
+    const projection = getProjectedPointOnSegment(point, start, end);
+
+    if (projection.distanceSquared < nearestDistance) {
+      nearestDistance = projection.distanceSquared;
+      nearestSegmentIndex = index;
+      nearestSegmentPosition = projection.t;
+    }
+  }
+
+  return {
+    index: nearestSegmentIndex,
+    t: nearestSegmentPosition
+  };
+}
+
+function lerpPoint(start: Point, end: Point, t: number) {
+  return {
+    x: start.x + (end.x - start.x) * t,
+    y: start.y + (end.y - start.y) * t
+  };
+}
+
+function hasImplicitClosingSegment(points: Point[], closed = false) {
+  const first = points[FIRST_ARRAY_INDEX];
+  const last = points[points.length - NEXT_ARRAY_INDEX_OFFSET];
+
+  return Boolean(
+    closed &&
+      points.length > LINEAR_PATH_MIN_POINT_COUNT &&
+      first &&
+      last &&
+      (first.x !== last.x || first.y !== last.y)
+  );
+}
+
+function splitCubicBezierSegment(
+  start: Point,
+  cp1: Point,
+  cp2: Point,
+  end: Point,
+  t: number
+) {
+  const p01 = lerpPoint(start, cp1, t);
+  const p12 = lerpPoint(cp1, cp2, t);
+  const p23 = lerpPoint(cp2, end, t);
+  const p012 = lerpPoint(p01, p12, t);
+  const p123 = lerpPoint(p12, p23, t);
+  const point = lerpPoint(p012, p123, t);
+
+  return {
+    first: {
+      cp1: p01,
+      cp2: p012,
+      mode: "curve" as const
+    },
+    point,
+    second: {
+      cp1: p123,
+      cp2: p23,
+      mode: "curve" as const
+    }
+  };
+}
+
+function getLocalLinearSegmentControl(
+  element: KizkattElement,
+  control: LinearSegmentWorldControl
+): LinearSegmentControl {
+  return control.mode === "curve" && control.cp1 && control.cp2
+    ? {
+        cp1: toLocalControlPoint(element, control.cp1),
+        cp2: toLocalControlPoint(element, control.cp2),
+        mode: "curve"
+      }
+    : { mode: "line" };
+}
 
 export function insertLinearElementBend(
   element: KizkattElement,
@@ -38,52 +214,55 @@ export function insertLinearElementBend(
 ) {
   const localPoint = getElementLocalPoint(element, worldPoint);
   const linePoints = getLinearElementPoints(element);
-  let nearestSegmentIndex = FIRST_ARRAY_INDEX;
-  let nearestDistance = Number.POSITIVE_INFINITY;
-
-  for (
-    let index = FIRST_ARRAY_INDEX;
-    index < linePoints.length - NEXT_ARRAY_INDEX_OFFSET;
-    index += NEXT_ARRAY_INDEX_OFFSET
-  ) {
-    const distance = distanceSquaredToSegment(
-      localPoint,
-      linePoints[index],
-      linePoints[index + NEXT_ARRAY_INDEX_OFFSET]
-    );
-
-    if (distance < nearestDistance) {
-      nearestDistance = distance;
-      nearestSegmentIndex = index;
-    }
-  }
+  const segmentControls = getLinearElementSegmentControls(element, linePoints);
+  const nearestSegment = getNearestLinearSegmentPosition(
+    localPoint,
+    linePoints,
+    segmentControls,
+    Boolean(element.closed)
+  );
+  const nearestSegmentIndex = nearestSegment.index;
 
   const bends = getElementBends(element);
   const segmentStart = linePoints[nearestSegmentIndex];
-  const segmentEnd = linePoints[nearestSegmentIndex + NEXT_ARRAY_INDEX_OFFSET];
-  const segmentX = segmentEnd.x - segmentStart.x;
-  const segmentY = segmentEnd.y - segmentStart.y;
-  const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
-  const segmentPosition =
-    segmentLengthSquared === 0
-      ? 0
-      : Math.max(
-          0,
-          Math.min(
-            1,
-            ((localPoint.x - segmentStart.x) * segmentX +
-              (localPoint.y - segmentStart.y) * segmentY) /
-              segmentLengthSquared
-          )
-        );
-  const projectedPoint = {
-    x: segmentStart.x + segmentPosition * segmentX,
-    y: segmentStart.y + segmentPosition * segmentY
-  };
+  const segmentEnd =
+    nearestSegmentIndex === linePoints.length - NEXT_ARRAY_INDEX_OFFSET
+      ? linePoints[FIRST_ARRAY_INDEX]
+      : linePoints[nearestSegmentIndex + NEXT_ARRAY_INDEX_OFFSET];
+  const segmentControl = segmentControls[nearestSegmentIndex];
+  const splitSegment =
+    segmentControl?.mode === "curve" &&
+    segmentControl.cp1 &&
+    segmentControl.cp2
+      ? splitCubicBezierSegment(
+          segmentStart,
+          segmentControl.cp1,
+          segmentControl.cp2,
+          segmentEnd,
+          nearestSegment.t
+        )
+      : null;
+  const projectedPoint =
+    splitSegment?.point ??
+    getProjectedPointOnSegment(localPoint, segmentStart, segmentEnd).point;
   const nextBend = {
     x: projectedPoint.x - element.x,
     y: projectedPoint.y - element.y
   };
+  const nextSegmentControls = segmentControls.flatMap((control, index) => {
+    if (index !== nearestSegmentIndex) {
+      return [getLocalLinearSegmentControl(element, control)];
+    }
+
+    if (splitSegment) {
+      return [
+        getLocalLinearSegmentControl(element, splitSegment.first),
+        getLocalLinearSegmentControl(element, splitSegment.second)
+      ];
+    }
+
+    return [{ mode: "line" as const }, { mode: "line" as const }];
+  });
 
   return {
     bendIndex: nearestSegmentIndex,
@@ -94,9 +273,26 @@ export function insertLinearElementBend(
         nextBend,
         ...bends.slice(nearestSegmentIndex)
       ],
+      linearSegmentControls: nextSegmentControls,
       curve: undefined
     }
   };
+}
+
+export function getNearestLinearElementSegmentIndex(
+  element: KizkattElement,
+  worldPoint: Point
+) {
+  const localPoint = getElementLocalPoint(element, worldPoint);
+  const linePoints = getLinearElementPoints(element);
+  const segmentControls = getLinearElementSegmentControls(element, linePoints);
+
+  return getNearestLinearSegmentPosition(
+    localPoint,
+    linePoints,
+    segmentControls,
+    Boolean(element.closed)
+  ).index;
 }
 
 export function getElementBends(element: KizkattElement) {
@@ -222,7 +418,8 @@ export function getDefaultLinearSegmentControl(
 ): LinearSegmentControl {
   const { cp1, cp2 } = getLinearElementCubicControlPoints(
     points,
-    segmentIndex
+    segmentIndex,
+    Boolean(element.closed)
   );
 
   return {
@@ -236,7 +433,12 @@ export function getLinearElementSegmentControls(
   element: KizkattElement,
   points = getLinearElementPoints(element)
 ): LinearSegmentWorldControl[] {
-  return points.slice(0, -1).map((_, index) => {
+  const segmentCount =
+    hasImplicitClosingSegment(points, Boolean(element.closed))
+      ? points.length
+      : Math.max(0, points.length - NEXT_ARRAY_INDEX_OFFSET);
+
+  return Array.from({ length: segmentCount }, (_, index) => {
     const configured = element.linearSegmentControls?.[index];
 
     if (configured?.mode === "line") {
@@ -258,7 +460,11 @@ export function getLinearElementSegmentControls(
       points.length > LINEAR_PATH_STRAIGHT_POINT_COUNT
     ) {
       return {
-        ...getLinearElementCubicControlPoints(points, index),
+        ...getLinearElementCubicControlPoints(
+          points,
+          index,
+          Boolean(element.closed)
+        ),
         mode: "curve"
       };
     }
@@ -270,7 +476,8 @@ export function getLinearElementSegmentControls(
 export function getLinearElementPath(
   points: Point[],
   edgeStyle: KizkattElement["edgeStyle"] = DEFAULT_EDGE_STYLE,
-  segmentControls?: LinearSegmentWorldControl[]
+  segmentControls?: LinearSegmentWorldControl[],
+  closed = false
 ) {
   if (points.length === EMPTY_COLLECTION_LENGTH) {
     return EMPTY_PATH_DATA;
@@ -288,6 +495,7 @@ export function getLinearElementPath(
 
   if (
     points.length === LINEAR_PATH_STRAIGHT_POINT_COUNT &&
+    !closed &&
     !hasExplicitCurveControls
   ) {
     return `${SVG_MOVE_COMMAND} ${points[FIRST_ARRAY_INDEX].x} ${
@@ -298,14 +506,23 @@ export function getLinearElementPath(
   }
 
   if (edgeStyle === SHARP_EDGE_STYLE && !hasExplicitCurveControls) {
-    return points
+    const commands = points
       .map((point, index) => {
         const command =
           index === FIRST_ARRAY_INDEX ? SVG_MOVE_COMMAND : SVG_LINE_COMMAND;
 
         return `${command} ${point.x} ${point.y}`;
-      })
-      .join(SVG_COMMAND_SEPARATOR);
+      });
+
+    if (hasImplicitClosingSegment(points, closed)) {
+      commands.push(
+        `${SVG_LINE_COMMAND} ${points[FIRST_ARRAY_INDEX].x} ${
+          points[FIRST_ARRAY_INDEX].y
+        }`
+      );
+    }
+
+    return commands.join(SVG_COMMAND_SEPARATOR);
   }
 
   const commands = [
@@ -314,12 +531,20 @@ export function getLinearElementPath(
     }`
   ];
 
+  const segmentCount =
+    hasImplicitClosingSegment(points, closed)
+      ? points.length
+      : points.length - NEXT_ARRAY_INDEX_OFFSET;
+
   for (
     let index = FIRST_ARRAY_INDEX;
-    index < points.length - NEXT_ARRAY_INDEX_OFFSET;
+    index < segmentCount;
     index += NEXT_ARRAY_INDEX_OFFSET
   ) {
-    const next = points[index + NEXT_ARRAY_INDEX_OFFSET];
+    const next =
+      index === points.length - NEXT_ARRAY_INDEX_OFFSET
+        ? points[FIRST_ARRAY_INDEX]
+        : points[index + NEXT_ARRAY_INDEX_OFFSET];
     const segmentControl = segmentControls?.[index];
 
     if (
@@ -335,7 +560,7 @@ export function getLinearElementPath(
       segmentControl.cp1 &&
       segmentControl.cp2
         ? { cp1: segmentControl.cp1, cp2: segmentControl.cp2 }
-        : getLinearElementCubicControlPoints(points, index);
+        : getLinearElementCubicControlPoints(points, index, closed);
 
     commands.push(
       `${SVG_CUBIC_COMMAND} ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${next.x} ${next.y}`
@@ -347,19 +572,30 @@ export function getLinearElementPath(
 
 export function getLinearElementCubicControlPoints(
   points: Point[],
-  index: number
+  index: number,
+  closed = false
 ) {
   const previous =
-    points[Math.max(FIRST_ARRAY_INDEX, index - NEXT_ARRAY_INDEX_OFFSET)];
+    closed && index === FIRST_ARRAY_INDEX
+      ? points[points.length - NEXT_ARRAY_INDEX_OFFSET]
+      : points[Math.max(FIRST_ARRAY_INDEX, index - NEXT_ARRAY_INDEX_OFFSET)];
   const current = points[index];
-  const next = points[index + NEXT_ARRAY_INDEX_OFFSET];
+  const next =
+    closed && index === points.length - NEXT_ARRAY_INDEX_OFFSET
+      ? points[FIRST_ARRAY_INDEX]
+      : points[index + NEXT_ARRAY_INDEX_OFFSET];
   const nextNext =
-    points[
-      Math.min(
-        points.length - NEXT_ARRAY_INDEX_OFFSET,
-        index + LINEAR_PATH_STRAIGHT_POINT_COUNT
-      )
-    ];
+    closed && index >= points.length - LINEAR_PATH_STRAIGHT_POINT_COUNT
+      ? points[
+          (index + LINEAR_PATH_STRAIGHT_POINT_COUNT) %
+            points.length
+        ]
+      : points[
+          Math.min(
+            points.length - NEXT_ARRAY_INDEX_OFFSET,
+            index + LINEAR_PATH_STRAIGHT_POINT_COUNT
+          )
+        ];
 
   return {
     cp1: {
@@ -373,13 +609,13 @@ export function getLinearElementCubicControlPoints(
   };
 }
 
-function getCubicBezierMidpoint(
+export function getCubicBezierPoint(
   start: Point,
   cp1: Point,
   cp2: Point,
-  end: Point
+  end: Point,
+  t: number
 ) {
-  const t = 1 / HALF_DIVISOR;
   const inverseT = 1 - t;
   const inverseSquared = inverseT * inverseT;
   const tSquared = t * t;
@@ -398,14 +634,79 @@ function getCubicBezierMidpoint(
   };
 }
 
+function getCubicBezierMidpoint(
+  start: Point,
+  cp1: Point,
+  cp2: Point,
+  end: Point
+) {
+  return getCubicBezierPoint(start, cp1, cp2, end, 1 / HALF_DIVISOR);
+}
+
+export function getLinearElementSamplePoints(
+  element: KizkattElement,
+  samplesPerCurveSegment = 24
+) {
+  const points = getLinearElementPoints(element);
+  const segmentControls = getLinearElementSegmentControls(element, points);
+  const samplePoints: Point[] = [];
+  const segmentCount =
+    hasImplicitClosingSegment(points, Boolean(element.closed))
+      ? points.length
+      : Math.max(0, points.length - NEXT_ARRAY_INDEX_OFFSET);
+
+  Array.from({ length: segmentCount }, (_, index) => {
+    const start = points[index];
+    const end =
+      index === points.length - NEXT_ARRAY_INDEX_OFFSET
+        ? points[FIRST_ARRAY_INDEX]
+        : points[index + NEXT_ARRAY_INDEX_OFFSET];
+    const segmentControl = segmentControls[index];
+
+    if (index === FIRST_ARRAY_INDEX) {
+      samplePoints.push(start);
+    }
+
+    if (
+      segmentControl?.mode === "curve" &&
+      segmentControl.cp1 &&
+      segmentControl.cp2
+    ) {
+      for (
+        let sampleIndex = 1;
+        sampleIndex <= samplesPerCurveSegment;
+        sampleIndex += 1
+      ) {
+        samplePoints.push(
+          getCubicBezierPoint(
+            start,
+            segmentControl.cp1,
+            segmentControl.cp2,
+            end,
+            sampleIndex / samplesPerCurveSegment
+          )
+        );
+      }
+    } else {
+      samplePoints.push(end);
+    }
+  });
+
+  return samplePoints;
+}
+
 export function getLinearElementSegmentMidpoint(
   points: Point[],
   index: number,
   edgeStyle: KizkattElement["edgeStyle"] = DEFAULT_EDGE_STYLE,
-  segmentControls?: LinearSegmentWorldControl[]
+  segmentControls?: LinearSegmentWorldControl[],
+  closed = false
 ) {
   const start = points[index];
-  const end = points[index + NEXT_ARRAY_INDEX_OFFSET];
+  const end =
+    closed && index === points.length - NEXT_ARRAY_INDEX_OFFSET
+      ? points[FIRST_ARRAY_INDEX]
+      : points[index + NEXT_ARRAY_INDEX_OFFSET];
   const segmentControl = segmentControls?.[index];
 
   if (
@@ -429,7 +730,11 @@ export function getLinearElementSegmentMidpoint(
     return getSegmentMidpoint(start, end);
   }
 
-  const { cp1, cp2 } = getLinearElementCubicControlPoints(points, index);
+  const { cp1, cp2 } = getLinearElementCubicControlPoints(
+    points,
+    index,
+    closed
+  );
 
   return getCubicBezierMidpoint(start, cp1, cp2, end);
 }

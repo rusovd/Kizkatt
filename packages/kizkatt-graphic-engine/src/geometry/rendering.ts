@@ -12,7 +12,6 @@ const SVG_DEGREES_PER_RADIAN = 180 / Math.PI;
 const SVG_LINECAP_BUTT = "butt" as const;
 const SVG_LINECAP_ROUND = "round" as const;
 const SVG_LINEJOIN_ROUND = "round" as const;
-const VECTOR_EFFECT_NON_SCALING_STROKE = "non-scaling-stroke" as const;
 const STROKE_STYLE_SOLID = "solid";
 const STROKE_STYLE_DASHED = "dashed";
 const STROKE_STYLE_DASH_DOT = "dashDot";
@@ -176,8 +175,7 @@ export function getElementShapeProps(element: KizkattElement) {
     opacity: element.opacity / PERCENT_MAX_VALUE,
     paintOrder: element.strokeBehindFill ? "stroke fill markers" : undefined,
     strokeLinecap,
-    strokeLinejoin,
-    vectorEffect: VECTOR_EFFECT_NON_SCALING_STROKE
+    strokeLinejoin
   };
 }
 

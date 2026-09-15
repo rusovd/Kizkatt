@@ -320,7 +320,9 @@ export function canElementUseBackground(element: KizkattElement) {
   }
 
   if (element.type === "line" || element.type === "draw") {
-    return isElementPathClosed(element);
+    return element.type === "line"
+      ? Boolean(element.closed)
+      : isElementPathClosed(element);
   }
 
   return true;

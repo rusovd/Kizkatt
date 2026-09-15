@@ -84,6 +84,7 @@ export function getActiveInteractionCursor(interaction: Interaction | null) {
   if (
     interaction.type === "bend" ||
     interaction.type === "bezierControl" ||
+    interaction.type === "linearSegmentBend" ||
     interaction.type === "linearNodes" ||
     interaction.type === "linearEndpoint" ||
     interaction.type === "move" ||
@@ -106,6 +107,7 @@ export function isPreviewTransformInteraction(
     interaction?.type === "skew" ||
     interaction?.type === "bend" ||
     interaction?.type === "bezierControl" ||
+    interaction?.type === "linearSegmentBend" ||
     interaction?.type === "linearNodes" ||
     interaction?.type === "linearEndpoint"
   );

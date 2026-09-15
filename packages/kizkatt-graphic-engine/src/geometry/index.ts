@@ -71,6 +71,7 @@ export {
   getElementBends,
   getDefaultLinearSegmentControl,
   insertLinearElementBend,
+  getNearestLinearElementSegmentIndex,
   getLinearElementCubicControlPoints,
   getLinearElementPath,
   getLinearElementPoints,

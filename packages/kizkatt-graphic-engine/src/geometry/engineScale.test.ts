@@ -16,6 +16,7 @@ import {
   getElementBounds,
   getElementIndicesInBounds,
   getElementLocalPoint,
+  getElementShapeProps,
   getResizeAnchorPoint,
   getScalePercentFromDimension,
   getInitialBitmapTextureSize,
@@ -169,6 +170,14 @@ describe("engine scale safeguards", () => {
     ).toBe(rectangle.strokeWidth * 2);
   });
 
+  it("lets actual element strokes scale with viewport zoom", () => {
+    const rectangle = createRectangle(0);
+
+    expect(getElementShapeProps(rectangle)).not.toHaveProperty(
+      "vectorEffect"
+    );
+  });
+
   it("preserves proportions from corner and edge resize handles", () => {
     const rectangle = { ...createRectangle(0), height: 50, width: 100 };
     const cornerResized = resizeElementFromHandle(
@@ -228,14 +237,15 @@ describe("engine scale safeguards", () => {
 
     expect(resizedBounds.width).toBeCloseTo(originalBounds.width * 2);
     expect(resizedBounds.height).toBeCloseTo(originalBounds.height * 2);
-    expect(resized.width).toBeCloseTo(line.width * 2);
-    expect(resized.height).toBeCloseTo(line.height * 2);
-    expect(
-      transformElementPoint(resized, {
-        x: resizedBounds.x,
-        y: resizedBounds.y
-      })
-    ).toEqual(originalAnchor);
+    expect(resized.width).toBeGreaterThan(line.width * 2);
+    expect(resized.height).toBeGreaterThan(line.height * 2);
+    const resizedAnchor = transformElementPoint(resized, {
+      x: resizedBounds.x,
+      y: resizedBounds.y
+    });
+
+    expect(resizedAnchor.x).toBeCloseTo(originalAnchor.x);
+    expect(resizedAnchor.y).toBeCloseTo(originalAnchor.y);
     const resizedHandle = transformElementPoint(resized, {
       x: resizedBounds.x + resizedBounds.width,
       y: resizedBounds.y + resizedBounds.height

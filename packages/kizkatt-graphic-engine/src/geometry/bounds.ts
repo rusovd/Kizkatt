@@ -9,7 +9,7 @@ import {
   NO_ROTATION_ANGLE
 } from "../config/constants";
 import type { KizkattElement } from "../model/types";
-import { getElementBends, getLinearElementPoints } from "./linearElements";
+import { getLinearElementSamplePoints } from "./linearElements";
 import {
   getBoundsFromPointList,
   getBoundsFromPoints,
@@ -46,14 +46,18 @@ export function getElementBounds(element: KizkattElement) {
     };
   }
 
-  if (
-    (element.type === LINE_ELEMENT_TYPE || element.type === ARROW_ELEMENT_TYPE) &&
-    getElementBends(element).length > EMPTY_COLLECTION_LENGTH
-  ) {
-    return (
-      getBoundsFromPointList(getLinearElementPoints(element), true) ??
-      getBoundsFromPoints({ x: element.x, y: element.y }, getElementEnd(element))
-    );
+  if (element.type === LINE_ELEMENT_TYPE || element.type === ARROW_ELEMENT_TYPE) {
+    const strokeInset = Math.max(0, element.strokeWidth / 2);
+    const bounds =
+      getBoundsFromPointList(getLinearElementSamplePoints(element), true) ??
+      getBoundsFromPoints({ x: element.x, y: element.y }, getElementEnd(element));
+
+    return {
+      height: bounds.height + strokeInset * 2,
+      width: bounds.width + strokeInset * 2,
+      x: bounds.x - strokeInset,
+      y: bounds.y - strokeInset
+    };
   }
 
   const minX = Math.min(element.x, element.x + element.width);

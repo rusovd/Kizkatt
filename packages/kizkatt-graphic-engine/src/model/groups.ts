@@ -12,12 +12,22 @@ export function expandElementIdsToGroups(
       .filter((element) => selectedIds.has(element.id) && element.groupId)
       .map((element) => element.groupId as string)
   );
+  const selectedLineCombinationIds = new Set(
+    elements
+      .filter(
+        (element) => selectedIds.has(element.id) && element.lineCombinationId
+      )
+      .map((element) => element.lineCombinationId as string)
+  );
 
   return elements
     .filter(
       (element) =>
         selectedIds.has(element.id) ||
-        (element.groupId ? selectedGroupIds.has(element.groupId) : false)
+        (element.groupId ? selectedGroupIds.has(element.groupId) : false) ||
+        (element.lineCombinationId
+          ? selectedLineCombinationIds.has(element.lineCombinationId)
+          : false)
     )
     .map((element) => element.id);
 }
@@ -56,7 +66,11 @@ function getSelectionUnits(elements: KizkattElement[], selectedIds: string[]) {
       continue;
     }
 
-    units.add(element.groupId ? `group:${element.groupId}` : `element:${element.id}`);
+    units.add(
+      element.groupId
+        ? `group:${element.groupId}`
+        : `element:${element.id}`
+    );
   }
 
   return units;
@@ -80,6 +94,45 @@ export function canUngroupSelection(
   return elements.some(
     (element) => expandedSelectedIds.has(element.id) && Boolean(element.groupId)
   );
+}
+
+export function getSelectedLineCombinationIds(
+  elements: KizkattElement[],
+  selectedIds: string[]
+) {
+  const expandedSelectedIds = new Set(
+    expandElementIdsToGroups(elements, selectedIds)
+  );
+  const lineCombinationCounts = new Map<string, number>();
+
+  for (const element of elements) {
+    if (!element.lineCombinationId) {
+      continue;
+    }
+
+    lineCombinationCounts.set(
+      element.lineCombinationId,
+      (lineCombinationCounts.get(element.lineCombinationId) ?? 0) + 1
+    );
+  }
+
+  return new Set(
+    elements
+      .filter(
+        (element) =>
+          expandedSelectedIds.has(element.id) &&
+          element.lineCombinationId &&
+          (lineCombinationCounts.get(element.lineCombinationId) ?? 0) > 1
+      )
+      .map((element) => element.lineCombinationId as string)
+  );
+}
+
+export function canBreakApartLineCombinationSelection(
+  elements: KizkattElement[],
+  selectedIds: string[]
+) {
+  return getSelectedLineCombinationIds(elements, selectedIds).size > 0;
 }
 
 export function groupSelectedElements(
@@ -115,6 +168,27 @@ export function ungroupSelectedElements(
   );
 }
 
+export function breakApartLineCombinationElements(
+  elements: KizkattElement[],
+  selectedIds: string[]
+) {
+  const lineCombinationIds = getSelectedLineCombinationIds(
+    elements,
+    selectedIds
+  );
+
+  if (lineCombinationIds.size === 0) {
+    return elements;
+  }
+
+  return elements.map((element) =>
+    element.lineCombinationId &&
+    lineCombinationIds.has(element.lineCombinationId)
+      ? { ...element, lineCombinationId: undefined }
+      : element
+  );
+}
+
 export function cloneElementsWithFreshIdsAndGroups(
   elements: KizkattElement[],
   createId: () => string,
@@ -124,6 +198,7 @@ export function cloneElementsWithFreshIdsAndGroups(
 ) {
   const groupIdMap = new Map<string, string>();
   const groupNameMap = new Map<string, string>();
+  const lineCombinationIdMap = new Map<string, string>();
   const clonedElements: KizkattElement[] = [];
   const createGroupId = (originalGroupId: string) => {
     const nextGroupId = createId();
@@ -136,6 +211,16 @@ export function cloneElementsWithFreshIdsAndGroups(
     groupNameMap.set(originalGroupId, nextGroupName);
 
     return nextGroupId;
+  };
+  const createLineCombinationId = (originalLineCombinationId: string) => {
+    const nextLineCombinationId = createId();
+
+    lineCombinationIdMap.set(
+      originalLineCombinationId,
+      nextLineCombinationId
+    );
+
+    return nextLineCombinationId;
   };
 
   return elements.map((element) => {
@@ -152,6 +237,10 @@ export function cloneElementsWithFreshIdsAndGroups(
       groupId,
       groupName,
       id: createId(),
+      lineCombinationId: element.lineCombinationId
+        ? lineCombinationIdMap.get(element.lineCombinationId) ??
+          createLineCombinationId(element.lineCombinationId)
+        : undefined,
       name: createElementName(
         element.type,
         [...existingElements, ...clonedElements],

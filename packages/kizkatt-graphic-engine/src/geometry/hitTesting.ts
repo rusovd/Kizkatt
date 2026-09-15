@@ -1,7 +1,7 @@
 import { MIN_ELEMENT_SIZE, TRANSPARENT_COLOR } from "../config/constants";
 import type { KizkattElement, Point } from "../model/types";
 import { getElementBounds } from "./bounds";
-import { getLinearElementPoints } from "./linearElements";
+import { getLinearElementSamplePoints } from "./linearElements";
 import {
   distanceSquaredToSegment,
   getElementCenter,
@@ -109,7 +109,12 @@ function getElementHit(element: KizkattElement, point: Point) {
   }
 
   if (element.type === "line" || element.type === "arrow") {
-    const points = getLinearElementPoints(element);
+    const points = getLinearElementSamplePoints(element);
+    const fill =
+      Boolean(element.closed) &&
+      element.backgroundColor !== TRANSPARENT_COLOR &&
+      points.length > 2 &&
+      isPointInPolygon(localPoint, points);
     const stroke = points.some((pointInPath, index) => {
       if (index === 0) {
         return false;
@@ -121,7 +126,7 @@ function getElementHit(element: KizkattElement, point: Point) {
       );
     });
 
-    return { fill: false, stroke };
+    return { fill, stroke };
   }
 
   if (element.type === "ellipse") {

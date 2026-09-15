@@ -133,6 +133,42 @@ function getResizeBoundsAnchor(
   };
 }
 
+function getFixedStrokeLinearResizeInset(element: KizkattElement) {
+  return (element.type === "line" || element.type === "arrow") &&
+    !element.scaleStrokeWithObject
+    ? Math.max(0, element.strokeWidth / 2)
+    : 0;
+}
+
+function getInsetBounds(bounds: Bounds, inset: number): Bounds {
+  if (inset <= 0) {
+    return bounds;
+  }
+
+  return {
+    height: Math.max(MIN_ELEMENT_SIZE, bounds.height - inset * 2),
+    width: Math.max(MIN_ELEMENT_SIZE, bounds.width - inset * 2),
+    x: bounds.x + inset,
+    y: bounds.y + inset
+  };
+}
+
+function getInsetResizePoint(
+  point: Point,
+  sx: -1 | 0 | 1,
+  sy: -1 | 0 | 1,
+  inset: number
+) {
+  if (inset <= 0) {
+    return point;
+  }
+
+  return {
+    x: point.x - sx * inset,
+    y: point.y - sy * inset
+  };
+}
+
 function scaleAnchoredCoordinate(
   coordinate: number,
   originalSize: number,
@@ -374,36 +410,49 @@ export function resizeElementsFromSelectionHandle(
   options: ResizeOptions = {}
 ) {
   const selectedIdSet = getIdSet(selectedIds);
+  const selectedElements = elements.filter((element) =>
+    selectedIdSet.has(element.id)
+  );
   const { sx, sy } = getResizeHandle(handle);
-  const anchor = getResizeBoundsAnchor(originalBounds, sx, sy);
-  const originalWidth = Math.max(MIN_ELEMENT_SIZE, originalBounds.width);
-  const originalHeight = Math.max(MIN_ELEMENT_SIZE, originalBounds.height);
+  const singleResizeInset =
+    selectedElements.length === 1
+      ? getFixedStrokeLinearResizeInset(selectedElements[0])
+      : 0;
+  const scalableBounds = getInsetBounds(originalBounds, singleResizeInset);
+  const scalablePoint = getInsetResizePoint(point, sx, sy, singleResizeInset);
+  const anchor = getResizeBoundsAnchor(scalableBounds, sx, sy);
+  const originalWidth = Math.max(MIN_ELEMENT_SIZE, scalableBounds.width);
+  const originalHeight = Math.max(MIN_ELEMENT_SIZE, scalableBounds.height);
   const proportionalScale = options.preserveAspectRatio
     ? getProportionalScale(
         originalWidth,
         originalHeight,
         sx,
         sy,
-        point.x - anchor.x,
-        point.y - anchor.y
+        scalablePoint.x - anchor.x,
+        scalablePoint.y - anchor.y
       )
     : null;
   const nextWidth =
     proportionalScale === null
       ? sx === 0
-        ? originalBounds.width
+        ? scalableBounds.width
         : Math.max(
             MIN_ELEMENT_SIZE,
-            sx === 1 ? point.x - anchor.x : anchor.x - point.x
+            sx === 1
+              ? scalablePoint.x - anchor.x
+              : anchor.x - scalablePoint.x
           )
       : originalWidth * proportionalScale;
   const nextHeight =
     proportionalScale === null
       ? sy === 0
-        ? originalBounds.height
+        ? scalableBounds.height
         : Math.max(
             MIN_ELEMENT_SIZE,
-            sy === 1 ? point.y - anchor.y : anchor.y - point.y
+            sy === 1
+              ? scalablePoint.y - anchor.y
+              : anchor.y - scalablePoint.y
           )
       : originalHeight * proportionalScale;
   const nextBounds = {
@@ -436,8 +485,8 @@ export function resizeElementsFromSelectionHandle(
       ),
       strokeWidth: getScaledStrokeWidth(element, scaleX, scaleY),
       width: scaleElementDimension(element.width, scaleX),
-      x: nextBounds.x + (element.x - originalBounds.x) * scaleX,
-      y: nextBounds.y + (element.y - originalBounds.y) * scaleY
+      x: nextBounds.x + (element.x - scalableBounds.x) * scaleX,
+      y: nextBounds.y + (element.y - scalableBounds.y) * scaleY
     };
   });
 }

@@ -8,8 +8,10 @@ import {
   withUpdatedObjectBase
 } from "../model/element";
 import {
+  breakApartLineCombinationElements,
   cloneElementsWithFreshIdsAndGroups,
   expandElementIdsToGroups,
+  getSelectedLineCombinationIds,
   groupSelectedElements,
   ungroupSelectedElements
 } from "../model/groups";
@@ -80,6 +82,37 @@ export function ungroupCanvasSelection(canvasState: CanvasState): CanvasState {
     elements: ungroupSelectedElements(canvasState.elements, selectedIds),
     selectedBend: undefined,
     selectedIds
+  };
+}
+
+export function breakApartLineCombinationCanvasSelection(
+  canvasState: CanvasState
+): CanvasState | null {
+  const lineCombinationIds = getSelectedLineCombinationIds(
+    canvasState.elements,
+    canvasState.selectedIds
+  );
+
+  if (lineCombinationIds.size === EMPTY_COLLECTION_LENGTH) {
+    return null;
+  }
+
+  const selectedIds = canvasState.elements
+    .filter(
+      (element) =>
+        element.lineCombinationId &&
+        lineCombinationIds.has(element.lineCombinationId)
+    )
+    .map((element) => element.id);
+
+  return {
+    elements: breakApartLineCombinationElements(
+      canvasState.elements,
+      selectedIds
+    ),
+    selectedBend: undefined,
+    selectedIds,
+    selectedNodes: undefined
   };
 }
 
