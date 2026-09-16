@@ -28,6 +28,7 @@ import {
   appendPolylinePoint,
   updatePolylineElement
 } from "kizkatt-graphic-engine";
+import { getLinearNodeSelectionInArea } from "./nodeSelection";
 
 function hasElementPreviewChanged(
   currentElements: KizkattElement[],
@@ -97,18 +98,31 @@ export function finishPointerInteraction(
     const shouldSelect =
       getDistance(activeInteraction.origin, activeInteraction.current) >=
       MIN_SELECT_DRAG_DISTANCE;
+    const nodeSelection =
+      context.tool === "nodeEdit" && shouldSelect
+        ? getLinearNodeSelectionInArea(
+            activeCanvasState.elements,
+            activeInteraction.selectedIds,
+            activeInteraction.origin,
+            activeInteraction.current,
+            zoom
+          )
+        : null;
 
     replaceActiveState({
       ...activeCanvasState,
       selectedBend: undefined,
-      selectedIds: shouldSelect
-        ? getElementIdsInSelectionArea(
-            activeCanvasState.elements,
-            activeInteraction.origin,
-            activeInteraction.current,
-            selectionAreaMode
-          )
-        : []
+      selectedIds:
+        nodeSelection?.selectedIds ??
+        (shouldSelect
+          ? getElementIdsInSelectionArea(
+              activeCanvasState.elements,
+              activeInteraction.origin,
+              activeInteraction.current,
+              selectionAreaMode
+            )
+          : []),
+      selectedNodes: nodeSelection?.selectedNodes
     });
     updateInteraction(null);
     return;
@@ -331,6 +345,40 @@ export function finishPointerInteraction(
     };
 
     commitState(activeCanvasState, { baseState });
+  }
+
+  if (activeInteraction.type === "linearSegmentBend") {
+    const hasChanged = hasElementPreviewChanged(
+      activeCanvasState.elements,
+      activeInteraction.originalElements
+    );
+    const shouldClearVirtualHandle = activeInteraction.hasMoved || hasChanged;
+    const finalState: CanvasState = {
+      ...activeCanvasState,
+      selectedBend: undefined,
+      selectedNodes: shouldClearVirtualHandle
+        ? undefined
+        : activeCanvasState.selectedNodes
+    };
+    const baseState: CanvasState = {
+      ...activeCanvasState,
+      elements: activeCanvasState.elements.map((element) =>
+        element.id === activeInteraction.elementId
+          ? activeInteraction.originalElement
+          : element
+      ),
+      selectedBend: undefined,
+      selectedNodes: undefined
+    };
+
+    if (hasChanged) {
+      commitState(finalState, { baseState });
+    } else {
+      replaceActiveState(finalState);
+    }
+
+    updateInteraction(null);
+    return;
   }
 
   if (activeInteraction.type === "bezierControl") {

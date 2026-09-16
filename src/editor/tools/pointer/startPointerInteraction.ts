@@ -12,15 +12,17 @@ import {
   findElementAtPoint,
   getClientPoint,
   getElementBends,
-  getLinearElementPoints,
-  getLinearElementSegmentMidpoint,
+  getNearestLinearElementSegmentIndex,
   selectionBounds
 } from "kizkatt-graphic-engine";
 import { createElement, withUpdatedObjectBase } from "kizkatt-graphic-engine";
 import { getIdSet } from "kizkatt-graphic-engine";
 import type {
+  CanvasState,
   ElementType,
+  KizkattElement,
   LinearEndpoint,
+  LinearNodeSelection,
   Tool
 } from "kizkatt-graphic-engine";
 import {
@@ -72,7 +74,89 @@ function getNextNodeSelection(
 
   return currentIndices.includes(nextIndex)
     ? currentIndices
-    : [...currentIndices, nextIndex].sort((first, second) => first - second);
+    : [...currentIndices, nextIndex];
+}
+
+function getSelectedLinearNodeSelections(
+  selectedNodes: CanvasState["selectedNodes"]
+): LinearNodeSelection[] {
+  if (!selectedNodes) {
+    return [];
+  }
+
+  return selectedNodes.lineSelections?.length
+    ? selectedNodes.lineSelections
+    : [
+        {
+          elementId: selectedNodes.elementId,
+          nodeIndices: selectedNodes.nodeIndices,
+          segmentIndex: selectedNodes.segmentIndex
+        }
+      ];
+}
+
+function getElementFromOverlayTarget(
+  target: Element | null,
+  elements: KizkattElement[],
+  fallback?: KizkattElement
+) {
+  const elementId = target
+    ?.closest("[data-element-overlay-id]")
+    ?.getAttribute("data-element-overlay-id");
+
+  return elements.find((element) => element.id === elementId) ?? fallback;
+}
+
+function getLineCombinationSelectionIds(
+  elements: KizkattElement[],
+  element: KizkattElement
+) {
+  return element.lineCombinationId
+    ? elements
+        .filter((item) => item.lineCombinationId === element.lineCombinationId)
+        .map((item) => item.id)
+    : [element.id];
+}
+
+function getNextLineNodeSelections(
+  currentSelections: LinearNodeSelection[],
+  elementId: string,
+  nodeIndex: number,
+  segmentIndex: number,
+  mode: "add" | "remove" | "replace"
+) {
+  if (mode === "replace") {
+    const existingSelection = currentSelections.find(
+      (selection) => selection.elementId === elementId
+    );
+
+    return existingSelection?.nodeIndices.includes(nodeIndex)
+      ? currentSelections
+      : [{ elementId, nodeIndices: [nodeIndex], segmentIndex }];
+  }
+
+  const existingSelection = currentSelections.find(
+    (selection) => selection.elementId === elementId
+  );
+  const nextNodeIndices = getNextNodeSelection(
+    existingSelection?.nodeIndices ?? [],
+    nodeIndex,
+    mode
+  );
+  const otherSelections = currentSelections.filter(
+    (selection) => selection.elementId !== elementId
+  );
+
+  return nextNodeIndices.length === 0
+    ? otherSelections
+    : [
+        ...otherSelections,
+        {
+          elementId,
+          nodeIndices: nextNodeIndices,
+          segmentIndex
+        }
+      ];
 }
 
 function getHandleWorldPoint(target: Element | null, fallback: { x: number; y: number }) {
@@ -104,6 +188,7 @@ export function startPointerInteraction(
     pendingImageSrc,
     replaceActiveState,
     selectionTransformCenter,
+    selectionTransformMode,
     selectedElements,
     setEditingTextElementId,
     setSelectionTransformCenter,
@@ -129,7 +214,12 @@ export function startPointerInteraction(
 
   const linearEndpointTarget = getHandleTarget(target, "linear-endpoint");
   if (linearEndpointTarget) {
-    const element = selectedElements[0];
+    const activeCanvasState = context.canvasStateRef.current;
+    const element = getElementFromOverlayTarget(
+      linearEndpointTarget,
+      activeCanvasState.elements,
+      selectedElements[0]
+    );
     const endpoint = linearEndpointTarget.getAttribute("data-line-endpoint");
 
     if (
@@ -137,34 +227,75 @@ export function startPointerInteraction(
       (element.type === "line" || element.type === "arrow") &&
       isLinearEndpoint(endpoint)
     ) {
+      const existingBends = getElementBends(element);
+      const nodeIndex =
+        endpoint === "start" ? 0 : existingBends.length + 1;
+      const currentLineSelections = getSelectedLinearNodeSelections(
+        activeCanvasState.selectedNodes
+      );
+      const selectionMode = event.shiftKey
+        ? "add"
+        : event.ctrlKey
+        ? "remove"
+        : "replace";
+      const nextLineSelections =
+        tool === "nodeEdit"
+          ? getNextLineNodeSelections(
+              currentLineSelections,
+              element.id,
+              nodeIndex,
+              endpoint === "start" ? 0 : existingBends.length,
+              selectionMode
+            )
+          : [];
+      const primarySelection = nextLineSelections[0];
+      const selectedIds =
+        tool === "nodeEdit"
+          ? getLineCombinationSelectionIds(activeCanvasState.elements, element)
+          : [element.id];
+
       replaceActiveState({
-        ...canvasState,
+        ...activeCanvasState,
         selectedBend: undefined,
         selectedNodes:
-          tool === "nodeEdit"
+          tool === "nodeEdit" && primarySelection
             ? {
-                elementId: element.id,
-                nodeIndices: [
-                  endpoint === "start"
-                    ? 0
-                    : getElementBends(element).length + 1
-                ],
-                segmentIndex:
-                  endpoint === "start"
-                    ? 0
-                    : getElementBends(element).length
+                elementId: primarySelection.elementId,
+                lineSelections: nextLineSelections,
+                nodeIndices: primarySelection.nodeIndices,
+                segmentIndex: primarySelection.segmentIndex
               }
             : undefined,
-        selectedIds: [element.id]
+        selectedIds
       });
+
+      if (event.shiftKey || event.ctrlKey) {
+        return;
+      }
+
+      if (tool === "nodeEdit" && element.closed) {
+        updateInteraction({
+          type: "linearNodes",
+          elementId: element.id,
+          originalBends: existingBends,
+          originalElement: element,
+          originalElements: activeCanvasState.elements,
+          selectedIds,
+          selectedNodeIndices: [nodeIndex],
+          segmentIndex: endpoint === "start" ? 0 : existingBends.length,
+          start: worldPoint
+        });
+        return;
+      }
+
       updateInteraction({
         type: "linearEndpoint",
         elementId: element.id,
         endpoint,
         mode: tool === "nodeEdit" ? "node" : "resize",
         originalElement: element,
-        originalElements: canvasState.elements,
-        selectedIds: [element.id]
+        originalElements: activeCanvasState.elements,
+        selectedIds
       });
     }
 
@@ -195,6 +326,10 @@ export function startPointerInteraction(
 
   const transformCenterTarget = getHandleTarget(target, "transform-center");
   if (transformCenterTarget) {
+    if (selectionTransformMode !== "skew") {
+      return;
+    }
+
     const bounds = selectionBounds(selectedElements, {
       includeRotation: true
     });
@@ -284,7 +419,12 @@ export function startPointerInteraction(
 
   const linearSegmentTarget = getHandleTarget(target, "linear-segment");
   if (linearSegmentTarget) {
-    const element = selectedElements[0];
+    const activeCanvasState = context.canvasStateRef.current;
+    const element = getElementFromOverlayTarget(
+      linearSegmentTarget,
+      activeCanvasState.elements,
+      selectedElements[0]
+    );
     const segmentIndex = Number(
       linearSegmentTarget.getAttribute("data-segment-index")
     );
@@ -295,15 +435,83 @@ export function startPointerInteraction(
       (element.type === "line" || element.type === "arrow") &&
       Number.isInteger(segmentIndex)
     ) {
+      const selectedIds = getLineCombinationSelectionIds(
+        activeCanvasState.elements,
+        element
+      );
+
       replaceActiveState({
-        ...context.canvasStateRef.current,
+        ...activeCanvasState,
         selectedBend: undefined,
-        selectedIds: [element.id],
+        selectedIds,
         selectedNodes: {
           elementId: element.id,
           nodeIndices: [],
           segmentIndex
         }
+      });
+      updateInteraction({
+        type: "linearSegmentBend",
+        elementId: element.id,
+        hasMoved: false,
+        handlePoint: worldPoint,
+        originalElement: element,
+        originalElements: activeCanvasState.elements,
+        selectedIds,
+        segmentIndex,
+        start: worldPoint
+      });
+    }
+
+    return;
+  }
+
+  const linearSegmentBendTarget = getHandleTarget(
+    target,
+    "linear-segment-bend"
+  );
+  if (linearSegmentBendTarget) {
+    const activeCanvasState = context.canvasStateRef.current;
+    const element = getElementFromOverlayTarget(
+      linearSegmentBendTarget,
+      activeCanvasState.elements,
+      selectedElements[0]
+    );
+    const segmentIndex = Number(
+      linearSegmentBendTarget.getAttribute("data-segment-index")
+    );
+
+    if (
+      tool === "nodeEdit" &&
+      element &&
+      (element.type === "line" || element.type === "arrow") &&
+      Number.isInteger(segmentIndex)
+    ) {
+      const selectedIds = getLineCombinationSelectionIds(
+        activeCanvasState.elements,
+        element
+      );
+
+      replaceActiveState({
+        ...activeCanvasState,
+        selectedBend: undefined,
+        selectedIds,
+        selectedNodes: {
+          elementId: element.id,
+          nodeIndices: [],
+          segmentIndex
+        }
+      });
+      updateInteraction({
+        type: "linearSegmentBend",
+        elementId: element.id,
+        hasMoved: false,
+        handlePoint: worldPoint,
+        originalElement: element,
+        originalElements: activeCanvasState.elements,
+        selectedIds,
+        segmentIndex,
+        start: worldPoint
       });
     }
 
@@ -312,49 +520,43 @@ export function startPointerInteraction(
 
   const bendTarget = getHandleTarget(target, "bend");
   if (bendTarget) {
-    const element = selectedElements[0];
+    const activeCanvasState = context.canvasStateRef.current;
+    const element = getElementFromOverlayTarget(
+      bendTarget,
+      activeCanvasState.elements,
+      selectedElements[0]
+    );
 
     if (element) {
-      const activeCanvasState = context.canvasStateRef.current;
       const bendIndexAttribute = bendTarget.getAttribute("data-bend-index");
-      const segmentIndexAttribute = bendTarget.getAttribute("data-segment-index");
       const existingBends = getElementBends(element);
-      const linePoints = getLinearElementPoints(element);
-      const bendIndex =
-        bendIndexAttribute === null
-          ? Number(segmentIndexAttribute ?? existingBends.length)
-          : Number(bendIndexAttribute);
-      const bendMidpoint = getLinearElementSegmentMidpoint(
-        linePoints,
-        bendIndex,
-        element.edgeStyle
-      );
-      const originalBends =
-        bendIndexAttribute === null
-          ? [
-              ...existingBends.slice(0, bendIndex),
-              {
-                x: bendMidpoint.x - element.x,
-                y: bendMidpoint.y - element.y
-              },
-              ...existingBends.slice(bendIndex)
-            ]
-          : existingBends;
+      const bendIndex = Number(bendIndexAttribute);
+
+      if (bendIndexAttribute === null || !Number.isInteger(bendIndex)) {
+        return;
+      }
+
+      const originalBends = existingBends;
       const nodeIndex = bendIndex + 1;
-      const currentSelectedNodes =
-        activeCanvasState.selectedNodes?.elementId === element.id
-          ? activeCanvasState.selectedNodes.nodeIndices
-          : [];
+      const currentLineSelections = getSelectedLinearNodeSelections(
+        activeCanvasState.selectedNodes
+      );
       const selectionMode = event.shiftKey
         ? "add"
         : event.ctrlKey
         ? "remove"
         : "replace";
-      const selectedNodeIndices = getNextNodeSelection(
-        currentSelectedNodes,
+      const nextLineSelections = getNextLineNodeSelections(
+        currentLineSelections,
+        element.id,
         nodeIndex,
+        Math.max(0, nodeIndex - 1),
         selectionMode
       );
+      const primarySelection = nextLineSelections[0];
+      const selectedNodeIndices =
+        nextLineSelections.find((selection) => selection.elementId === element.id)
+          ?.nodeIndices ?? [];
       const selectedBendIndex =
         selectedNodeIndices.length === 1 &&
         selectedNodeIndices[0] > 0 &&
@@ -368,12 +570,18 @@ export function startPointerInteraction(
           bendIndex: selectedBendIndex,
           elementId: element.id
         },
-        selectedNodes: {
-          elementId: element.id,
-          nodeIndices: selectedNodeIndices,
-          segmentIndex: Math.max(0, nodeIndex - 1)
-        },
-        selectedIds: [element.id]
+        selectedNodes: primarySelection
+          ? {
+              elementId: primarySelection.elementId,
+              lineSelections: nextLineSelections,
+              nodeIndices: primarySelection.nodeIndices,
+              segmentIndex: primarySelection.segmentIndex
+            }
+          : undefined,
+        selectedIds: getLineCombinationSelectionIds(
+          activeCanvasState.elements,
+          element
+        )
       });
 
       if (event.shiftKey || event.ctrlKey) {
@@ -447,6 +655,46 @@ export function startPointerInteraction(
     const hitElement = findElementAtPoint(canvasState.elements, worldPoint);
 
     if (hitElement) {
+      if (
+        tool === "nodeEdit" &&
+        !event.shiftKey &&
+        !event.ctrlKey &&
+        (hitElement.type === "line" || hitElement.type === "arrow")
+      ) {
+        const activeCanvasState = context.canvasStateRef.current;
+        const segmentIndex = getNearestLinearElementSegmentIndex(
+          hitElement,
+          worldPoint
+        );
+        const selectedIds = getLineCombinationSelectionIds(
+          activeCanvasState.elements,
+          hitElement
+        );
+
+        replaceActiveState({
+          ...activeCanvasState,
+          selectedBend: undefined,
+          selectedIds,
+          selectedNodes: {
+            elementId: hitElement.id,
+            nodeIndices: [],
+            segmentIndex
+          }
+        });
+        updateInteraction({
+          type: "linearSegmentBend",
+          elementId: hitElement.id,
+          hasMoved: false,
+          handlePoint: worldPoint,
+          originalElement: hitElement,
+          originalElements: activeCanvasState.elements,
+          selectedIds,
+          segmentIndex,
+          start: worldPoint
+        });
+        return;
+      }
+
       const selectionMode = event.shiftKey
         ? "add"
         : event.ctrlKey
@@ -502,8 +750,10 @@ export function startPointerInteraction(
         originalElements: canvasState.elements
       });
     } else {
+      const activeCanvasState = context.canvasStateRef.current;
+
       replaceActiveState({
-        ...canvasState,
+        ...activeCanvasState,
         selectedBend: undefined,
         selectedIds: []
       });
@@ -511,7 +761,8 @@ export function startPointerInteraction(
       updateInteraction({
         type: "selectArea",
         current: worldPoint,
-        origin: worldPoint
+        origin: worldPoint,
+        selectedIds: activeCanvasState.selectedIds
       });
     }
 
