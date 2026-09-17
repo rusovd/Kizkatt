@@ -47,6 +47,19 @@ export {
 export { selectionBounds } from "kizkatt-graphic-engine";
 export type { KizkattElement } from "kizkatt-graphic-engine";
 export {
+  CENTER_DRAG_CURSOR,
+  getCenterDragCursor,
+  getGrabbingCursor,
+  getHandCursor,
+  getNodeEditCursor,
+  getNodeEditLineCursor,
+  getNodeEditPointCursor,
+  getNodeEditSelectionCursor,
+  getObjectDragCursor,
+  NODE_EDIT_CURSOR,
+  NODE_EDIT_LINE_CURSOR,
+  NODE_EDIT_POINT_CURSOR,
+  NODE_EDIT_SELECTION_CURSOR,
   NODE_DRAG_CURSOR,
   OBJECT_DRAG_CURSOR,
   renderElement

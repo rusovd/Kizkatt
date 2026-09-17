@@ -9,6 +9,7 @@ import {
   fireEvent,
   firePointerEvent,
   getCirclePoint,
+  getGrabbingCursor,
   OBJECT_DRAG_CURSOR,
   getResizeAnchorPoint,
   getResizeCursor,
@@ -1289,7 +1290,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       clientY: rotatePoint.y
     });
 
-    expect(canvas).toHaveStyle({ cursor: "grabbing" });
+    expect(canvas).toHaveStyle({ cursor: getGrabbingCursor() });
 
     firePointerEvent(canvas, "pointerup");
     expect(canvas).toHaveStyle({ cursor: "default" });

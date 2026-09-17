@@ -1,6 +1,7 @@
 import { describe, it } from "vitest";
 import { storeCanvasState } from "../platform/canvasStorage";
 import {
+  CENTER_DRAG_CURSOR,
   KizkattGraphicEditor,
   canGroupSelection,
   canUngroupSelection,
@@ -959,6 +960,93 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
 
     expect(elementGroup?.getAttribute("transform")).toContain("skewX(");
     expect(elementGroup?.getAttribute("transform")).not.toContain("skewX(0)");
+  });
+
+  it("moves the transform center in rotate mode", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "#ffec99",
+          height: 70,
+          id: "rectangle",
+          name: "Rectangle 1",
+          opacity: 100,
+          strokeColor: "#d6d6d6",
+          strokeStyle: "solid",
+          strokeWidth: 2,
+          type: "rectangle",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    expect(canvas.querySelector(".kizkatt-transform-center-marker")).toBeInTheDocument();
+    expect(canvas.querySelector("[data-handle='transform-center']")).not
+      .toBeInTheDocument();
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 80, clientY: 80 });
+    firePointerEvent(canvas, "pointerup");
+
+    const transformCenter = canvas.querySelector(
+      "[data-handle='transform-center']"
+    );
+    const transformCenterHit = canvas.querySelector(
+      ".kizkatt-transform-center-marker-hit[data-handle='transform-center']"
+    );
+    expect(transformCenter).toBeInTheDocument();
+    expect(transformCenterHit).toBeInTheDocument();
+    expect(getHandleWorldPoint(transformCenter)).toEqual({ x: 100, y: 85 });
+
+    firePointerEvent(transformCenterHit as Element, "pointerdown", {
+      clientX: 100,
+      clientY: 85
+    });
+    firePointerEvent(canvas, "pointermove", { clientX: 124, clientY: 101 });
+
+    expect(canvas).toHaveStyle({ cursor: CENTER_DRAG_CURSOR });
+    expect(
+      getHandleWorldPoint(canvas.querySelector("[data-handle='transform-center']"))
+    ).toEqual({ x: 124, y: 101 });
+
+    firePointerEvent(canvas, "pointerup");
+    expect(
+      getHandleWorldPoint(canvas.querySelector("[data-handle='transform-center']"))
+    ).toEqual({ x: 124, y: 101 });
+
+    const rotateHandle = canvas.querySelector(".kizkatt-corner-rotate-handle");
+    const rotateStart = getHandleWorldPoint(rotateHandle);
+    const elementGroupBeforeRotate = canvas.querySelector(
+      "[data-element-id='rectangle']"
+    );
+    expect(elementGroupBeforeRotate?.getAttribute("transform")).toContain(
+      "translate(100 85) rotate(0)"
+    );
+
+    firePointerEvent(rotateHandle as Element, "pointerdown", {
+      clientX: rotateStart.x,
+      clientY: rotateStart.y
+    });
+    firePointerEvent(canvas, "pointermove", {
+      clientX: rotateStart.x + 10,
+      clientY: rotateStart.y - 25
+    });
+    firePointerEvent(canvas, "pointerup");
+
+    const elementGroupAfterRotate = canvas.querySelector(
+      "[data-element-id='rectangle']"
+    );
+    expect(elementGroupAfterRotate?.getAttribute("transform")).not.toContain(
+      "translate(100 85)"
+    );
+    expect(elementGroupAfterRotate?.getAttribute("transform")).not.toContain(
+      "rotate(0)"
+    );
   });
 
   it("keeps skew and rotate icons on the selection bounding rectangle", () => {
