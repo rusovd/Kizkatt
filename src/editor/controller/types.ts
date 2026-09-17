@@ -15,7 +15,12 @@ export type KizkattGraphicEditorControllerProps = {
   canvasClassName?: string;
   children: (viewModel: KizkattGraphicEditorViewModel) => ReactNode;
   defaultElementStyleByTheme?: Record<KizkattTheme, StyleState>;
-  getCanvasCursor: (state: { isPanning: boolean; tool: Tool }) => string;
+  getCanvasCursor: (state: {
+    hasSelection?: boolean;
+    isPanning: boolean;
+    theme?: KizkattTheme;
+    tool: Tool;
+  }) => string;
   renderCanvas: (viewModel: KizkattGraphicEditorCanvasViewModel) => ReactNode;
   naming?: ElementNamingConfig;
   getToolForSelectedElement?: (element: KizkattElement) => Tool | null;
