@@ -1,0 +1,300 @@
+.kizkatt-simple-trace-dialog {
+  background: var(--kizkatt-panel-bg);
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 12px;
+  box-shadow: 0 22px 60px rgb(0 0 0 / 42%);
+  color: var(--kizkatt-text);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+  width: min(1180px, calc(100vw - 32px));
+}
+
+.kizkatt-simple-trace-dialog > header {
+  align-items: center;
+  border-bottom: 1px solid var(--kizkatt-border);
+  display: flex;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 0 16px 0 20px;
+}
+
+.kizkatt-simple-trace-dialog > header > div {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.kizkatt-simple-trace-dialog h2 {
+  font-size: 17px;
+  margin: 0;
+}
+
+.kizkatt-simple-trace-dialog > header span {
+  color: var(--kizkatt-muted-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kizkatt-simple-trace-close {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  width: 36px;
+}
+
+.kizkatt-simple-trace-body {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 360px);
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.kizkatt-simple-trace-previews {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.kizkatt-simple-trace-previews figure {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+}
+
+.kizkatt-simple-trace-previews figcaption {
+  color: var(--kizkatt-muted-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.kizkatt-simple-trace-preview {
+  align-items: center;
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #d5d5d5 25%, transparent 25%),
+    linear-gradient(-45deg, #d5d5d5 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #d5d5d5 75%),
+    linear-gradient(-45deg, transparent 75%, #d5d5d5 75%);
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 7px;
+  display: flex;
+  justify-content: center;
+  min-height: 430px;
+  overflow: hidden;
+  position: relative;
+}
+
+.kizkatt-simple-trace-preview img,
+.kizkatt-simple-trace-preview svg {
+  display: block;
+  height: 100%;
+  max-height: 560px;
+  max-width: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.kizkatt-simple-trace-preview > span {
+  background: var(--kizkatt-control-bg);
+  border-radius: 7px;
+  color: var(--kizkatt-muted-text);
+  padding: 8px 10px;
+}
+
+.kizkatt-simple-trace-controls {
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 8px;
+  min-height: 430px;
+  overflow: hidden;
+}
+
+.kizkatt-simple-trace-controls nav {
+  border-bottom: 1px solid var(--kizkatt-border);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.kizkatt-simple-trace-controls nav button {
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--kizkatt-border);
+  color: var(--kizkatt-muted-text);
+  cursor: pointer;
+  min-height: 42px;
+  padding: 0 8px;
+}
+
+.kizkatt-simple-trace-controls nav button:last-child {
+  border-right: 0;
+}
+
+.kizkatt-simple-trace-controls nav button.is-active {
+  background: var(--kizkatt-control-bg);
+  color: var(--kizkatt-text);
+  box-shadow: inset 0 -2px var(--kizkatt-selection);
+}
+
+.kizkatt-simple-trace-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px;
+}
+
+.kizkatt-simple-trace-tab hr {
+  border: 0;
+  border-top: 1px solid var(--kizkatt-border);
+  margin: 2px 0;
+  width: 100%;
+}
+
+.kizkatt-simple-trace-select,
+.kizkatt-simple-trace-range,
+.kizkatt-simple-trace-color {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 112px minmax(0, 1fr) 38px;
+}
+
+.kizkatt-simple-trace-select {
+  grid-template-columns: 112px minmax(0, 1fr);
+}
+
+.kizkatt-simple-trace-select select {
+  background: var(--kizkatt-control-bg);
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 7px;
+  color: inherit;
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+.kizkatt-simple-trace-range input {
+  accent-color: var(--kizkatt-selection);
+  min-width: 0;
+  width: 100%;
+}
+
+.kizkatt-simple-trace-range output {
+  text-align: right;
+}
+
+.kizkatt-simple-trace-range:has(input:disabled),
+.kizkatt-simple-trace-checkbox:has(input:disabled) {
+  opacity: .5;
+}
+
+.kizkatt-simple-trace-checkbox {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 9px;
+}
+
+.kizkatt-simple-trace-checkbox input {
+  accent-color: var(--kizkatt-selection);
+  height: 17px;
+  margin: 0;
+  width: 17px;
+}
+
+.kizkatt-simple-trace-color input[type="color"] {
+  background: var(--kizkatt-control-bg);
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 7px;
+  height: 36px;
+  padding: 3px;
+  width: 52px;
+}
+
+.kizkatt-simple-trace-color code {
+  color: var(--kizkatt-muted-text);
+  grid-column: 2 / 4;
+}
+
+.kizkatt-simple-trace-adjustments p {
+  color: var(--kizkatt-muted-text);
+  line-height: 1.45;
+  margin: 0 0 18px;
+}
+
+.kizkatt-simple-trace-adjustments {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.kizkatt-simple-trace-dialog > footer {
+  align-items: center;
+  border-top: 1px solid var(--kizkatt-border);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.kizkatt-simple-trace-stats,
+.kizkatt-simple-trace-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.kizkatt-simple-trace-stats {
+  color: var(--kizkatt-muted-text);
+  font-size: 13px;
+}
+
+.kizkatt-simple-trace-stats .is-error {
+  color: #ff6262;
+}
+
+.kizkatt-simple-trace-actions button {
+  background: var(--kizkatt-control-bg);
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+  min-height: 36px;
+  padding: 0 14px;
+}
+
+.kizkatt-simple-trace-actions button.is-primary {
+  background: var(--kizkatt-selection);
+  border-color: var(--kizkatt-selection);
+  color: #fff;
+}
+
+.kizkatt-simple-trace-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+@media (max-width: 900px) {
+  .kizkatt-simple-trace-body {
+    grid-template-columns: 1fr;
+  }
+
+  .kizkatt-simple-trace-preview {
+    min-height: 300px;
+  }
+}
