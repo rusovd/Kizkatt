@@ -77,6 +77,7 @@ import {
   moveLinearElementEndpoint,
   transformElementPoint,
   getElementIndicesInBounds,
+  getCalibratedMillimetersWorldSize,
   getGridWorldSizing,
   getElementsViewportBounds,
   getLogicalPageBounds,
@@ -91,6 +92,7 @@ import {
 import {
   getStoredCanvasBackgroundColor,
   getStoredCustomCanvasBackgroundColor,
+  getStoredContextMenuDefaults,
   getStoredDpi,
   getStoredGridColor,
   getStoredGridSettings,
@@ -1212,6 +1214,15 @@ export function KizkattGraphicEditorController({
     setEditingTextElementId(null);
   }, [canvasState, commitState, selectedIdSet]);
 
+  const cutSelected = useCallback(() => {
+    if (selectedElements.length === EMPTY_COLLECTION_LENGTH) {
+      return;
+    }
+
+    clipboardRef.current = selectedElements.map((element) => ({ ...element }));
+    deleteSelected();
+  }, [deleteSelected, selectedElements]);
+
   const getSelectedLinearNodeState = useCallback(() => {
     const elementId =
       canvasState.selectedNodes?.elementId ??
@@ -2031,14 +2042,46 @@ export function KizkattGraphicEditorController({
       return;
     }
 
+    const layeredIds = expandElementIdsToGroups(
+      canvasState.elements,
+      canvasState.selectedIds
+    );
+
     commitState({
       ...canvasState,
       elements: reorderElementsByLayerAction(
         canvasState.elements,
-        canvasState.selectedIds,
+        layeredIds,
         action
       )
     });
+  };
+
+  const getKeyboardNudgeStep = () =>
+    gridSettings.unit === "mm"
+      ? getCalibratedMillimetersWorldSize(1, gridSettings)
+      : 1;
+
+  const nudgeSelected = (delta: Point) => {
+    const nudgedIds = new Set(
+      expandElementIdsToGroups(canvasState.elements, canvasState.selectedIds)
+    );
+
+    if (nudgedIds.size === EMPTY_COLLECTION_LENGTH) {
+      return false;
+    }
+
+    setSelectionTransformCenter((center) =>
+      center ? { x: center.x + delta.x, y: center.y + delta.y } : center
+    );
+    commitState({
+      ...canvasState,
+      elements: canvasState.elements.map((element) =>
+        nudgedIds.has(element.id) ? translateElement(element, delta) : element
+      )
+    });
+
+    return true;
   };
 
   const applyElementAction = (
@@ -2591,10 +2634,14 @@ export function KizkattGraphicEditorController({
 
     if (isAllowedEditingShortcut(event)) {
       const key = event.key.toLowerCase();
+      const contextMenuDefaults = getStoredContextMenuDefaults();
 
       if (
         key === EDITING_SHORTCUT_KEY.paste &&
-        clipboardRef.current.length === EMPTY_COLLECTION_LENGTH
+        contextMenuDefaults.paste === "clipboard" &&
+        clipboardRef.current.length === EMPTY_COLLECTION_LENGTH &&
+        !navigator.clipboard?.read &&
+        !navigator.clipboard?.readText
       ) {
         return;
       }
@@ -2604,19 +2651,35 @@ export function KizkattGraphicEditorController({
       if (key === EDITING_SHORTCUT_KEY.selectAll) {
         selectAll();
       } else if (key === EDITING_SHORTCUT_KEY.copy) {
-        copySelected();
+        if (contextMenuDefaults.copy === "png") {
+          void copyPngToClipboard();
+        } else if (contextMenuDefaults.copy === "svg") {
+          void copySvgToClipboard();
+        } else {
+          copySelected();
+        }
+      } else if (key === EDITING_SHORTCUT_KEY.cut) {
+        cutSelected();
+      } else if (key === EDITING_SHORTCUT_KEY.group) {
+        groupSelected();
       } else if (key === EDITING_SHORTCUT_KEY.load) {
         requestSceneReplacement("load");
       } else if (key === EDITING_SHORTCUT_KEY.new) {
         requestSceneReplacement("new");
       } else if (key === EDITING_SHORTCUT_KEY.paste) {
-        pasteSelected();
+        if (contextMenuDefaults.paste === "svgCode") {
+          void pasteSvgCodeFromContextMenu();
+        } else {
+          void pasteFromContextMenu();
+        }
       } else if (key === EDITING_SHORTCUT_KEY.print) {
         printCanvas();
       } else if (key === EDITING_SHORTCUT_KEY.save && event.shiftKey) {
         openFormatDialog("saveAs");
       } else if (key === EDITING_SHORTCUT_KEY.save) {
         void saveCanvas();
+      } else if (key === EDITING_SHORTCUT_KEY.ungroup) {
+        ungroupSelected();
       } else if (key === EDITING_SHORTCUT_KEY.undo && event.shiftKey) {
         redo();
       } else if (key === EDITING_SHORTCUT_KEY.undo) {
@@ -2626,6 +2689,39 @@ export function KizkattGraphicEditorController({
       }
 
       return;
+    }
+
+    if (!event.altKey && !event.ctrlKey && !event.metaKey) {
+      const step = getKeyboardNudgeStep();
+      const nudgeDelta =
+        event.key === EDITOR_KEY.arrowLeft
+          ? { x: -step, y: 0 }
+          : event.key === EDITOR_KEY.arrowRight
+            ? { x: step, y: 0 }
+            : event.key === EDITOR_KEY.arrowUp
+              ? { x: 0, y: -step }
+              : event.key === EDITOR_KEY.arrowDown
+                ? { x: 0, y: step }
+                : null;
+
+      if (nudgeDelta && nudgeSelected(nudgeDelta)) {
+        event.preventDefault();
+        return;
+      }
+    }
+
+    if (!event.altKey && !event.ctrlKey && !event.metaKey && event.shiftKey) {
+      if (event.key === EDITOR_KEY.pageUp) {
+        event.preventDefault();
+        applyLayerAction("front");
+        return;
+      }
+
+      if (event.key === EDITOR_KEY.pageDown) {
+        event.preventDefault();
+        applyLayerAction("back");
+        return;
+      }
     }
 
     if (event.key === EDITOR_KEY.delete) {

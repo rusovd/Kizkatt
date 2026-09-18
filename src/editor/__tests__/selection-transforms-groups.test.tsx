@@ -556,6 +556,119 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     expect(screen.getByRole("menuitem", { name: "Group" })).toBeInTheDocument();
   });
 
+  it("groups and ungroups the selected elements from keyboard shortcuts", () => {
+    const rectangle = {
+      angle: 0,
+      backgroundColor: "#ffec99",
+      height: 50,
+      opacity: 100,
+      strokeColor: "#f08c00",
+      strokeStyle: "solid" as const,
+      strokeWidth: 10,
+      type: "rectangle" as const,
+      width: 100,
+      x: 40,
+      y: 40
+    };
+
+    storeCanvasState({
+      elements: [
+        { ...rectangle, id: "a" },
+        { ...rectangle, id: "b", x: 180 }
+      ],
+      selectedIds: ["a", "b"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const board = screen.getByLabelText("Kizkatt diagram canvas");
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.keyDown(board, { ctrlKey: true, key: "g" });
+
+    const groupedElements = Array.from(
+      canvas.querySelectorAll("[data-element-id]")
+    );
+    const groupId = groupedElements[0]?.getAttribute("data-group-id");
+
+    expect(groupId).toBeTruthy();
+    expect(groupedElements[1]).toHaveAttribute("data-group-id", groupId);
+
+    fireEvent.keyDown(board, { ctrlKey: true, key: "u" });
+
+    expect(
+      Array.from(canvas.querySelectorAll("[data-element-id]")).every(
+        (element) => !element.hasAttribute("data-group-id")
+      )
+    ).toBe(true);
+  });
+
+  it("nudges selected groups and moves selected elements to top or bottom layers from the keyboard", () => {
+    const rectangle = {
+      angle: 0,
+      backgroundColor: "#ffec99",
+      height: 50,
+      opacity: 100,
+      strokeColor: "#f08c00",
+      strokeStyle: "solid" as const,
+      strokeWidth: 10,
+      type: "rectangle" as const,
+      width: 100,
+      x: 40,
+      y: 40
+    };
+
+    storeCanvasState({
+      elements: [
+        {
+          ...rectangle,
+          groupId: "group-1",
+          groupName: "Group 1",
+          id: "a"
+        },
+        {
+          ...rectangle,
+          groupId: "group-1",
+          groupName: "Group 1",
+          id: "b",
+          x: 180
+        },
+        { ...rectangle, id: "c", x: 320 }
+      ],
+      selectedIds: ["a"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const board = screen.getByLabelText("Kizkatt diagram canvas");
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.keyDown(board, { key: "ArrowRight" });
+    fireEvent.keyDown(board, { key: "ArrowDown" });
+
+    expect(
+      canvas.querySelector("[data-element-id='a']")?.getAttribute("transform")
+    ).toContain("translate(91 66)");
+    expect(
+      canvas.querySelector("[data-element-id='b']")?.getAttribute("transform")
+    ).toContain("translate(231 66)");
+    expect(
+      canvas.querySelector("[data-element-id='c']")?.getAttribute("transform")
+    ).toContain("translate(370 65)");
+
+    fireEvent.keyDown(board, { key: "PageUp", shiftKey: true });
+    expect(
+      Array.from(canvas.querySelectorAll("[data-element-id]")).map((element) =>
+        element.getAttribute("data-element-id")
+      )
+    ).toEqual(["c", "a", "b"]);
+
+    fireEvent.keyDown(board, { key: "PageDown", shiftKey: true });
+    expect(
+      Array.from(canvas.querySelectorAll("[data-element-id]")).map((element) =>
+        element.getAttribute("data-element-id")
+      )
+    ).toEqual(["a", "b", "c"]);
+  });
+
   it("expands grouped selections as a single transform unit", () => {
     const elements: KizkattElement[] = [
       {

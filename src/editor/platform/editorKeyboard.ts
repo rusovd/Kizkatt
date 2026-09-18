@@ -8,6 +8,8 @@ const EDITABLE_KEYBOARD_TARGET_SELECTOR =
 
 export const EDITING_SHORTCUT_KEY = {
   copy: "c",
+  cut: "x",
+  group: "g",
   load: "o",
   new: "n",
   paste: "v",
@@ -15,11 +17,18 @@ export const EDITING_SHORTCUT_KEY = {
   redo: "y",
   save: "s",
   selectAll: "a",
+  ungroup: "u",
   undo: "z"
 } as const;
 
 export const EDITOR_KEY = {
-  delete: "Delete"
+  arrowDown: "ArrowDown",
+  arrowLeft: "ArrowLeft",
+  arrowRight: "ArrowRight",
+  arrowUp: "ArrowUp",
+  delete: "Delete",
+  pageDown: "PageDown",
+  pageUp: "PageUp"
 } as const;
 
 const ALLOWED_EDITING_SHORTCUT_KEYS = new Set<string>(

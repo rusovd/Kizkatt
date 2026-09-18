@@ -14,6 +14,7 @@ import {
   waitFor
 } from "./testUtils";
 import { serializeSvg } from "kizkatt-graphic-engine";
+import { storeContextMenuDefaults } from "kizkatt-ui";
 
 function hoverContextSubmenuItem(element: Element) {
   const submenuItem = element.closest(".kizkatt-context-menu-submenu-item");
@@ -250,6 +251,91 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
     await waitFor(() => {
       expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(2);
     });
+  });
+
+  it("cuts and pastes selected objects from keyboard shortcuts", async () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "#653b00",
+          height: 70,
+          id: "selected-rectangle",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "rectangle",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["selected-rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const board = screen.getByLabelText("Kizkatt diagram canvas");
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.keyDown(board, { ctrlKey: true, key: "x" });
+
+    expect(canvas.querySelector("[data-element-id]")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(board, { ctrlKey: true, key: "v" });
+
+    await waitFor(() => {
+      expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(1);
+    });
+  });
+
+  it("uses the stored context menu copy mode for keyboard copy", async () => {
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText }
+    });
+    storeContextMenuDefaults({
+      copy: "svg",
+      paste: "clipboard",
+      selection: "intersect",
+      snapping: "toggleGrid"
+    });
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "#653b00",
+          height: 70,
+          id: "selected-rectangle",
+          opacity: 100,
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "rectangle",
+          width: 120,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["selected-rectangle"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const board = screen.getByLabelText("Kizkatt diagram canvas");
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    fireEvent.keyDown(board, { ctrlKey: true, key: "c" });
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringContaining('data-element-id="selected-rectangle"')
+      );
+    });
+
+    fireEvent.keyDown(board, { ctrlKey: true, key: "v" });
+
+    expect(canvas.querySelectorAll("[data-element-id]")).toHaveLength(1);
   });
 
   it("restores canvas focus and losslessly pastes grouped draw SVG exports", async () => {
