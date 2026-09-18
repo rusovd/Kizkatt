@@ -3,7 +3,6 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 
 import type { Tool } from "../../model/types";
 import { Panel } from "../../components/Panel";
-import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 import { TOOL_REGISTRY_BY_ID, type ToolDefinition } from "../../tools/toolRegistry";
 import { useI18n } from "../../i18n";
 import {
@@ -219,7 +218,6 @@ export function Toolbar({
   activeTool: Tool;
   onActivateTool: (tool: Tool) => void;
 }) {
-  const { autohideToolbar } = useGraphicEditorSettings();
   const { strings } = useI18n();
   const [openSubmenu, setOpenSubmenu] = useState<ToolbarSubmenuId | null>(null);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
@@ -295,8 +293,7 @@ export function Toolbar({
           ref={toolbarRef}
           className={[
             "kizkatt-toolbar",
-            `kizkatt-toolbar--${orientation}`,
-            autohideToolbar ? "kizkatt-toolbar--autohide" : ""
+            `kizkatt-toolbar--${orientation}`
           ].join(" ")}
           aria-label={strings.toolbar.ariaLabel}
         >

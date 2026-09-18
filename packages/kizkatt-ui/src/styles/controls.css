@@ -346,17 +346,6 @@
   min-height: 1px;
 }
 
-.kizkatt-toolbar--autohide {
-  opacity: 0;
-  transform: translateY(-20px);
-}
-
-.kizkatt-floating-panel--toolbar:hover .kizkatt-toolbar--autohide,
-.kizkatt-toolbar--autohide:focus-within {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .kizkatt-toolbar button,
 .kizkatt-zoom-controls button,
 .kizkatt-history-controls button,
@@ -615,7 +604,7 @@
   z-index: 8;
   box-sizing: border-box;
   display: grid;
-  width: min(490px, calc(100vw - 24px));
+  width: min(390px, calc(100vw - 24px));
   overflow: visible;
   padding: 9px;
   border-radius: 8px;
@@ -789,6 +778,12 @@
   justify-content: flex-end;
   margin: 0 0 0 auto;
   padding: 0;
+}
+
+.kizkatt-language-row .kizkatt-settings-item-label {
+  width: 18px;
+  flex: 0 0 18px;
+  justify-content: center;
 }
 
 .kizkatt-footer-settings-menu .kizkatt-swatches button {

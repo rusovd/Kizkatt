@@ -1,7 +1,6 @@
 import { DEFAULT_STROKE_WIDTH } from "./constants";
 
 export const DEFAULT_GRAPHIC_EDITOR_SETTINGS = {
-  autohideToolbar: false,
   colorMode: "hex",
   gradientFreeDeformation: false,
   overlayContrast: true,

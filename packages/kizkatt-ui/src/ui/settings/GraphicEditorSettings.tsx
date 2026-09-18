@@ -11,25 +11,18 @@ import type { ColorPickerMode } from "../../components/ColorPicker";
 import { DEFAULT_GRAPHIC_EDITOR_SETTINGS } from "../../config/defaultSettings";
 
 type GraphicEditorSettings = {
-  autohideToolbar: boolean;
-  allVisiblePanelsPinned: boolean;
   colorMode: ColorPickerMode;
   gradientFreeDeformation: boolean;
   isPanelPinned: (id: string) => boolean;
   overlayContrast: boolean;
-  registerVisiblePanel: (id: string, pinnable: boolean) => () => void;
-  setAutohideToolbar: (value: boolean) => void;
   setColorMode: (value: ColorPickerMode) => void;
   setGradientFreeDeformation: (value: boolean) => void;
   setOverlayContrast: (value: boolean) => void;
   setPanelPinned: (id: string, pinned: boolean) => void;
   setTextureFreeDeformation: (value: boolean) => void;
   textureFreeDeformation: boolean;
-  toggleVisiblePanelsPinned: () => void;
 };
 
-const AUTOHIDE_TOOLBAR_STORAGE_KEY =
-  "kizkatt:graphic-editor:settings:autohide-toolbar";
 const COLOR_MODE_STORAGE_KEY =
   "kizkatt:graphic-editor:settings:color-mode";
 const GRADIENT_FREE_DEFORMATION_STORAGE_KEY =
@@ -104,12 +97,6 @@ export function GraphicEditorSettingsProvider({
 }: {
   children: ReactNode;
 }) {
-  const [autohideToolbar, setAutohideToolbarState] = useState(() =>
-    readStoredBoolean(
-      AUTOHIDE_TOOLBAR_STORAGE_KEY,
-      DEFAULT_GRAPHIC_EDITOR_SETTINGS.autohideToolbar
-    )
-  );
   const [colorMode, setColorModeState] = useState(readStoredColorMode);
   const [gradientFreeDeformation, setGradientFreeDeformationState] = useState(
     () =>
@@ -132,9 +119,6 @@ export function GraphicEditorSettingsProvider({
     )
   );
   const [pinnedPanelIds, setPinnedPanelIds] = useState(readStoredPanelIds);
-  const [visiblePinnablePanelIds, setVisiblePinnablePanelIds] = useState(
-    () => new Set<string>()
-  );
 
   const setPanelPinned = useCallback((id: string, pinned: boolean) => {
     setPinnedPanelIds((currentPanelIds) => {
@@ -151,63 +135,12 @@ export function GraphicEditorSettingsProvider({
     });
   }, []);
 
-  const registerVisiblePanel = useCallback((id: string, pinnable: boolean) => {
-    if (!pinnable) {
-      return () => undefined;
-    }
-
-    setVisiblePinnablePanelIds((currentPanelIds) => {
-      const nextPanelIds = new Set(currentPanelIds);
-      nextPanelIds.add(id);
-      return nextPanelIds;
-    });
-
-    return () => {
-      setVisiblePinnablePanelIds((currentPanelIds) => {
-        const nextPanelIds = new Set(currentPanelIds);
-        nextPanelIds.delete(id);
-        return nextPanelIds;
-      });
-    };
-  }, []);
-
-  const allVisiblePanelsPinned =
-    visiblePinnablePanelIds.size > 0 &&
-    [...visiblePinnablePanelIds].every((id) => pinnedPanelIds.has(id));
-
-  const toggleVisiblePanelsPinned = useCallback(() => {
-    setPinnedPanelIds((currentPanelIds) => {
-      const nextPanelIds = new Set(currentPanelIds);
-      const shouldPin =
-        visiblePinnablePanelIds.size > 0 &&
-        [...visiblePinnablePanelIds].some((id) => !nextPanelIds.has(id));
-
-      visiblePinnablePanelIds.forEach((id) => {
-        if (shouldPin) {
-          nextPanelIds.add(id);
-        } else {
-          nextPanelIds.delete(id);
-        }
-      });
-
-      storePanelIds(nextPanelIds);
-      return nextPanelIds;
-    });
-  }, [visiblePinnablePanelIds]);
-
   const settings = useMemo<GraphicEditorSettings>(
     () => ({
-      autohideToolbar,
-      allVisiblePanelsPinned,
       colorMode,
       gradientFreeDeformation,
       isPanelPinned: (id) => pinnedPanelIds.has(id),
       overlayContrast,
-      registerVisiblePanel,
-      setAutohideToolbar: (value) => {
-        setAutohideToolbarState(value);
-        storeBoolean(AUTOHIDE_TOOLBAR_STORAGE_KEY, value);
-      },
       setColorMode: (value) => {
         setColorModeState(value);
         window.localStorage.setItem(COLOR_MODE_STORAGE_KEY, value);
@@ -225,20 +158,15 @@ export function GraphicEditorSettingsProvider({
         setTextureFreeDeformationState(value);
         storeBoolean(TEXTURE_FREE_DEFORMATION_STORAGE_KEY, value);
       },
-      textureFreeDeformation,
-      toggleVisiblePanelsPinned
+      textureFreeDeformation
     }),
     [
-      allVisiblePanelsPinned,
-      autohideToolbar,
       colorMode,
       gradientFreeDeformation,
       overlayContrast,
       pinnedPanelIds,
-      registerVisiblePanel,
       setPanelPinned,
-      textureFreeDeformation,
-      toggleVisiblePanelsPinned
+      textureFreeDeformation
     ]
   );
 

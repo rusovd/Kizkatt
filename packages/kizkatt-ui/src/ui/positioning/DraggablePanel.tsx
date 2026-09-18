@@ -262,7 +262,6 @@ export function DraggablePanel({
   const { strings } = useI18n();
   const {
     isPanelPinned,
-    registerVisiblePanel,
     setPanelPinned
   } = useGraphicEditorSettings();
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -319,14 +318,6 @@ export function DraggablePanel({
     previousReopenKeyRef.current = reopenKey;
     setTemporarilyClosed(false);
   }, [reopenKey]);
-
-  useEffect(() => {
-    if (temporarilyClosed) {
-      return;
-    }
-
-    return registerVisiblePanel(id, pinnable);
-  }, [id, pinnable, registerVisiblePanel, temporarilyClosed]);
 
   useLayoutEffect(() => {
     const panel = panelRef.current;

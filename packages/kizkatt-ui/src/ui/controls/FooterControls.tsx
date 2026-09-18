@@ -37,7 +37,6 @@ import {
   InfoIcon,
   LanguageIcon,
   PaletteIcon,
-  PinIcon,
   RedoIcon,
   SettingsIcon,
   SnapIcon,
@@ -288,12 +287,8 @@ function EditorSettingsMenu({
   const [openSubmenu, setOpenSubmenu] =
     useState<"display" | "grid" | null>(null);
   const {
-    allVisiblePanelsPinned,
-    autohideToolbar,
     colorMode,
-    setAutohideToolbar,
-    setColorMode,
-    toggleVisiblePanelsPinned
+    setColorMode
   } = useGraphicEditorSettings();
   const { locale, setLocale, strings } = useI18n();
   const canvasBackgrounds = CANVAS_BACKGROUNDS_BY_THEME[theme];
@@ -331,36 +326,12 @@ function EditorSettingsMenu({
 
   return (
     <div className="kizkatt-footer-settings-menu" role="menu">
-      <SettingsCheckButton
-        checked={allVisiblePanelsPinned}
-        icon={PinIcon}
-        title={strings.settings.tooltips.panelStickiness}
-        onRequestClose={onRequestClose}
-        onClick={toggleVisiblePanelsPinned}
-      >
-        {allVisiblePanelsPinned
-          ? strings.settings.unstickPanels
-          : strings.settings.stickPanels}
-      </SettingsCheckButton>
-      <SettingsCheckButton
-        checked={autohideToolbar}
-        icon={EyeIcon}
-        title={strings.settings.tooltips.autohideToolbar}
-        onRequestClose={onRequestClose}
-        onClick={() => setAutohideToolbar(!autohideToolbar)}
-      >
-        {autohideToolbar
-          ? strings.settings.disableAutohide
-          : strings.settings.enableAutohide}
-      </SettingsCheckButton>
-      <div className="kizkatt-menu-divider" />
       <label
         className="kizkatt-language-row"
         htmlFor="kizkatt-footer-language"
       >
         <span className="kizkatt-settings-item-label">
           {LanguageIcon}
-          <span>{strings.language.label}</span>
         </span>
         <select
           id="kizkatt-footer-language"

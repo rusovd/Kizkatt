@@ -86,7 +86,6 @@ export const ENGLISH_TRANSLATIONS = {
   },
   mainMenu: {
     ariaLabel: "Canvas menu",
-    autohideToolbar: "Autohide toolbar",
     canvasBackground: "Canvas background",
     export: "Export",
     import: "Import",
@@ -111,7 +110,6 @@ export const ENGLISH_TRANSLATIONS = {
     theme: "Theme",
     uiScale: "UI scale",
     tooltips: {
-      autohideToolbar: "Hide the toolbar until the pointer is near it",
       canvasBackgroundColor: "Set canvas background to",
       customCanvasBackground: "Use the saved custom canvas background",
       export: "Export selected objects in the chosen format",
@@ -156,24 +154,19 @@ export const ENGLISH_TRANSLATIONS = {
     svgFormat: "SVG image (.svg)"
   },
   settings: {
-    disableAutohide: "Disable Autohide",
     closePanel: "Close panel",
     colorMode: "Color mode",
     dpi: "DPI",
     displayMode: "Display",
-    enableAutohide: "Enable Autohide",
     editorSettings: "Editor settings",
     grid: "Grid",
     infoMode: "Info mode",
     previewMode: "Preview",
     stickPanel: "Stick panel",
-    stickPanels: "Stick panels",
     toolbarSettings: "Toolbar settings",
-    unstickPanels: "Unstick panels",
     unstickPanel: "Unstick panel",
     wireframeMode: "Wireframe",
     tooltips: {
-      autohideToolbar: "Turn toolbar autohide on or off",
       closePanel: "Hide this panel until it is needed again",
       colorMode: "Choose the default color representation",
       dpi: "Set document resolution and raster export quality",
@@ -182,7 +175,6 @@ export const ENGLISH_TRANSLATIONS = {
       gridSettings: "Open grid settings",
       infoMode: "Show object names and layer numbers",
       panelDragHandle: "Drag this panel",
-      panelStickiness: "Stick or unstick all currently visible panels",
       resizePanel: "Resize this panel",
       stickPanel: "Keep this panel visible",
       previewMode: "Toggle preview mode",

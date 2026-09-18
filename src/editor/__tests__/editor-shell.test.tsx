@@ -603,7 +603,7 @@ describe("KizkattGraphicEditor shell", () => {
     ).toBe(JSON.stringify({ x: 140, y: 16 }));
   });
 
-  it("opens grouped tools and applies shared panel settings", () => {
+  it("opens grouped tools", () => {
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
@@ -622,54 +622,9 @@ describe("KizkattGraphicEditor shell", () => {
       "is-active"
     );
 
-    openEditorSettings();
-    fireEvent.click(
-      screen.getByRole("menuitemcheckbox", { name: /Stick panels/ })
-    );
-
     const toolbarPanel = screen
       .getByLabelText("Kizkatt tools")
       .closest(".kizkatt-floating-panel");
-    const pinnedPanelIds = JSON.parse(
-      window.localStorage.getItem(
-        "kizkatt:graphic-editor:settings:pinned-panels"
-      ) ?? "[]"
-    );
-
-    expect(pinnedPanelIds).toContain("style-panel");
-    expect(pinnedPanelIds).not.toContain("toolbar");
-    expect(toolbarPanel).not.toHaveClass("is-pinned");
-    expect(
-      toolbarPanel?.querySelector("button[aria-label='Stick panel']")
-    ).not.toBeInTheDocument();
-    expect(
-      toolbarPanel?.querySelector("button[aria-label='Close panel']")
-    ).not.toBeInTheDocument();
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-
-    openEditorSettings();
-    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Autohide/ }));
-
-    expect(
-      window.localStorage.getItem(
-        "kizkatt:graphic-editor:settings:autohide-toolbar"
-      )
-    ).toBe("true");
-    expect(screen.getByLabelText("Kizkatt tools")).toHaveClass(
-      "kizkatt-toolbar--autohide"
-    );
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-
-    openEditorSettings();
-    fireEvent.click(
-      screen.getByRole("menuitemcheckbox", { name: /Unstick panels/ })
-    );
-
-    expect(toolbarPanel).not.toHaveClass("is-pinned");
-    expect(screen.getByLabelText("Kizkatt tools")).toHaveClass(
-      "kizkatt-toolbar--autohide"
-    );
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 
     const dragHandle = toolbarPanel?.querySelector("[data-panel-drag-handle]");
     fireEvent.doubleClick(dragHandle as Element);
@@ -869,8 +824,12 @@ describe("KizkattGraphicEditor shell", () => {
     openEditorSettings();
     expect(screen.queryByRole("menuitem", { name: "Line" })).not
       .toBeInTheDocument();
-    expect(screen.getByRole("menuitemcheckbox", { name: /Stick panels/ }))
+    expect(screen.getByRole("combobox", { name: "Language" }))
       .toBeInTheDocument();
+    expect(screen.queryByRole("menuitemcheckbox", { name: /Stick panels/ }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitemcheckbox", { name: /Autohide/ }))
+      .not.toBeInTheDocument();
   });
 
   it("closes toolbar submenus when clicking outside the toolbar", () => {
@@ -976,7 +935,7 @@ describe("KizkattGraphicEditor shell", () => {
     expect(screen.queryByRole("dialog", { name: "Background colors" })).not
       .toBeInTheDocument();
     expect(screen.getByLabelText("Styling")).toBeInTheDocument();
-    expect(screen.getByRole("menuitemcheckbox", { name: /Stick panels/ }))
+    expect(screen.getByRole("combobox", { name: "Language" }))
       .toBeInTheDocument();
   });
 
@@ -1040,24 +999,6 @@ describe("KizkattGraphicEditor shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
     expect(document.querySelector(".kizkatt-floating-panel--object-panel"))
       .not.toBeInTheDocument();
-  });
-
-  it("controls toolbar autohide from editor settings", () => {
-    render(<KizkattGraphicEditor />);
-
-    openEditorSettings();
-    fireEvent.click(screen.getByRole("menuitemcheckbox", {
-      name: "Enable Autohide"
-    }));
-
-    expect(
-      window.localStorage.getItem(
-        "kizkatt:graphic-editor:settings:autohide-toolbar"
-      )
-    ).toBe("true");
-    expect(screen.getByLabelText("Kizkatt tools")).toHaveClass(
-      "kizkatt-toolbar--autohide"
-    );
   });
 
   it("exposes UI scale, grid controls, and preview mode from editor settings", () => {
