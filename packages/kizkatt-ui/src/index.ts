@@ -2,6 +2,7 @@ export * from "./assets/icons/engineIcon";
 export * from "./components/SceneElement";
 export * from "./components/SceneLoadConfirmationDialog";
 export * from "./components/SceneFileFormatDialog";
+export * from "./components/SimpleTraceDialog";
 export * from "./components/ColorPicker";
 export * from "./components/Button";
 export * from "./components/CollapsiblePanelSection";

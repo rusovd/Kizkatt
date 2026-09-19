@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
 import type { Tool } from "../../model/types";
 import { Panel } from "../../components/Panel";
@@ -19,15 +19,24 @@ import {
   TOOLBAR_SUBMENU_HOLD_MS
 } from "./toolbarConstants";
 import { ToolbarButton } from "./ToolbarButton";
-import { ShapeIcon } from "../icons";
+import { ShapeIcon, SimpleTraceIcon } from "../icons";
 
-type ToolbarSubmenuId = "line" | "navigation" | "shape";
+type ToolbarSubmenuId = "image" | "line" | "navigation" | "shape";
 const TOOLBAR_FLOATING_PANEL_SOURCE = "toolbar";
 
 type ToolGroup = {
   defaultTool: Tool;
   id: ToolbarSubmenuId;
   options: readonly ToolDefinition[];
+};
+
+type ToolGroupAction = {
+  disabled?: boolean;
+  icon: ReactNode;
+  id: string;
+  label: string;
+  onActivate: () => void;
+  tooltip: string;
 };
 
 const SHAPE_GROUP: ToolGroup = {
@@ -46,6 +55,12 @@ const LINE_GROUP: ToolGroup = {
   defaultTool: "draw",
   id: "line",
   options: LINE_TOOL_GROUP.map((tool) => TOOL_REGISTRY_BY_ID[tool])
+};
+
+const IMAGE_GROUP: ToolGroup = {
+  defaultTool: "image",
+  id: "image",
+  options: [TOOL_REGISTRY_BY_ID.image]
 };
 
 function getActiveGroupEntry(group: ToolGroup, activeTool: Tool) {
@@ -96,8 +111,10 @@ function ToolGroupButton({
   group,
   openSubmenu,
   onOpenSubmenuChange,
-  onActivateTool
+  onActivateTool,
+  actions = []
 }: {
+  actions?: readonly ToolGroupAction[];
   activeTool: Tool;
   group: ToolGroup;
   openSubmenu: ToolbarSubmenuId | null;
@@ -205,6 +222,28 @@ function ToolGroupButton({
               )}
             </button>
           ))}
+          {actions.map((action) => (
+            <button
+              key={action.id}
+              aria-label={action.label}
+              data-no-panel-drag
+              disabled={action.disabled}
+              role="menuitem"
+              title={action.tooltip}
+              type="button"
+              onPointerDown={stopPanelDrag}
+              onClick={() => {
+                if (action.disabled) {
+                  return;
+                }
+
+                onOpenSubmenuChange(null);
+                action.onActivate();
+              }}
+            >
+              <span aria-hidden="true">{action.icon}</span>
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -213,9 +252,13 @@ function ToolGroupButton({
 
 export function Toolbar({
   activeTool,
+  canSimpleTrace = false,
+  onSimpleTrace,
   onActivateTool
 }: {
   activeTool: Tool;
+  canSimpleTrace?: boolean;
+  onSimpleTrace?: () => void;
   onActivateTool: (tool: Tool) => void;
 }) {
   const { strings } = useI18n();
@@ -334,7 +377,33 @@ export function Toolbar({
             onOpenSubmenuChange={openToolbarSubmenu}
             onActivateTool={onActivateTool}
           />
-          {SINGLE_TOOL_ORDER.slice(2).map((tool) => (
+          {SINGLE_TOOL_ORDER.slice(2, 3).map((tool) => (
+            <ToolButton
+              key={tool}
+              active={activeTool === tool}
+              entry={TOOL_REGISTRY_BY_ID[tool]}
+              onAnyToolActivate={closeSubmenu}
+              onActivateTool={onActivateTool}
+            />
+          ))}
+          <ToolGroupButton
+            actions={[
+              {
+                disabled: !canSimpleTrace,
+                icon: SimpleTraceIcon,
+                id: "simple-trace",
+                label: strings.toolbar.tools.simpleTrace,
+                onActivate: () => onSimpleTrace?.(),
+                tooltip: strings.toolbar.tooltips.simpleTrace
+              }
+            ]}
+            activeTool={activeTool}
+            group={IMAGE_GROUP}
+            openSubmenu={openSubmenu}
+            onOpenSubmenuChange={openToolbarSubmenu}
+            onActivateTool={onActivateTool}
+          />
+          {SINGLE_TOOL_ORDER.slice(4).map((tool) => (
             <ToolButton
               key={tool}
               active={activeTool === tool}

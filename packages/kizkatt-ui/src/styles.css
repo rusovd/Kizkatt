@@ -12,4 +12,5 @@
 @import "./styles/loader.css";
 @import "./styles/number-input.css";
 @import "./styles/dialogs.css";
+@import "./styles/simple-trace.css";
 @import "./components/ColorPicker/color-picker.css";
