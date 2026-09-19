@@ -284,25 +284,54 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
       return;
     }
 
-    if (
-      args.tool !== "nodeEdit" ||
-      (event.target instanceof Element && event.target.closest("[data-handle]"))
-    ) {
+    if (args.tool !== "nodeEdit") {
       return;
     }
 
     const activeCanvasState = args.canvasStateRef.current;
     const worldPoint = getPointerWorldPoint(event);
-    const hitElement = findElementAtPoint(
-      activeCanvasState.elements,
-      worldPoint
+    const eventTarget = event.target instanceof Element ? event.target : null;
+    const segmentTarget = eventTarget?.closest(
+      '[data-handle="linear-segment"]'
     );
+    const otherHandleTarget = eventTarget?.closest("[data-handle]");
 
-    if (hitElement?.type !== "line") {
+    if (otherHandleTarget && !segmentTarget) {
       return;
     }
 
-    const insertedBend = insertLinearElementBend(hitElement, worldPoint);
+    const overlayElementId = segmentTarget
+      ?.closest("[data-element-overlay-id]")
+      ?.getAttribute("data-element-overlay-id");
+    const overlayElement = activeCanvasState.elements.find(
+      (element) => element.id === overlayElementId
+    );
+    const hitElement =
+      overlayElement ??
+      findElementAtPoint(activeCanvasState.elements, worldPoint);
+
+    if (hitElement?.type !== "line" && hitElement?.type !== "arrow") {
+      return;
+    }
+
+    const segmentIndexAttribute = segmentTarget?.getAttribute(
+      "data-segment-index"
+    );
+    const segmentIndex = Number(segmentIndexAttribute);
+    const insertedBend = insertLinearElementBend(
+      hitElement,
+      worldPoint,
+      segmentIndexAttribute !== null && segmentIndexAttribute !== undefined &&
+        Number.isInteger(segmentIndex)
+        ? segmentIndex
+        : undefined
+    );
+
+    if (!insertedBend) {
+      return;
+    }
+
+    event.preventDefault();
     args.commitState({
       ...activeCanvasState,
       elements: activeCanvasState.elements.map((element) =>
@@ -312,7 +341,12 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
         bendIndex: insertedBend.bendIndex,
         elementId: hitElement.id
       },
-      selectedIds: [hitElement.id]
+      selectedIds: [hitElement.id],
+      selectedNodes: {
+        elementId: hitElement.id,
+        nodeIndices: [insertedBend.bendIndex + 1],
+        segmentIndex: insertedBend.bendIndex
+      }
     });
   };
 

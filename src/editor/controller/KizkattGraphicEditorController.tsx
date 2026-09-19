@@ -46,6 +46,7 @@ import {
 } from "kizkatt-graphic-engine";
 import {
   createElement,
+  createSimpleTraceElement,
   createDefaultKizkattSceneSettings,
   createId,
   createSceneExport,
@@ -53,8 +54,10 @@ import {
   getKizkattDocumentCanvasState,
   importSceneElements,
   importSvgElements,
+  isBitmapImageElement,
   parseKizkattSceneDocument,
   type SceneFileFormat,
+  type SimpleTraceResult,
   withUpdatedObjectBase
 } from "kizkatt-graphic-engine";
 import {
@@ -691,6 +694,50 @@ export function KizkattGraphicEditorController({
     () =>
       canvasState.elements.filter((element) => selectedIdSet.has(element.id)),
     [canvasState.elements, selectedIdSet]
+  );
+  const simpleTraceSource =
+    selectedElements.length === SINGLE_SELECTION_COUNT &&
+    isBitmapImageElement(selectedElements[0])
+      ? selectedElements[0]
+      : null;
+  const applySimpleTrace = useCallback(
+    (result: SimpleTraceResult, deleteOriginal: boolean) => {
+      if (!simpleTraceSource) {
+        return;
+      }
+
+      const tracedElement = createSimpleTraceElement({
+        id: createId(),
+        name: buildElementName("image", canvasState.elements, naming),
+        result,
+        source: simpleTraceSource
+      });
+      const sourceIndex = canvasState.elements.findIndex(
+        (element) => element.id === simpleTraceSource.id
+      );
+
+      if (sourceIndex < 0) {
+        return;
+      }
+
+      const elements = [...canvasState.elements];
+      elements.splice(
+        deleteOriginal ? sourceIndex : sourceIndex + 1,
+        deleteOriginal ? 1 : 0,
+        tracedElement
+      );
+      commitState({
+        ...canvasState,
+        elements,
+        selectedBend: undefined,
+        selectedIds: [tracedElement.id],
+        selectedNodes: undefined
+      });
+      setSelectionTransformMode("resize");
+      setSelectionTransformCenter(null);
+      setTool("select");
+    },
+    [canvasState, commitState, naming, simpleTraceSource]
   );
   const getCanvasViewport = useCallback(() => {
     const rect = svgRef.current?.getBoundingClientRect();
@@ -3220,6 +3267,12 @@ export function KizkattGraphicEditorController({
       onChange: onImageFileChange,
       ref: imageInputRef
     },
+    simpleTraceControls: simpleTraceSource
+      ? {
+          onApply: applySimpleTrace,
+          sourceElement: simpleTraceSource
+        }
+      : null,
     selectionGeometryControls:
       objectPanelGeometry || canEditDefaultStroke || tool === "zoom"
       ? {
