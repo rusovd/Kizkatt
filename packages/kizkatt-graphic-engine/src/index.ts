@@ -20,4 +20,3 @@ export * from "./model/textureCatalog";
 export type * from "./model/types";
 export * from "./svg/import";
 export * from "./svg/parsing";
-export * from "./trace/simpleTrace";
