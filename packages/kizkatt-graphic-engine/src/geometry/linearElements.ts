@@ -210,8 +210,7 @@ function getLocalLinearSegmentControl(
 
 export function insertLinearElementBend(
   element: KizkattElement,
-  worldPoint: Point,
-  requestedSegmentIndex?: number
+  worldPoint: Point
 ) {
   const localPoint = getElementLocalPoint(element, worldPoint);
   const linePoints = getLinearElementPoints(element);
@@ -222,13 +221,7 @@ export function insertLinearElementBend(
     segmentControls,
     Boolean(element.closed)
   );
-  const nearestSegmentIndex =
-    requestedSegmentIndex !== undefined &&
-    Number.isInteger(requestedSegmentIndex) &&
-    requestedSegmentIndex >= FIRST_ARRAY_INDEX &&
-    requestedSegmentIndex < segmentControls.length
-      ? requestedSegmentIndex
-      : nearestSegment.index;
+  const nearestSegmentIndex = nearestSegment.index;
 
   const bends = getElementBends(element);
   const segmentStart = linePoints[nearestSegmentIndex];
@@ -237,19 +230,6 @@ export function insertLinearElementBend(
       ? linePoints[FIRST_ARRAY_INDEX]
       : linePoints[nearestSegmentIndex + NEXT_ARRAY_INDEX_OFFSET];
   const segmentControl = segmentControls[nearestSegmentIndex];
-
-  if (!segmentStart || !segmentEnd || !segmentControl) {
-    return null;
-  }
-
-  const segmentPosition =
-    requestedSegmentIndex === nearestSegmentIndex
-      ? getNearestLinearSegmentPosition(
-          localPoint,
-          [segmentStart, segmentEnd],
-          [segmentControl]
-        ).t
-      : nearestSegment.t;
   const splitSegment =
     segmentControl?.mode === "curve" &&
     segmentControl.cp1 &&
@@ -259,7 +239,7 @@ export function insertLinearElementBend(
           segmentControl.cp1,
           segmentControl.cp2,
           segmentEnd,
-          segmentPosition
+          nearestSegment.t
         )
       : null;
   const projectedPoint =
@@ -491,235 +471,6 @@ export function getLinearElementSegmentControls(
 
     return { mode: "line" };
   });
-}
-
-function translatePoint(point: Point, delta: Point) {
-  return {
-    x: point.x + delta.x,
-    y: point.y + delta.y
-  };
-}
-
-function getTransformedLinearSegmentControls(
-  element: KizkattElement,
-  points: Point[]
-) {
-  return getLinearElementSegmentControls(element, points).map((control) =>
-    control.mode === "curve" && control.cp1 && control.cp2
-      ? {
-          cp1: transformElementPoint(element, control.cp1),
-          cp2: transformElementPoint(element, control.cp2),
-          mode: "curve" as const
-        }
-      : { mode: "line" as const }
-  );
-}
-
-function rebuildLinearElementFromWorldGeometry(
-  element: KizkattElement,
-  worldPoints: Point[],
-  worldControls: LinearSegmentWorldControl[]
-) {
-  const start = worldPoints[FIRST_ARRAY_INDEX];
-  const end = worldPoints[worldPoints.length - NEXT_ARRAY_INDEX_OFFSET];
-
-  if (!start || !end) {
-    return element;
-  }
-
-  const nextCenter = {
-    x: (start.x + end.x) / HALF_DIVISOR,
-    y: (start.y + end.y) / HALF_DIVISOR
-  };
-  const nextSize = getElementLocalVector(element, {
-    x: end.x - start.x,
-    y: end.y - start.y
-  });
-  const nextElement = {
-    ...element,
-    height: nextSize.y,
-    width: nextSize.x,
-    x: nextCenter.x - nextSize.x / HALF_DIVISOR,
-    y: nextCenter.y - nextSize.y / HALF_DIVISOR
-  };
-  const toNextLocalPoint = (point: Point) => {
-    const localPoint = getElementLocalPoint(nextElement, point);
-
-    return {
-      x: localPoint.x - nextElement.x,
-      y: localPoint.y - nextElement.y
-    };
-  };
-
-  return {
-    ...nextElement,
-    bends: worldPoints
-      .slice(NEXT_ARRAY_INDEX_OFFSET, -NEXT_ARRAY_INDEX_OFFSET)
-      .map(toNextLocalPoint),
-    curve: undefined,
-    linearSegmentControls: worldControls.map((control) =>
-      control.mode === "curve" && control.cp1 && control.cp2
-        ? {
-            cp1: toNextLocalPoint(control.cp1),
-            cp2: toNextLocalPoint(control.cp2),
-            mode: "curve" as const
-          }
-        : { mode: "line" as const }
-    )
-  };
-}
-
-export function moveLinearElementNodes(
-  element: KizkattElement,
-  selectedNodeIndices: number[],
-  worldDelta: Point
-) {
-  const localPoints = getLinearElementPoints(element);
-  const endNodeIndex = localPoints.length - NEXT_ARRAY_INDEX_OFFSET;
-  const selectedNodeSet = new Set(
-    selectedNodeIndices.filter(
-      (index) => Number.isInteger(index) && index >= 0 && index <= endNodeIndex
-    )
-  );
-  const hasMergedClosedEndpoint =
-    Boolean(element.closed) &&
-    localPoints.length > NEXT_ARRAY_INDEX_OFFSET &&
-    localPoints[FIRST_ARRAY_INDEX].x === localPoints[endNodeIndex].x &&
-    localPoints[FIRST_ARRAY_INDEX].y === localPoints[endNodeIndex].y;
-
-  if (
-    hasMergedClosedEndpoint &&
-    (selectedNodeSet.has(FIRST_ARRAY_INDEX) ||
-      selectedNodeSet.has(endNodeIndex))
-  ) {
-    selectedNodeSet.add(FIRST_ARRAY_INDEX);
-    selectedNodeSet.add(endNodeIndex);
-  }
-
-  const nextSelectedNodeIndices = Array.from(selectedNodeSet).sort(
-    (first, second) => first - second
-  );
-
-  if (nextSelectedNodeIndices.length === EMPTY_COLLECTION_LENGTH) {
-    return { element, selectedNodeIndices: nextSelectedNodeIndices };
-  }
-
-  const worldPoints = localPoints.map((point, index) => {
-    const worldPoint = transformElementPoint(element, point);
-
-    return selectedNodeSet.has(index)
-      ? translatePoint(worldPoint, worldDelta)
-      : worldPoint;
-  });
-  const worldControls = getTransformedLinearSegmentControls(
-    element,
-    localPoints
-  ).map((control, segmentIndex) => {
-    if (control.mode !== "curve" || !control.cp1 || !control.cp2) {
-      return control;
-    }
-
-    const segmentEndNodeIndex =
-      Boolean(element.closed) && segmentIndex === endNodeIndex
-        ? FIRST_ARRAY_INDEX
-        : segmentIndex + NEXT_ARRAY_INDEX_OFFSET;
-
-    return {
-      cp1: selectedNodeSet.has(segmentIndex)
-        ? translatePoint(control.cp1, worldDelta)
-        : control.cp1,
-      cp2: selectedNodeSet.has(segmentEndNodeIndex)
-        ? translatePoint(control.cp2, worldDelta)
-        : control.cp2,
-      mode: "curve" as const
-    };
-  });
-
-  return {
-    element: rebuildLinearElementFromWorldGeometry(
-      element,
-      worldPoints,
-      worldControls
-    ),
-    selectedNodeIndices: nextSelectedNodeIndices
-  };
-}
-
-export function moveLinearElementSegment(
-  element: KizkattElement,
-  segmentIndex: number,
-  worldDelta: Point
-) {
-  const points = getLinearElementPoints(element);
-  const segmentControls = getLinearElementSegmentControls(element, points);
-
-  if (
-    !Number.isInteger(segmentIndex) ||
-    segmentIndex < FIRST_ARRAY_INDEX ||
-    segmentIndex >= segmentControls.length
-  ) {
-    return { element, selectedNodeIndices: [] };
-  }
-
-  const endNodeIndex =
-    Boolean(element.closed) &&
-    segmentIndex === points.length - NEXT_ARRAY_INDEX_OFFSET
-      ? FIRST_ARRAY_INDEX
-      : segmentIndex + NEXT_ARRAY_INDEX_OFFSET;
-
-  return moveLinearElementNodes(
-    element,
-    [segmentIndex, endNodeIndex],
-    worldDelta
-  );
-}
-
-export function bendLinearElementSegment(
-  element: KizkattElement,
-  segmentIndex: number,
-  worldPoint: Point
-) {
-  const localPoint = getElementLocalPoint(element, worldPoint);
-  const linePoints = getLinearElementPoints(element);
-  const start = linePoints[segmentIndex];
-  const end =
-    Boolean(element.closed) && segmentIndex === linePoints.length - 1
-      ? linePoints[FIRST_ARRAY_INDEX]
-      : linePoints[segmentIndex + NEXT_ARRAY_INDEX_OFFSET];
-
-  if (!start || !end) {
-    return null;
-  }
-
-  const midpoint = getSegmentMidpoint(start, end);
-  const offset = {
-    x: (localPoint.x - midpoint.x) * (4 / 3),
-    y: (localPoint.y - midpoint.y) * (4 / 3)
-  };
-  const cp1 = {
-    x: start.x + (end.x - start.x) / 3 + offset.x,
-    y: start.y + (end.y - start.y) / 3 + offset.y
-  };
-  const cp2 = {
-    x: end.x - (end.x - start.x) / 3 + offset.x,
-    y: end.y - (end.y - start.y) / 3 + offset.y
-  };
-  const nextControls = getLinearElementSegmentControls(
-    element,
-    linePoints
-  ).map((control) => getLocalLinearSegmentControl(element, control));
-
-  nextControls[segmentIndex] = {
-    cp1: toLocalControlPoint(element, cp1),
-    cp2: toLocalControlPoint(element, cp2),
-    mode: "curve"
-  };
-
-  return {
-    ...element,
-    edgeStyle: element.edgeStyle ?? DEFAULT_EDGE_STYLE,
-    linearSegmentControls: nextControls
-  };
 }
 
 export function getLinearElementPath(

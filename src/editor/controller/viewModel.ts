@@ -16,11 +16,7 @@ import type {
   ToolControls,
   WorkspaceControls
 } from "kizkatt-ui";
-import type {
-  KizkattElement,
-  KizkattTheme,
-  SimpleTraceResult
-} from "kizkatt-graphic-engine";
+import type { KizkattTheme } from "kizkatt-graphic-engine";
 
 
 export type KizkattGraphicEditorViewModel = {
@@ -37,10 +33,6 @@ export type KizkattGraphicEditorViewModel = {
     onChange: (event: ChangeEvent<HTMLInputElement>) => void;
     ref: RefObject<HTMLInputElement | null>;
   };
-  simpleTraceControls: {
-    onApply: (result: SimpleTraceResult, deleteOriginal: boolean) => void;
-    sourceElement: KizkattElement;
-  } | null;
   selectionGeometryControls: ObjectPanelProps | null;
   state: {
     activeDisplayMode: EditorDisplayMode | null;

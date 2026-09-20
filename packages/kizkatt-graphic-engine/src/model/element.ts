@@ -327,17 +327,3 @@ export function canElementUseBackground(element: KizkattElement) {
 
   return true;
 }
-
-export function isBitmapImageElement(element: KizkattElement) {
-  if (element.type !== "image" || !element.src || element.svgContent) {
-    return false;
-  }
-
-  const normalizedSource = element.src.trim().toLowerCase();
-
-  return (
-    !normalizedSource.startsWith("data:image/svg+xml") &&
-    !normalizedSource.startsWith("blob:image/svg+xml") &&
-    !/\.svg(?:$|[?#])/.test(normalizedSource)
-  );
-}

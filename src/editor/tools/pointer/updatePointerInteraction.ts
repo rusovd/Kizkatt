@@ -1,7 +1,6 @@
 import type { PointerEvent } from "react";
 
 import {
-  bendLinearElementSegment,
   constrainPointToAspectRatio,
   DEFAULT_IMAGE_SIZE,
   getClientPoint,
@@ -11,16 +10,15 @@ import {
   getElementLocalPoint,
   getElementLocalVector,
   isElementPathClosed,
-  getLinearElementSegmentControls,
+  getLinearElementPoints,
   moveLinearElementEndpoint,
-  moveLinearElementNodes,
-  moveLinearElementSegment,
   resizeElementFromHandle,
   resizeElementsFromSelectionHandle,
   rotateElementsAroundPoint,
   ROTATION_SNAP_STEP_RADIANS,
   snapAngleToIncrement,
   skewElementsFromSelectionHandle,
+  transformElementPoint
 } from "kizkatt-graphic-engine";
 import {
   MIN_CREATE_DRAG_DISTANCE,
@@ -39,6 +37,147 @@ const PROPORTIONAL_CREATION_TYPES: ReadonlySet<ElementType> = new Set([
   "ellipse",
   "rectangle"
 ]);
+
+function isSameLinearPoint(
+  first: { x: number; y: number } | undefined,
+  second: { x: number; y: number } | undefined
+) {
+  return Boolean(first && second && first.x === second.x && first.y === second.y);
+}
+
+function updateLinearElementNodes(
+  element: Extract<Interaction, { type: "linearNodes" }>["originalElement"],
+  bends: Extract<Interaction, { type: "linearNodes" }>["originalBends"],
+  selectedNodeIndices: number[],
+  localDelta: { x: number; y: number }
+) {
+  const originalPoints = getLinearElementPoints(element, bends);
+  const endNodeIndex = originalPoints.length - 1;
+  const selectedNodeSet = new Set(selectedNodeIndices);
+  const hasClosedMergedEndpoint =
+    element.closed &&
+    isSameLinearPoint(originalPoints[0], originalPoints[endNodeIndex]);
+
+  if (
+    hasClosedMergedEndpoint &&
+    (selectedNodeSet.has(0) || selectedNodeSet.has(endNodeIndex))
+  ) {
+    selectedNodeSet.add(0);
+    selectedNodeSet.add(endNodeIndex);
+  }
+
+  let nextSelectedNodeIndices = Array.from(selectedNodeSet).sort((a, b) => a - b);
+  let nextWorldPoints = originalPoints.map((point, index) => {
+    const nextPoint = selectedNodeSet.has(index)
+      ? {
+          x: point.x + localDelta.x,
+          y: point.y + localDelta.y
+        }
+      : point;
+
+    return transformElementPoint(element, nextPoint);
+  });
+
+  if (
+    element.closed &&
+    !hasClosedMergedEndpoint &&
+    selectedNodeIndices.length === SINGLE_SELECTION_COUNT &&
+    selectedNodeIndices[0] === 0 &&
+    nextWorldPoints.length > 1
+  ) {
+    nextWorldPoints = [...nextWorldPoints.slice(1), nextWorldPoints[0]];
+    nextSelectedNodeIndices = [nextWorldPoints.length - 1];
+  }
+
+  const start = nextWorldPoints[0];
+  const end = nextWorldPoints[nextWorldPoints.length - 1];
+
+  if (!start || !end) {
+    return {
+      element,
+      selectedNodeIndices: nextSelectedNodeIndices
+    };
+  }
+
+  const nextCenter = {
+    x: (start.x + end.x) / 2,
+    y: (start.y + end.y) / 2
+  };
+  const nextSize = getElementLocalVector(element, {
+    x: end.x - start.x,
+    y: end.y - start.y
+  });
+  const nextElement = {
+    ...element,
+    height: nextSize.y,
+    width: nextSize.x,
+    x: nextCenter.x - nextSize.x / 2,
+    y: nextCenter.y - nextSize.y / 2
+  };
+
+  return {
+    element: {
+      ...nextElement,
+      bends: nextWorldPoints.slice(1, -1).map((point) => {
+        const localPoint = getElementLocalPoint(nextElement, point);
+
+        return {
+          x: localPoint.x - nextElement.x,
+          y: localPoint.y - nextElement.y
+        };
+      }),
+      curve: undefined,
+      linearSegmentControls: undefined
+    },
+    selectedNodeIndices: nextSelectedNodeIndices
+  };
+}
+
+function getSegmentBendControl(
+  element: Extract<Interaction, { type: "linearSegmentBend" }>["originalElement"],
+  segmentIndex: number,
+  localPoint: { x: number; y: number }
+) {
+  const linePoints = getLinearElementPoints(element);
+  const start = linePoints[segmentIndex];
+  const end =
+    element.closed && segmentIndex === linePoints.length - 1
+      ? linePoints[0]
+      : linePoints[segmentIndex + 1];
+
+  if (!start || !end) {
+    return null;
+  }
+
+  const midpoint = {
+    x: (start.x + end.x) / 2,
+    y: (start.y + end.y) / 2
+  };
+  const offset = {
+    x: (localPoint.x - midpoint.x) * (4 / 3),
+    y: (localPoint.y - midpoint.y) * (4 / 3)
+  };
+  const cp1 = {
+    x: start.x + (end.x - start.x) / 3 + offset.x,
+    y: start.y + (end.y - start.y) / 3 + offset.y
+  };
+  const cp2 = {
+    x: end.x - (end.x - start.x) / 3 + offset.x,
+    y: end.y - (end.y - start.y) / 3 + offset.y
+  };
+
+  return {
+    cp1: {
+      x: cp1.x - element.x,
+      y: cp1.y - element.y
+    },
+    cp2: {
+      x: cp2.x - element.x,
+      y: cp2.y - element.y
+    },
+    mode: "curve" as const
+  };
+}
 
 export function updatePointerInteraction(
   event: PointerEvent<SVGSVGElement>,
@@ -419,14 +558,15 @@ export function updatePointerInteraction(
   }
 
   if (activeInteraction.type === "linearNodes") {
-    const worldDelta = {
+    const localDelta = getElementLocalVector(activeInteraction.originalElement, {
       x: worldPoint.x - activeInteraction.start.x,
       y: worldPoint.y - activeInteraction.start.y
-    };
-    const nodeUpdate = moveLinearElementNodes(
+    });
+    const nodeUpdate = updateLinearElementNodes(
       activeInteraction.originalElement,
+      activeInteraction.originalBends,
       activeInteraction.selectedNodeIndices,
-      worldDelta
+      localDelta
     );
     const nextSelectedNodeIndices = nodeUpdate.selectedNodeIndices;
     const nextSegmentIndex =
@@ -481,33 +621,35 @@ export function updatePointerInteraction(
       return;
     }
 
-    const originalSegmentControl = getLinearElementSegmentControls(
-      activeInteraction.originalElement
-    )[activeInteraction.segmentIndex];
-    const nextElement =
-      originalSegmentControl?.mode === "line"
-        ? moveLinearElementSegment(
-            activeInteraction.originalElement,
-            activeInteraction.segmentIndex,
-            {
-              x: worldPoint.x - activeInteraction.start.x,
-              y: worldPoint.y - activeInteraction.start.y
-            }
-          ).element
-        : bendLinearElementSegment(
-            activeInteraction.originalElement,
-            activeInteraction.segmentIndex,
-            worldPoint
-          );
+    const localPoint = getElementLocalPoint(
+      activeInteraction.originalElement,
+      worldPoint
+    );
+    const nextControl = getSegmentBendControl(
+      activeInteraction.originalElement,
+      activeInteraction.segmentIndex,
+      localPoint
+    );
 
-    if (!nextElement) {
+    if (!nextControl) {
       return;
     }
 
+    const originalControls =
+      activeInteraction.originalElement.linearSegmentControls ?? [];
+    const nextControls = [...originalControls];
+
+    nextControls[activeInteraction.segmentIndex] = nextControl;
     replaceActiveState({
       ...activeCanvasState,
       elements: activeCanvasState.elements.map((element) =>
-        element.id === activeInteraction.elementId ? nextElement : element
+        element.id === activeInteraction.elementId
+          ? {
+              ...element,
+              edgeStyle: element.edgeStyle ?? "round",
+              linearSegmentControls: nextControls
+            }
+          : element
       ),
       selectedBend: undefined,
       selectedIds: activeInteraction.selectedIds,

@@ -4,19 +4,13 @@ import type { CSSProperties } from "react";
 import {
   CANVAS_TAB_INDEX,
   DEFAULT_GRADIENT_FILL,
-  DEFAULT_SIMPLE_TRACE_SETTINGS,
   SINGLE_SELECTION_COUNT,
-  SIMPLE_TRACE_PRESET_SETTINGS,
   canElementUseBackground,
   createBitmapTextureFillFromCatalogTexture,
   getBitmapTextureTargetTransform,
-  getTextureCatalogEntries,
-  traceSimpleBitmap
+  getTextureCatalogEntries
 } from "kizkatt-graphic-engine";
 import type {
-  SimpleTraceRaster,
-  SimpleTraceResult,
-  SimpleTraceSettings,
   TextureCatalog,
   TextureCatalogTexture
 } from "kizkatt-graphic-engine";
@@ -35,7 +29,6 @@ import {
   MainMenu,
   SceneFileFormatDialog,
   SceneLoadConfirmationDialog,
-  SimpleTraceDialog,
   BitmapPatternFillPanel,
   GradientFillPanel,
   GradientLibraryPopover,
@@ -44,7 +37,6 @@ import {
   TextureLibraryPopover,
   useGraphicEditorSettings
 } from "kizkatt-ui";
-import { decodeImageForSimpleTrace } from "../../platform/decodeTraceImage";
 import { useGradientPresetLibrary } from "../../state/useGradientPresetLibrary";
 import {
   SELECTED_ELEMENT_STYLING_TOOLS,
@@ -107,7 +99,6 @@ export function KizkattGraphicEditorView({
     documentControls,
     imageInputBindings,
     selectionGeometryControls,
-    simpleTraceControls,
     state,
     stylingControls,
     textEditing,
@@ -133,17 +124,6 @@ export function KizkattGraphicEditorView({
   const [gradientLibraryAnchor, setGradientLibraryAnchor] =
     useState<HTMLButtonElement | null>(null);
   const [gradientLibraryReopenKey, setGradientLibraryReopenKey] = useState(0);
-  const [simpleTraceOpen, setSimpleTraceOpen] = useState(false);
-  const [simpleTraceDeleteOriginal, setSimpleTraceDeleteOriginal] =
-    useState(false);
-  const [simpleTraceError, setSimpleTraceError] = useState<string | null>(null);
-  const [simpleTraceProcessing, setSimpleTraceProcessing] = useState(false);
-  const [simpleTraceRaster, setSimpleTraceRaster] =
-    useState<SimpleTraceRaster | null>(null);
-  const [simpleTraceResult, setSimpleTraceResult] =
-    useState<SimpleTraceResult | null>(null);
-  const [simpleTraceSettings, setSimpleTraceSettings] =
-    useState<SimpleTraceSettings>({ ...DEFAULT_SIMPLE_TRACE_SETTINGS });
   const {
     customPresets: customGradientPresets,
     deletePreset: deleteStoredGradientPreset,
@@ -160,84 +140,6 @@ export function KizkattGraphicEditorView({
     stylingControls.style.gradientFill ?? DEFAULT_GRADIENT_FILL
   );
   const previousGradientRef = useRef(stylingControls.style.gradientFill);
-
-  useEffect(() => {
-    if (!simpleTraceOpen || !simpleTraceControls?.sourceElement.src) {
-      setSimpleTraceRaster(null);
-      return;
-    }
-
-    let cancelled = false;
-    setSimpleTraceError(null);
-    setSimpleTraceProcessing(true);
-    setSimpleTraceResult(null);
-
-    void decodeImageForSimpleTrace(simpleTraceControls.sourceElement.src)
-      .then((raster) => {
-        if (!cancelled) {
-          setSimpleTraceRaster(raster);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setSimpleTraceError(
-            error instanceof Error
-              ? error.message
-              : "The bitmap could not be decoded."
-          );
-          setSimpleTraceProcessing(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    simpleTraceControls?.sourceElement.id,
-    simpleTraceControls?.sourceElement.src,
-    simpleTraceOpen
-  ]);
-
-  useEffect(() => {
-    if (!simpleTraceOpen || !simpleTraceRaster) {
-      return;
-    }
-
-    let cancelled = false;
-    setSimpleTraceProcessing(true);
-    const timeout = window.setTimeout(() => {
-      try {
-        const result = traceSimpleBitmap(simpleTraceRaster, simpleTraceSettings);
-
-        if (!cancelled) {
-          setSimpleTraceResult(result);
-          setSimpleTraceError(null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setSimpleTraceResult(null);
-          setSimpleTraceError(
-            error instanceof Error ? error.message : "The bitmap could not be traced."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setSimpleTraceProcessing(false);
-        }
-      }
-    }, 80);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeout);
-    };
-  }, [simpleTraceOpen, simpleTraceRaster, simpleTraceSettings]);
-
-  useEffect(() => {
-    if (simpleTraceOpen && !simpleTraceControls) {
-      setSimpleTraceOpen(false);
-    }
-  }, [simpleTraceControls, simpleTraceOpen]);
 
   useEffect(() => {
     if (
@@ -444,22 +346,7 @@ export function KizkattGraphicEditorView({
       style={{ "--kizkatt-ui-scale": state.uiScale } as CSSProperties}
       tabIndex={CANVAS_TAB_INDEX}
     >
-      {!previewMode && (
-        <Toolbar
-          {...toolControls}
-          canSimpleTrace={Boolean(simpleTraceControls)}
-          onSimpleTrace={() => {
-            if (!simpleTraceControls) {
-              return;
-            }
-
-            setSimpleTraceDeleteOriginal(false);
-            setSimpleTraceError(null);
-            setSimpleTraceSettings({ ...DEFAULT_SIMPLE_TRACE_SETTINGS });
-            setSimpleTraceOpen(true);
-          }}
-        />
-      )}
+      {!previewMode && <Toolbar {...toolControls} />}
 
       <input
         {...imageInputBindings}
@@ -485,45 +372,6 @@ export function KizkattGraphicEditorView({
           action={documentControls.formatDialogAction}
           onCancel={documentControls.onCancelFormatDialog}
           onChoose={documentControls.onChooseFormat}
-        />
-      )}
-      {simpleTraceOpen && simpleTraceControls?.sourceElement.src && (
-        <SimpleTraceDialog
-          deleteOriginal={simpleTraceDeleteOriginal}
-          error={simpleTraceError}
-          imageName={
-            simpleTraceControls.sourceElement.name ?? strings.toolbar.tools.image
-          }
-          imageSource={simpleTraceControls.sourceElement.src}
-          onApply={() => {
-            if (!simpleTraceResult) {
-              return;
-            }
-
-            simpleTraceControls.onApply(
-              simpleTraceResult,
-              simpleTraceDeleteOriginal
-            );
-            setSimpleTraceOpen(false);
-          }}
-          onCancel={() => setSimpleTraceOpen(false)}
-          onDeleteOriginalChange={setSimpleTraceDeleteOriginal}
-          onReset={() =>
-            setSimpleTraceSettings({ ...DEFAULT_SIMPLE_TRACE_SETTINGS })
-          }
-          onSettingsChange={(nextSettings) => {
-            setSimpleTraceSettings((currentSettings) =>
-              nextSettings.imagePreset === currentSettings.imagePreset
-                ? nextSettings
-                : {
-                    ...nextSettings,
-                    ...SIMPLE_TRACE_PRESET_SETTINGS[nextSettings.imagePreset]
-                  }
-            );
-          }}
-          processing={simpleTraceProcessing}
-          result={simpleTraceResult}
-          settings={simpleTraceSettings}
         />
       )}
 
