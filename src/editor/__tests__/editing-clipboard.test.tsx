@@ -134,7 +134,7 @@ describe("KizkattGraphicEditor editing and clipboard", () => {
       scaleStrokes: true
     });
 
-    expect(screenDpiMarkup).toContain("vector-effect");
+    expect(screenDpiMarkup).not.toContain("vector-effect");
     expect(markup).toContain('width="280"');
     expect(markup).toContain('height="180"');
     expect(markup).toContain('viewBox="30 40 140 90"');

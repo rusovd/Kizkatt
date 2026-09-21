@@ -423,6 +423,15 @@ export const ImageIcon = createIcon(
   { height: 20, width: 20 }
 );
 
+export const SimpleTraceIcon = createIcon(
+  <g strokeWidth="1.4">
+    <path d="M4 4.5h16v15H4z" />
+    <path d="M6.5 16.5c1.4-4.4 3.4-7 6-7.8 2.1-.7 3.8-1.8 5-3.2" />
+    <path d="M6.5 16.5c2.4-.8 4.1-.6 5.2.6 1.5 1.6 3.4 1 5.8-1.8" />
+    <circle cx="12.5" cy="8.7" r="1.1" fill="currentColor" stroke="none" />
+  </g>
+);
+
 export const UploadIcon = createIcon(
   <g strokeWidth="1.5">
     <path d="M12 16V4" />

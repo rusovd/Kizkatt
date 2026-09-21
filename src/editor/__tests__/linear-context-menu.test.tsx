@@ -336,101 +336,57 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(canvas.style.cursor).toBe(getNodeEditCursor("light"));
   });
 
-  it("bends straight segments from a virtual midpoint without adding a point", async () => {
+  it("moves a straight segment with both endpoints without curving it", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          bends: [
+            { x: 60, y: 0 },
+            { x: 120, y: 50 }
+          ],
+          edgeStyle: "sharp",
+          height: 50,
+          id: "line",
+          opacity: 100,
+          sloppiness: "architect",
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 8,
+          type: "line",
+          width: 180,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["line"]
+    });
     render(<KizkattGraphicEditor />);
 
-    chooseGroupedTool("Draw", "Line");
-
     const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
-    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 50 });
-
-    expect(canvas.querySelector(".kizkatt-bend-handle")).not.toBeInTheDocument();
-
-    firePointerEvent(canvas, "pointerup");
-
-    expect(canvas.querySelector("[data-element-id] line")).toBeInTheDocument();
-    expect(canvas.querySelector(".kizkatt-bend-handle")).not
-      .toBeInTheDocument();
-    expect(canvas.querySelector(".kizkatt-selection-overlay")).not
-      .toBeInTheDocument();
-
     fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
-    expect(canvas.querySelector(".kizkatt-bend-handle")).not
-      .toBeInTheDocument();
 
-    const segmentHit = canvas.querySelector(".kizkatt-linear-segment-hit");
-    expect(segmentHit).toBeInTheDocument();
-    expect((segmentHit as HTMLElement).style.cursor).toBe(NODE_EDIT_LINE_CURSOR);
-    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
-      .toHaveLength(0);
-
-    firePointerEvent(segmentHit as Element, "pointerdown", { clientX: 100, clientY: 50 });
-    firePointerEvent(canvas, "pointermove", { clientX: 100, clientY: 20 });
-
-    const bendPreviewLine = canvas.querySelector(
-      ".kizkatt-transform-preview-line"
+    const middleSegment = canvas.querySelector(
+      ".kizkatt-linear-segment-hit[data-segment-index='1']"
     );
-    const bendPreviewBounds = canvas.querySelector(
-      ".kizkatt-transform-preview-bounds"
-    );
-    expect(bendPreviewLine).toBeInTheDocument();
-    expect(bendPreviewLine?.getAttribute("d")).not.toContain("Z");
-    expect(bendPreviewLine?.getAttribute("d")).toContain(" C ");
-    expect(bendPreviewBounds).not.toBeInTheDocument();
-    const activeVirtualBendHandle = canvas.querySelector(
-      ".kizkatt-bend-handle--virtual"
-    );
-    expect(activeVirtualBendHandle).toBeInTheDocument();
-    expect(activeVirtualBendHandle).toHaveAttribute("cx", "100");
-    expect(activeVirtualBendHandle).toHaveAttribute("cy", "20");
-    expect((activeVirtualBendHandle as HTMLElement).style.cursor)
-      .toBe(NODE_EDIT_POINT_CURSOR);
-    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
-      .toHaveLength(0);
-    expect(canvas).toHaveStyle({ cursor: NODE_EDIT_POINT_CURSOR });
+    expect(middleSegment).toBeInTheDocument();
 
-    firePointerEvent(canvas, "pointerup");
-
-    await waitFor(() => {
-      expect(canvas.querySelector("[data-element-id] path")).toBeInTheDocument();
+    firePointerEvent(middleSegment as Element, "pointerdown", {
+      clientX: 130,
+      clientY: 75
     });
-    const curvePath = canvas.querySelector("[data-element-id] path");
-    expect(curvePath?.getAttribute("d")).toContain(" C ");
-    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
-      .toHaveLength(0);
-    expect(canvas.querySelectorAll(".kizkatt-bend-handle")).toHaveLength(0);
-    expect(canvas.querySelector(".kizkatt-selection-overlay")).not
-      .toBeInTheDocument();
+    firePointerEvent(canvas, "pointermove", { clientX: 130, clientY: 105 });
 
-    const curveSegmentHit = canvas.querySelector(".kizkatt-linear-segment-hit");
-    expect(curveSegmentHit).toBeInTheDocument();
-    firePointerEvent(curveSegmentHit as Element, "pointerdown", {
-      clientX: 100,
-      clientY: 30
-    });
-    firePointerEvent(canvas, "pointerup", { clientX: 100, clientY: 30 });
-    expect(canvas.querySelector(".kizkatt-bend-handle")).not
-      .toBeInTheDocument();
-    expect(canvas.querySelector(".kizkatt-linear-segment-hit.is-selected"))
-      .toBeInTheDocument();
+    expect(canvas.querySelector(".kizkatt-transform-preview-line"))
+      .toHaveAttribute("d", "M 40 50 L 100 80 L 160 130 L 220 100");
+    expect(canvas.querySelector(".kizkatt-transform-preview-line")
+      ?.getAttribute("d")).not.toContain(" C ");
 
-    fireEvent.click(screen.getByRole("button", { name: "Make segment straight" }));
-    await waitFor(() => {
-      expect(canvas.querySelector("[data-element-id] line")).toBeInTheDocument();
-    });
-    expect(canvas.querySelector("[data-element-id] path")).not
-      .toBeInTheDocument();
-    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(0);
+    firePointerEvent(canvas, "pointerup", { clientX: 130, clientY: 105 });
 
-    fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
-    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(0);
-
-    fireEvent.keyDown(screen.getByLabelText("Kizkatt diagram canvas"), {
-      key: "Delete"
-    });
-    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle")).toHaveLength(0);
-    expect(canvas.querySelector("[data-element-id] line")).toBeInTheDocument();
+    expect(canvas.querySelector("[data-element-type='line'] > path"))
+      .toHaveAttribute("d", "M 40 50 L 100 80 L 160 130 L 220 100");
   });
 
   it("inserts a movable point by double-clicking a line in node edit", () => {
@@ -444,9 +400,20 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     firePointerEvent(canvas, "pointerup", { clientX: 160, clientY: 50 });
     fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
 
-    const line = canvas.querySelector("[data-element-id] line");
-    expect(line).toBeInTheDocument();
-    fireEvent.doubleClick(line as Element, { clientX: 100, clientY: 50 });
+    const segment = canvas.querySelector(".kizkatt-linear-segment-hit");
+    expect(segment).toBeInTheDocument();
+    firePointerEvent(segment as Element, "pointerdown", {
+      clientX: 100,
+      clientY: 50
+    });
+    firePointerEvent(canvas, "pointerup", { clientX: 100, clientY: 50 });
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
+      .toHaveLength(0);
+
+    fireEvent.doubleClick(
+      canvas.querySelector(".kizkatt-linear-segment-hit") as Element,
+      { clientX: 100, clientY: 50 }
+    );
 
     expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
       .toHaveLength(1);
@@ -626,7 +593,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     firePointerEvent(canvas, "pointerup", { clientX: 20, clientY: 30 });
 
     const movedClosedLine = canvas.querySelector("[data-element-type='line'] > path");
-    expect(movedClosedLine).toHaveAttribute("d", "M 100 80 L 20 30 L 100 80 Z");
+    expect(movedClosedLine).toHaveAttribute("d", "M 20 30 L 100 80 L 20 30 Z");
     expect(movedClosedLine).toHaveAttribute("fill", "#653b00");
     expect(canvas.querySelectorAll("[data-line-endpoint]")).toHaveLength(2);
   });
@@ -674,7 +641,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
       .toHaveAttribute("d", "M 100 100 L 320 70 L 500 200 L 100 100 Z");
   });
 
-  it("selects and bends the closing segment of a closed line", () => {
+  it("moves a straight closing segment without curving it", () => {
     storeCanvasState({
       elements: [
         {
@@ -719,8 +686,8 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     const previewPath = canvas.querySelector(".kizkatt-transform-preview-line")
       ?.getAttribute("d");
 
-    expect(previewPath).toContain(" C ");
-    expect(previewPath).toMatch(/100 100 Z$/);
+    expect(previewPath).toBe("M 80 30 L 320 70 L 480 130 L 80 30 Z");
+    expect(previewPath).not.toContain(" C ");
   });
 
   it("combines selected lines and merges only open endpoints", () => {
@@ -904,7 +871,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(screen.getByRole("menuitem", { name: "Combine" })).toBeDisabled();
   });
 
-  it("bends lines and edits only the dragged endpoint in node edit mode", () => {
+  it("moves straight segments and edits only the dragged endpoint in node edit mode", () => {
     storeCanvasState({
       elements: [
         {
@@ -946,9 +913,10 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     });
     firePointerEvent(canvas, "pointermove", { clientX: 90, clientY: 85 });
     firePointerEvent(canvas, "pointerup", { clientX: 90, clientY: 85 });
-    expect(linePath?.getAttribute("d")).toContain("M 40 50 C ");
-    expect(linePath?.getAttribute("d")).toContain("100 80");
-    expect(linePath?.getAttribute("d")).toContain("160 120");
+    expect(linePath).toHaveAttribute(
+      "d",
+      "M 60 70 L 120 100 L 160 120"
+    );
     expect(screen.getByRole("button", { name: "Node edit" }))
       .toHaveClass("is-active");
 
@@ -957,16 +925,19 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     );
     expect(startHandle).toHaveAttribute("data-endpoint-mode", "node");
     firePointerEvent(startHandle as Element, "pointerdown", {
-      clientX: 40,
-      clientY: 50
+      clientX: 60,
+      clientY: 70
     });
     firePointerEvent(canvas, "pointermove", { clientX: 20, clientY: 30 });
 
-    expect(linePath?.getAttribute("d")).toContain("M 40 50 C ");
+    expect(linePath).toHaveAttribute(
+      "d",
+      "M 60 70 L 120 100 L 160 120"
+    );
     expect(canvas.querySelector(".kizkatt-transform-preview-line")
       ?.getAttribute("d")).toContain("M 20 30 ");
     expect(canvas.querySelector(".kizkatt-transform-preview-line")
-      ?.getAttribute("d")).toContain("100 80 L 160 120");
+      ?.getAttribute("d")).toContain("120 100 L 160 120");
     expect(canvas.querySelector(".kizkatt-transform-preview-bounds"))
       .not.toBeInTheDocument();
     expect(canvas).toHaveStyle({ cursor: NODE_EDIT_POINT_CURSOR });
@@ -974,7 +945,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     firePointerEvent(canvas, "pointerup", { clientX: 20, clientY: 30 });
 
     expect(linePath?.getAttribute("d")).toContain("M 20 30 ");
-    expect(linePath?.getAttribute("d")).toContain("100 80 L 160 120");
+    expect(linePath?.getAttribute("d")).toContain("120 100 L 160 120");
     expect(canvas.querySelector(".kizkatt-transform-preview")).not
       .toBeInTheDocument();
 
@@ -987,7 +958,7 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     firePointerEvent(canvas, "pointerup", { clientX: 200, clientY: 140 });
 
     expect(linePath?.getAttribute("d")).toContain("M 20 30 ");
-    expect(linePath?.getAttribute("d")).toContain("100 80 L 200 140");
+    expect(linePath?.getAttribute("d")).toContain("120 100 L 200 140");
   });
 
   it("keeps curved line transform previews in line point coordinates", () => {
