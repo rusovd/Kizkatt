@@ -68,6 +68,7 @@ export { reorderElementsByLayerAction } from "./layers";
 export * from "./objectGeometry";
 export { simplifyPolyline } from "./pathSimplification";
 export {
+  bendLinearElementSegment,
   getElementBends,
   getDefaultLinearSegmentControl,
   insertLinearElementBend,
@@ -77,7 +78,9 @@ export {
   getLinearElementPoints,
   getLinearElementSegmentControls,
   getLinearElementSegmentMidpoint,
-  moveLinearElementEndpoint
+  moveLinearElementEndpoint,
+  moveLinearElementNodes,
+  moveLinearElementSegment
 } from "./linearElements";
 export { getClientPoint, getWorldPoint } from "./pointerEvents";
 export * from "./polyline";
