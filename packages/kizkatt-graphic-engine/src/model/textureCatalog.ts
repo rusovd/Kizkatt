@@ -1,8 +1,12 @@
 export type TextureCatalogTexture = {
+  author?: string;
+  custom?: boolean;
   file: string;
+  from?: string;
   height?: number;
   id: string;
   name: string;
+  originalFileName?: string;
   thumbnail?: string;
   width?: number;
 };
@@ -85,7 +89,14 @@ export function filterTextureCatalogEntries(
       (collectionId === "all" || entry.collectionId === collectionId) &&
       (categoryId === "all" || entry.categoryId === categoryId) &&
       (!normalizedSearch ||
-        entry.texture.name.toLocaleLowerCase().includes(normalizedSearch))
+        [
+          entry.texture.name,
+          entry.texture.originalFileName,
+          entry.texture.author,
+          entry.texture.from
+        ].some((value) =>
+          value?.toLocaleLowerCase().includes(normalizedSearch)
+        ))
   );
 }
 

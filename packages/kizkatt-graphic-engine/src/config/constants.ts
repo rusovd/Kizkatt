@@ -164,7 +164,7 @@ export const DEFAULT_BITMAP_TEXTURE_FILL = {
   color: 0,
   colorEnabled: false,
   desaturate: 100,
-  desaturateEnabled: true,
+  desaturateEnabled: false,
   destinationOutAmount: 0,
   edgeMatch: 50,
   edgeMatchEnabled: false,
@@ -188,7 +188,7 @@ export const DEFAULT_BITMAP_TEXTURE_FILL = {
   tile: false,
   transformWithObject: true,
   transparencyColor: "#ffffff",
-  transparencyEnabled: true,
+  transparencyEnabled: false,
   transparencyTolerance: 100,
   width: 100
 } as const;
