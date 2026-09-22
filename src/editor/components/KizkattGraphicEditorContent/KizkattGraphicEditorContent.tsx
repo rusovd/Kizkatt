@@ -1,6 +1,8 @@
+import { useCallback } from "react";
 import { DEFAULT_ELEMENT_STYLE_BY_THEME } from "kizkatt-graphic-engine";
 import {
   getCanvasCursor,
+  type KizkattGraphicEditorCanvasViewModel,
   useI18n
 } from "kizkatt-ui";
 
@@ -9,9 +11,18 @@ import { graphicEditorTextureLibrary } from "../../config/textureLibrary";
 import { ELEMENT_TOOL_BY_TYPE } from "../../config/editorTools";
 import { KizkattGraphicEditorController } from "../../controller/KizkattGraphicEditorController";
 import { KizkattGraphicEditorView } from "../../views/KizkattGraphicEditorView/KizkattGraphicEditorView";
+import { useCustomTextureLibrary } from "../../state/useCustomTextureLibrary";
 
 export function KizkattGraphicEditorContent() {
   const { strings } = useI18n();
+  const textureLibrary = useCustomTextureLibrary(
+    graphicEditorTextureLibrary
+  );
+  const renderCanvas = useCallback(
+    (viewModel: KizkattGraphicEditorCanvasViewModel) =>
+      renderEditorCanvas(viewModel, textureLibrary.getTextureSource),
+    [textureLibrary.getTextureSource]
+  );
 
   return (
     <KizkattGraphicEditorController
@@ -25,11 +36,11 @@ export function KizkattGraphicEditorContent() {
         ELEMENT_TOOL_BY_TYPE[element.type]
       }
       getCanvasCursor={getCanvasCursor}
-      renderCanvas={renderEditorCanvas}
+      renderCanvas={renderCanvas}
     >
       {(viewModel) => (
         <KizkattGraphicEditorView
-          textureLibrary={graphicEditorTextureLibrary}
+          textureLibrary={textureLibrary}
           viewModel={viewModel}
         />
       )}

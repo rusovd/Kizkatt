@@ -27,7 +27,11 @@ import {
   EMPTY_COLLECTION_LENGTH,
   TextEditor,
   useI18n,
+  getStoredTextureCollectionId,
   getStoredTextureId,
+  storeTextureCategoryId,
+  storeTextureCollectionId,
+  storeTextureId,
   FooterControls,
   Toolbar,
   EditorLoader,
@@ -42,6 +46,7 @@ import {
   ObjectPanel,
   StylingPanel,
   TextureLibraryPopover,
+  type TextureImportRequest,
   useGraphicEditorSettings
 } from "kizkatt-ui";
 import { decodeImageForSimpleTrace } from "../../platform/decodeTraceImage";
@@ -57,6 +62,7 @@ import type {
 import type { KizkattGraphicEditorViewModel } from "../../controller/viewModel";
 
 export type GraphicEditorTextureLibrary = {
+  addTexture?: (request: TextureImportRequest) => TextureCatalogTexture;
   catalog: TextureCatalog;
   defaultCollectionId: string;
   getTextureById: (textureId: string) => TextureCatalogTexture | null;
@@ -75,6 +81,7 @@ export function KizkattGraphicEditorView({
 }) {
   const {
     catalog: textureCatalog,
+    addTexture,
     defaultCollectionId,
     getTextureById,
     getTextureSource,
@@ -84,12 +91,12 @@ export function KizkattGraphicEditorView({
     () => getTextureCatalogEntries(textureCatalog),
     [textureCatalog]
   );
-  const textureTypeNameById = useMemo(
+  const textureEntryById = useMemo(
     () =>
       new Map(
         textureCatalogEntries.map((entry) => [
           entry.texture.id,
-          entry.collectionName
+          entry
         ])
       ),
     [textureCatalogEntries]
@@ -122,8 +129,6 @@ export function KizkattGraphicEditorView({
   const [textureLibraryAnchor, setTextureLibraryAnchor] =
     useState<HTMLButtonElement | null>(null);
   const [textureLibraryReopenKey, setTextureLibraryReopenKey] = useState(0);
-  const [textureTypeNameOverride, setTextureTypeNameOverride] =
-    useState<string | null>(null);
   const [bitmapPatternPanelOpen, setBitmapPatternPanelOpen] = useState(false);
   const [bitmapPatternPanelReopenKey, setBitmapPatternPanelReopenKey] =
     useState(0);
@@ -160,6 +165,25 @@ export function KizkattGraphicEditorView({
     stylingControls.style.gradientFill ?? DEFAULT_GRADIENT_FILL
   );
   const previousGradientRef = useRef(stylingControls.style.gradientFill);
+  const selectedBitmapTextureEntry = stylingControls.style.bitmapTexture
+    ? textureEntryById.get(stylingControls.style.bitmapTexture.textureId)
+    : undefined;
+
+  useEffect(() => {
+    if (!selectedBitmapTextureEntry) {
+      return;
+    }
+
+    storeTextureCollectionId(selectedBitmapTextureEntry.collectionId);
+    storeTextureCategoryId(
+      selectedBitmapTextureEntry.collectionId,
+      selectedBitmapTextureEntry.categoryId
+    );
+    storeTextureId(
+      selectedBitmapTextureEntry.collectionId,
+      selectedBitmapTextureEntry.texture.id
+    );
+  }, [selectedBitmapTextureEntry]);
 
   useEffect(() => {
     if (!simpleTraceOpen || !simpleTraceControls?.sourceElement.src) {
@@ -284,10 +308,12 @@ export function KizkattGraphicEditorView({
   const visibleBitmapTexture =
     stylingControls.style.bitmapTexture ??
     lastBitmapTextureRef.current;
+  const visibleBitmapCatalogTexture = visibleBitmapTexture
+    ? getTextureById(visibleBitmapTexture.textureId)
+    : null;
   const visibleBitmapTextureTypeName =
-    textureTypeNameOverride ??
     (visibleBitmapTexture
-      ? textureTypeNameById.get(visibleBitmapTexture.textureId)
+      ? textureEntryById.get(visibleBitmapTexture.textureId)?.collectionName
       : undefined) ??
     defaultTextureTypeName;
   const showObjectPanel =
@@ -343,10 +369,16 @@ export function KizkattGraphicEditorView({
     );
   };
   const openBitmapPatternPanel = () => {
-    setTextureTypeNameOverride(null);
-    const selectedTextureId = getStoredTextureId(
-      defaultCollectionId
-    );
+    const currentTexture = stylingControls.style.bitmapTexture;
+    const storedCollectionId = getStoredTextureCollectionId();
+    const rememberedCollectionId = textureCatalog.collections.some(
+      (collection) => collection.id === storedCollectionId
+    )
+      ? storedCollectionId
+      : defaultCollectionId;
+    const selectedTextureId = rememberedCollectionId
+      ? getStoredTextureId(rememberedCollectionId)
+      : null;
     const selectedCatalogTexture = selectedTextureId
       ? getTextureById(selectedTextureId)
       : null;
@@ -354,17 +386,13 @@ export function KizkattGraphicEditorView({
       stylingControls.selectedElements.length === EMPTY_COLLECTION_LENGTH ||
       stylingControls.selectedElements.every(canElementUseBackground);
 
-    if (selectedCatalogTexture && canApplyToCurrentTarget) {
-      const currentTexture = stylingControls.style.bitmapTexture;
-      const texture =
-        currentTexture?.textureId === selectedCatalogTexture.id
-          ? currentTexture
-          : createBitmapTextureFillFromCatalogTexture({
-              targetSize: bitmapTextureTargetSize,
-              texture: selectedCatalogTexture
-            });
-
-      applyBitmapTexture(texture);
+    if (!currentTexture && selectedCatalogTexture && canApplyToCurrentTarget) {
+      applyBitmapTexture(
+        createBitmapTextureFillFromCatalogTexture({
+          targetSize: bitmapTextureTargetSize,
+          texture: selectedCatalogTexture
+        })
+      );
       stylingControls.onStyleChangeEnd();
     }
 
@@ -547,7 +575,6 @@ export function KizkattGraphicEditorView({
           getTextureThumbnailSource={getTextureThumbnailSource}
           initialCollectionId={defaultCollectionId}
           onClose={() => setTextureLibraryOpen(false)}
-          onCollectionChange={setTextureTypeNameOverride}
           onTextureChange={(texture) => {
             applyBitmapTexture(texture);
             stylingControls.onStyleChangeEnd();
@@ -562,12 +589,21 @@ export function KizkattGraphicEditorView({
           onChange={applyBitmapTexture}
           onChangeEnd={stylingControls.onStyleChangeEnd}
           onClose={() => setBitmapPatternPanelOpen(false)}
+          onImportTexture={(request) => {
+            if (!addTexture) {
+              throw new Error("Texture imports are not configured.");
+            }
+
+            return addTexture(request);
+          }}
           onOpenLibrary={openTextureLibrary}
           reopenKey={bitmapPatternPanelReopenKey}
           resolveTextureSource={getTextureSource}
           targetSize={bitmapTextureTargetSize}
           targetTransform={bitmapTextureTargetTransform}
           texture={visibleBitmapTexture}
+          textureCollections={textureCatalog.collections}
+          textureMetadata={visibleBitmapCatalogTexture ?? undefined}
           textureTypeName={visibleBitmapTextureTypeName}
         />
       )}
