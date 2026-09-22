@@ -162,6 +162,33 @@
   box-shadow: none;
 }
 
+.kizkatt-gradient-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kizkatt-gradient-preview-actions button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--kizkatt-divider);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--kizkatt-selection) 12%, transparent);
+}
+
+.kizkatt-gradient-preview-actions button[aria-pressed="true"] {
+  color: var(--kizkatt-selection);
+  box-shadow: inset 0 0 0 1px var(--kizkatt-selection);
+}
+
+.kizkatt-gradient-preview-actions .kizkatt-tool-icon {
+  width: 18px;
+  height: 18px;
+}
+
 .kizkatt-gradient-transform-preview {
   position: relative;
   isolation: isolate;

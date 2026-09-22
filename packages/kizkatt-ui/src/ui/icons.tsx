@@ -353,6 +353,16 @@ export const NodeEditIcon = createIcon(
   </g>
 );
 
+export const FreeDeformationIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path d="m5 6 13-2 2 14-15 2Z" />
+    <rect x="3.5" y="4.5" width="3" height="3" rx=".5" fill="currentColor" />
+    <rect x="16.5" y="2.5" width="3" height="3" rx=".5" fill="currentColor" />
+    <rect x="18.5" y="16.5" width="3" height="3" rx=".5" fill="currentColor" />
+    <rect x="3.5" y="18.5" width="3" height="3" rx=".5" fill="currentColor" />
+  </g>
+);
+
 export const NodeAddPointIcon = createIcon(
   <g strokeWidth="1.7">
     <path d="M4.5 4.5h7v7h-7z" />

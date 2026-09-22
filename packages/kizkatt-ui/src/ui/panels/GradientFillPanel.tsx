@@ -27,6 +27,8 @@ import {
   ConicGradientIcon,
   DefaultGradientIcon,
   DiamondGradientIcon,
+  EyeIcon,
+  FreeDeformationIcon,
   GradientPadIcon,
   GradientReflectIcon,
   GradientRepeatIcon,
@@ -58,6 +60,31 @@ const SPREAD_ICONS: Record<GradientSpread, ReactNode> = {
   reflect: GradientReflectIcon,
   repeat: GradientRepeatIcon
 };
+
+function ToggleButton({
+  active,
+  children,
+  label,
+  onClick
+}: {
+  active: boolean;
+  children: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      className={active ? "is-active" : undefined}
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -228,6 +255,19 @@ export function GradientFillPanel({
     replace(next);
     commit();
   };
+  const resetTransformations = () => {
+    const defaults = getDefaultGradientFill(gradient.type);
+
+    update({
+      centerX: defaults.centerX,
+      centerY: defaults.centerY,
+      rotation: defaults.rotation,
+      scaleX: defaults.scaleX,
+      scaleY: defaults.scaleY,
+      skew: defaults.skew
+    });
+    commit();
+  };
   const removeSelectedStop = () => {
     if (!selectedStop || gradient.stops.length <= 2) return;
     const nextStop = gradient.stops.find(
@@ -310,27 +350,31 @@ export function GradientFillPanel({
                 </span>
               </label>
 
-              <div className="kizkatt-preview-overlay-options">
-                <label className="kizkatt-preview-overlay-toggle">
-                  <input
-                    type="checkbox"
-                    checked={overlayContrast}
-                    onChange={(event) =>
-                      setOverlayContrast(event.target.checked)
-                    }
-                  />
-                  <span>{labels.overlayContrast}</span>
-                </label>
-                <label className="kizkatt-preview-overlay-toggle">
-                  <input
-                    type="checkbox"
-                    checked={gradientFreeDeformation}
-                    onChange={(event) =>
-                      setGradientFreeDeformation(event.target.checked)
-                    }
-                  />
-                  <span>{labels.freeDeformation}</span>
-                </label>
+              <div className="kizkatt-gradient-preview-actions">
+                <ToggleButton
+                  active={overlayContrast}
+                  label={labels.overlayContrast}
+                  onClick={() => setOverlayContrast(!overlayContrast)}
+                >
+                  {EyeIcon}
+                </ToggleButton>
+                <ToggleButton
+                  active={gradientFreeDeformation}
+                  label={labels.freeDeformation}
+                  onClick={() =>
+                    setGradientFreeDeformation(!gradientFreeDeformation)
+                  }
+                >
+                  {FreeDeformationIcon}
+                </ToggleButton>
+                <button
+                  type="button"
+                  aria-label={labels.resetTransformations}
+                  title={labels.resetTransformations}
+                  onClick={resetTransformations}
+                >
+                  {ResetIcon}
+                </button>
               </div>
 
               <GradientTransformPreview

@@ -17,6 +17,8 @@ export * from "./components/BitmapTextureCropPreview";
 export * from "./components/GradientTransformPreview";
 export * from "./components/EditorCanvas";
 export * from "./components/TextureSourceProvider";
+export * from "./components/TextureInfoDialog";
+export * from "./components/TextureImportDialog";
 export * from "./components/TextEditor";
 export * from "./config/defaultSettings";
 export {

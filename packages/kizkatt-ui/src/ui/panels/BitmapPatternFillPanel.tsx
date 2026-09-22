@@ -7,9 +7,17 @@ import {
   rgbToHexColor,
   type BitmapTextureFill,
   type BitmapTextureSize,
-  type BitmapTextureTargetTransform
+  type BitmapTextureTargetTransform,
+  type TextureCatalogTexture
 } from "kizkatt-graphic-engine";
 import { BitmapTextureCropPreview } from "../../components/BitmapTextureCropPreview";
+import { TextureInfoDialog } from "../../components/TextureInfoDialog";
+import {
+  TextureImportDialog,
+  type TextureImportCollectionOption,
+  type TextureImportMetadata,
+  type TextureImportRequest
+} from "../../components/TextureImportDialog";
 import { useBitmapTextureDraft } from "../../hooks/useBitmapTextureDraft";
 import {
   getCoveredImagePixelColor,
@@ -22,7 +30,10 @@ import { useI18n } from "../../i18n";
 import {
   ChevronDownIcon,
   EyedropperIcon,
+  EyeIcon,
+  FreeDeformationIcon,
   ImageIcon,
+  InfoIcon,
   MirrorHorizontalIcon,
   MirrorVerticalIcon,
   ResetIcon,
@@ -143,6 +154,7 @@ function ToggleButton({
   return (
     <button
       type="button"
+      aria-pressed={active}
       className={active ? "is-active" : undefined}
       aria-label={label}
       title={label}
@@ -157,12 +169,15 @@ export function BitmapPatternFillPanel({
   onChange,
   onChangeEnd: commitAppliedChange,
   onClose,
+  onImportTexture,
   onOpenLibrary,
   reopenKey,
   resolveTextureSource,
   targetSize,
   targetTransform,
   texture: textureValue,
+  textureCollections,
+  textureMetadata,
   textureTypeName
 }: {
   onChange: (
@@ -171,12 +186,15 @@ export function BitmapPatternFillPanel({
   ) => void;
   onChangeEnd: () => void;
   onClose: () => void;
+  onImportTexture: (request: TextureImportRequest) => TextureCatalogTexture;
   onOpenLibrary: (anchor: HTMLButtonElement) => void;
   reopenKey: number;
   resolveTextureSource?: (textureId: string) => string | null;
   targetSize: BitmapTextureSize;
   targetTransform?: BitmapTextureTargetTransform;
   texture?: BitmapTextureFill;
+  textureCollections: readonly TextureImportCollectionOption[];
+  textureMetadata?: Pick<TextureCatalogTexture, "author" | "from">;
   textureTypeName: string;
 }) {
   const { strings } = useI18n();
@@ -195,6 +213,12 @@ export function BitmapPatternFillPanel({
     });
   const [pickingTransparencyColor, setPickingTransparencyColor] =
     useState(false);
+  const [pendingImport, setPendingImport] = useState<{
+    naturalSize: BitmapTextureSize;
+    originalFileName: string;
+    source: string;
+  } | null>(null);
+  const [textureInfoOpen, setTextureInfoOpen] = useState(false);
   const { apply, texture, update } = useBitmapTextureDraft({
     onCommit: commitAppliedChange,
     onPreview: onChange,
@@ -204,6 +228,8 @@ export function BitmapPatternFillPanel({
 
   useEffect(() => {
     setPickingTransparencyColor(false);
+    setPendingImport(null);
+    setTextureInfoOpen(false);
   }, [reopenKey, textureValue?.textureId]);
 
   const onChangeEnd = apply;
@@ -255,6 +281,8 @@ export function BitmapPatternFillPanel({
 
   const close = () => {
     apply();
+    setPendingImport(null);
+    setTextureInfoOpen(false);
     onClose();
   };
   const updateNumber = (
@@ -283,16 +311,37 @@ export function BitmapPatternFillPanel({
       height: texture.height,
       width: texture.width
     });
+    setPendingImport({
+      naturalSize,
+      originalFileName: file.name,
+      source: sourceData
+    });
+  };
+  const importTexture = (metadata: TextureImportMetadata) => {
+    if (!pendingImport) {
+      return;
+    }
+
+    const importedTexture = onImportTexture({
+      ...metadata,
+      ...pendingImport
+    });
+
     update(
       createBitmapTextureFill({
         base: texture,
-        name: file.name.replace(/\.[^.]+$/, ""),
-        naturalSize,
-        source: sourceData,
+        name: importedTexture.name,
+        naturalSize: pendingImport.naturalSize,
+        source: undefined,
         targetSize,
-        textureId: `custom:${file.name}:${file.lastModified}`
+        textureId: importedTexture.id
       })
     );
+    onChangeEnd();
+    setPendingImport(null);
+  };
+  const resetCropTransformations = () => {
+    update(getResetBitmapTextureTransform(sourceNaturalSize));
     onChangeEnd();
   };
   const pickTransparencyColor = (
@@ -327,23 +376,11 @@ export function BitmapPatternFillPanel({
   };
 
   return (
-    <Panel
+    <>
+      <Panel
       id={PANEL_ID}
       closable
       defaultOrientation="vertical"
-      headerActions={(
-        <button
-          type="button"
-          aria-label={strings.bitmapPattern.resetTransformations}
-          title={strings.bitmapPattern.resetTransformations}
-          onClick={() => {
-            update(getResetBitmapTextureTransform(sourceNaturalSize));
-            onChangeEnd();
-          }}
-        >
-          {ResetIcon}
-        </button>
-      )}
       minSize={{ height: 540, width: 620 }}
       onClose={close}
       orientationChangeable={false}
@@ -365,7 +402,13 @@ export function BitmapPatternFillPanel({
               <div className="kizkatt-bitmap-pattern-heading-row">
                 <div className="kizkatt-bitmap-pattern-name">
                   <span>{strings.bitmapPattern.name}</span>
-                  <span>
+                  <span
+                    className={`kizkatt-bitmap-pattern-name-controls${
+                      textureMetadata?.author || textureMetadata?.from
+                        ? " has-info"
+                        : ""
+                    }`}
+                  >
                     <button
                       type="button"
                       className="kizkatt-bitmap-pattern-fill-button"
@@ -391,6 +434,17 @@ export function BitmapPatternFillPanel({
                         )
                       }
                     />
+                    {(textureMetadata?.author || textureMetadata?.from) && (
+                      <button
+                        type="button"
+                        className="kizkatt-bitmap-pattern-info-button"
+                        aria-label={strings.textureLibrary.informationTooltip}
+                        title={strings.textureLibrary.informationTooltip}
+                        onClick={() => setTextureInfoOpen(true)}
+                      >
+                        {InfoIcon}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="kizkatt-bitmap-pattern-upload-button"
@@ -411,27 +465,31 @@ export function BitmapPatternFillPanel({
                 </div>
               </div>
 
-              <div className="kizkatt-preview-overlay-options">
-                <label className="kizkatt-preview-overlay-toggle">
-                  <input
-                    type="checkbox"
-                    checked={overlayContrast}
-                    onChange={(event) =>
-                      setOverlayContrast(event.target.checked)
-                    }
-                  />
-                  <span>{strings.bitmapPattern.overlayContrast}</span>
-                </label>
-                <label className="kizkatt-preview-overlay-toggle">
-                  <input
-                    type="checkbox"
-                    checked={textureFreeDeformation}
-                    onChange={(event) =>
-                      setTextureFreeDeformation(event.target.checked)
-                    }
-                  />
-                  <span>{strings.bitmapPattern.freeDeformation}</span>
-                </label>
+              <div className="kizkatt-texture-preview-actions">
+                <ToggleButton
+                  active={overlayContrast}
+                  label={strings.bitmapPattern.overlayContrast}
+                  onClick={() => setOverlayContrast(!overlayContrast)}
+                >
+                  {EyeIcon}
+                </ToggleButton>
+                <ToggleButton
+                  active={textureFreeDeformation}
+                  label={strings.bitmapPattern.freeDeformation}
+                  onClick={() =>
+                    setTextureFreeDeformation(!textureFreeDeformation)
+                  }
+                >
+                  {FreeDeformationIcon}
+                </ToggleButton>
+                <button
+                  type="button"
+                  aria-label={strings.bitmapPattern.resetTransformations}
+                  title={strings.bitmapPattern.resetTransformations}
+                  onClick={resetCropTransformations}
+                >
+                  {ResetIcon}
+                </button>
               </div>
 
               <BitmapTextureCropPreview
@@ -914,6 +972,22 @@ export function BitmapPatternFillPanel({
           {actions}
         </section>
       )}
-    </Panel>
+      </Panel>
+      {pendingImport && (
+        <TextureImportDialog
+          collections={textureCollections}
+          fileName={pendingImport.originalFileName}
+          onCancel={() => setPendingImport(null)}
+          onConfirm={importTexture}
+        />
+      )}
+      {textureInfoOpen && textureMetadata && (
+        <TextureInfoDialog
+          author={textureMetadata.author}
+          from={textureMetadata.from}
+          onClose={() => setTextureInfoOpen(false)}
+        />
+      )}
+    </>
   );
 }

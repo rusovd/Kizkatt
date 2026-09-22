@@ -105,3 +105,83 @@
   margin: 0;
   width: 17px;
 }
+
+.kizkatt-texture-import-dialog {
+  width: min(460px, calc(100vw - 32px));
+}
+
+.kizkatt-texture-import-fields {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.kizkatt-texture-import-fields label {
+  display: grid;
+  gap: 5px;
+  color: var(--kizkatt-panel-label);
+  font-size: 0.82rem;
+}
+
+.kizkatt-texture-import-fields input,
+.kizkatt-texture-import-fields select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 8px;
+  outline: none;
+  background: var(--kizkatt-control-bg-hover);
+  color: var(--kizkatt-text-primary);
+  font: inherit;
+}
+
+.kizkatt-texture-import-fields input:focus-visible,
+.kizkatt-texture-import-fields select:focus-visible {
+  border-color: var(--kizkatt-selection);
+}
+
+.kizkatt-texture-import-fields input[readonly] {
+  color: var(--kizkatt-text-secondary);
+}
+
+.kizkatt-texture-import-hint {
+  margin-top: 14px !important;
+  font-size: 0.8rem;
+}
+
+.kizkatt-texture-import-dialog button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.kizkatt-texture-info-dialog {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.kizkatt-texture-info-dialog dl {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0 0;
+}
+
+.kizkatt-texture-info-dialog dl > div {
+  display: grid;
+  gap: 5px;
+}
+
+.kizkatt-texture-info-dialog dt {
+  color: var(--kizkatt-panel-label);
+  font-size: 0.78rem;
+}
+
+.kizkatt-texture-info-dialog dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--kizkatt-text-primary);
+}
+
+.kizkatt-texture-info-dialog a {
+  color: var(--kizkatt-selection);
+}

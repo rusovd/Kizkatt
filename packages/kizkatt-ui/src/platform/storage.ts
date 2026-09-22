@@ -54,6 +54,8 @@ const LAST_TEXTURE_BY_COLLECTION_STORAGE_KEY =
   "kizkatt:last-texture-by-collection";
 const LAST_TEXTURE_CATEGORY_BY_COLLECTION_STORAGE_KEY =
   "kizkatt:last-texture-category-by-collection";
+const LAST_TEXTURE_COLLECTION_STORAGE_KEY =
+  "kizkatt:last-texture-collection";
 const CUSTOM_GRADIENT_PRESETS_STORAGE_KEY = "kizkatt:custom-gradient-presets";
 const LAST_GRADIENT_PRESET_STORAGE_KEY = "kizkatt:last-gradient-preset";
 
@@ -104,6 +106,19 @@ export function storeTextureCategoryId(
     categoryId,
     storage
   );
+}
+
+export function getStoredTextureCollectionId(
+  storage = window.localStorage
+) {
+  return storage.getItem(LAST_TEXTURE_COLLECTION_STORAGE_KEY);
+}
+
+export function storeTextureCollectionId(
+  collectionId: string,
+  storage = window.localStorage
+) {
+  storage.setItem(LAST_TEXTURE_COLLECTION_STORAGE_KEY, collectionId);
 }
 
 export function getStoredTextureId(

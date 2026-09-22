@@ -15,8 +15,10 @@ import {
 } from "kizkatt-graphic-engine";
 import {
   getStoredTextureCategoryId,
+  getStoredTextureCollectionId,
   getStoredTextureId,
   storeTextureCategoryId,
+  storeTextureCollectionId,
   storeTextureId
 } from "../../platform/storage";
 
@@ -25,6 +27,31 @@ import { CheckIcon, ChevronDownIcon, ImageIcon } from "../icons";
 import { Panel } from "../../components/Panel";
 
 const PANEL_ID = "texture-library";
+
+function getCategoryOptions(
+  catalog: TextureCatalog,
+  collectionId: string
+) {
+  return catalog.collections
+    .filter(
+      (collection) =>
+        collectionId === "all" || collection.id === collectionId
+    )
+    .flatMap((collection) =>
+      collection.categories.map((category) => ({
+        categoryId: category.id,
+        collectionId: collection.id,
+        label:
+          collectionId === "all"
+            ? `${category.name} (${collection.name})`
+            : category.name,
+        value:
+          collectionId === "all"
+            ? `${collection.id}:${category.id}`
+            : category.id
+      }))
+    );
+}
 
 function TextureCollectionPicker({
   catalog,
@@ -102,18 +129,38 @@ function TextureCollectionPicker({
 
 function getInitialCategoryId(catalog: TextureCatalog, collectionId: string) {
   const storedCategoryId = getStoredTextureCategoryId(collectionId);
-  const categoryExists = catalog.collections
-    .filter(
-      (collection) =>
-        collectionId === "all" || collection.id === collectionId
-    )
-    .some((collection) =>
-      collection.categories.some(
-        (category) => category.id === storedCategoryId
-      )
-    );
+  const options = getCategoryOptions(catalog, collectionId);
+  const storedOption = options.find(
+    (option) => option.value === storedCategoryId
+  );
 
-  return categoryExists ? storedCategoryId ?? "all" : "all";
+  if (storedOption) {
+    return storedOption.value;
+  }
+
+  
+  const legacyStoredOption = options.find(
+    (option) => option.categoryId === storedCategoryId
+  );
+
+  return legacyStoredOption?.value ?? "all";
+}
+
+function getInitialCollectionId(
+  catalog: TextureCatalog,
+  fallbackCollectionId: string,
+  activeEntry?: TextureCatalogEntry
+) {
+  const collectionId =
+    activeEntry?.collectionId ??
+    getStoredTextureCollectionId() ??
+    fallbackCollectionId;
+
+  return catalog.collections.some(
+    (collection) => collection.id === collectionId
+  )
+    ? collectionId
+    : fallbackCollectionId;
 }
 
 export function TextureLibraryPopover({
@@ -149,33 +196,52 @@ export function TextureLibraryPopover({
     () => getTextureCatalogEntries(catalog),
     [catalog]
   );
-  const [search, setSearch] = useState("");
-  const [collectionId, setCollectionId] = useState(initialCollectionId);
-  const [categoryId, setCategoryId] = useState(() =>
-    getInitialCategoryId(catalog, initialCollectionId)
-  );
-  const [thumbnailColumns, setThumbnailColumns] = useState(2);
-  const filteredEntries = useMemo(
-    () =>
-      filterTextureCatalogEntries(entries, {
-        categoryId,
-        collectionId,
-        search
-      }),
-    [categoryId, collectionId, entries, search]
-  );
-  const groupedEntries = useMemo(
-    () => groupTextureCatalogEntries(filteredEntries),
-    [filteredEntries]
-  );
   const activeCatalogTexture = activeTexture
     ? getTextureById(activeTexture.textureId)
     : null;
   const activeEntry = activeCatalogTexture
     ? entries.find((entry) => entry.texture.id === activeCatalogTexture.id)
-    : null;
+    : undefined;
+  const openingCollectionId = getInitialCollectionId(
+    catalog,
+    initialCollectionId,
+    activeEntry
+  );
+  const [search, setSearch] = useState("");
+  const [collectionId, setCollectionId] = useState(openingCollectionId);
+  const [categoryId, setCategoryId] = useState(() =>
+    activeEntry?.collectionId === openingCollectionId
+      ? activeEntry.categoryId
+      : getInitialCategoryId(catalog, openingCollectionId)
+  );
+  const [thumbnailColumns, setThumbnailColumns] = useState(2);
+  const categoryOptions = useMemo(
+    () => getCategoryOptions(catalog, collectionId),
+    [catalog, collectionId]
+  );
+  const selectedCategory = categoryOptions.find(
+    (option) => option.value === categoryId
+  );
+  const filteredEntries = useMemo(
+    () =>
+      filterTextureCatalogEntries(entries, {
+        categoryId: selectedCategory?.categoryId ?? categoryId,
+        collectionId: selectedCategory?.collectionId ?? collectionId,
+        search
+      }),
+    [categoryId, collectionId, entries, search, selectedCategory]
+  );
+  const groupedEntries = useMemo(
+    () => groupTextureCatalogEntries(filteredEntries),
+    [filteredEntries]
+  );
+  const rememberedCollectionId = getStoredTextureCollectionId();
   const rememberedTextureId =
-    collectionId === "all" ? null : getStoredTextureId(collectionId);
+    collectionId === "all"
+      ? rememberedCollectionId
+        ? getStoredTextureId(rememberedCollectionId)
+        : null
+      : getStoredTextureId(collectionId);
   const highlightedTextureId =
     activeEntry &&
     (collectionId === "all" || activeEntry.collectionId === collectionId)
@@ -183,9 +249,26 @@ export function TextureLibraryPopover({
       : rememberedTextureId;
 
   useEffect(() => {
-    setCollectionId(initialCollectionId);
-    setCategoryId(getInitialCategoryId(catalog, initialCollectionId));
-  }, [catalog, initialCollectionId, reopenKey]);
+    const nextCollectionId = getInitialCollectionId(
+      catalog,
+      initialCollectionId,
+      activeEntry
+    );
+
+    setCollectionId(nextCollectionId);
+    setCategoryId(
+      activeEntry?.collectionId === nextCollectionId
+        ? activeEntry.categoryId
+        : getInitialCategoryId(catalog, nextCollectionId)
+    );
+  }, [
+    activeEntry?.categoryId,
+    activeEntry?.collectionId,
+    activeEntry?.texture.id,
+    catalog,
+    initialCollectionId,
+    reopenKey
+  ]);
 
   useEffect(() => {
     const closeOnOutsidePointerDown = (event: PointerEvent) => {
@@ -206,6 +289,8 @@ export function TextureLibraryPopover({
   }, [onClose]);
 
   const selectCatalogTexture = (entry: TextureCatalogEntry) => {
+    storeTextureCollectionId(entry.collectionId);
+    storeTextureCategoryId(entry.collectionId, entry.categoryId);
     storeTextureId(entry.collectionId, entry.texture.id);
     onCollectionChange?.(entry.collectionName);
     onTextureChange(
@@ -271,17 +356,11 @@ export function TextureLibraryPopover({
             }}
           >
             <option value="all">{strings.textureLibrary.allCategories}</option>
-            {catalog.collections
-              .filter(
-                (collection) =>
-                  collectionId === "all" || collection.id === collectionId
-              )
-              .flatMap((collection) => collection.categories)
-              .map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
+            {categoryOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
 
           <div
@@ -300,6 +379,18 @@ export function TextureLibraryPopover({
                 <div className="kizkatt-texture-grid">
                   {group.map((entry) => {
                     const source = getTextureThumbnailSource(entry.texture);
+                    const title = [
+                      entry.texture.name,
+                      entry.texture.originalFileName
+                        ? `${strings.textureLibrary.originalFileName}: ${entry.texture.originalFileName}`
+                        : null,
+                      entry.texture.author
+                        ? `${strings.textureLibrary.author}: ${entry.texture.author}`
+                        : null,
+                      entry.texture.from
+                        ? `${strings.textureLibrary.from}: ${entry.texture.from}`
+                        : null
+                    ].filter(Boolean).join("\n");
 
                     return (
                       <button
@@ -311,7 +402,7 @@ export function TextureLibraryPopover({
                             : undefined
                         }
                         aria-label={entry.texture.name}
-                        title={entry.texture.name}
+                        title={title}
                         onClick={() => selectCatalogTexture(entry)}
                       >
                         {source ? (
