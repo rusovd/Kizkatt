@@ -386,13 +386,17 @@ export function KizkattGraphicEditorView({
       stylingControls.selectedElements.length === EMPTY_COLLECTION_LENGTH ||
       stylingControls.selectedElements.every(canElementUseBackground);
 
-    if (!currentTexture && selectedCatalogTexture && canApplyToCurrentTarget) {
-      applyBitmapTexture(
-        createBitmapTextureFillFromCatalogTexture({
-          targetSize: bitmapTextureTargetSize,
-          texture: selectedCatalogTexture
-        })
-      );
+    const rememberedTexture =
+      lastBitmapTextureRef.current ??
+      (selectedCatalogTexture
+        ? createBitmapTextureFillFromCatalogTexture({
+            targetSize: bitmapTextureTargetSize,
+            texture: selectedCatalogTexture
+          })
+        : null);
+
+    if (!currentTexture && rememberedTexture && canApplyToCurrentTarget) {
+      applyBitmapTexture(rememberedTexture);
       stylingControls.onStyleChangeEnd();
     }
 
@@ -432,6 +436,22 @@ export function KizkattGraphicEditorView({
     setGradientPanelOpen(true);
     setGradientPanelReopenKey((value) => value + 1);
   };
+
+  useEffect(() => {
+    const request = state.fillSettingsRequest;
+
+    if (!request) {
+      return;
+    }
+
+    if (request.fillStyle === "gradient") {
+      openGradientPanel();
+      return;
+    }
+
+    openBitmapPatternPanel();
+  }, [state.fillSettingsRequest?.id]);
+
   const openGradientLibrary = (anchor: HTMLButtonElement) => {
     setGradientLibraryAnchor(anchor);
     setGradientLibraryOpen(true);

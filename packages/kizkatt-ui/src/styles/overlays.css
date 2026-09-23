@@ -50,6 +50,35 @@
   cursor: nwse-resize;
 }
 
+.kizkatt-contextual-fill-control {
+  color: var(--kizkatt-transform-icon);
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.kizkatt-contextual-fill-control > rect {
+  fill: var(--kizkatt-handle-bg);
+  stroke: var(--kizkatt-selection-strong);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.kizkatt-contextual-fill-control .kizkatt-tool-icon {
+  display: block;
+  height: 24px;
+  pointer-events: none;
+  width: 24px;
+}
+
+.kizkatt-contextual-fill-control:hover > rect,
+.kizkatt-contextual-fill-control:focus-visible > rect {
+  fill: var(--kizkatt-selection);
+}
+
+.kizkatt-contextual-fill-control:focus-visible {
+  outline: none;
+}
+
 .kizkatt-skew-handle,
 .kizkatt-corner-rotate-handle {
   pointer-events: all;

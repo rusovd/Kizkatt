@@ -252,8 +252,14 @@ export function finishPointerInteraction(
       MIN_SELECT_DRAG_DISTANCE;
 
     if (isClick && activeInteraction.canToggleTransformMode) {
-      setSelectionTransformMode((mode) =>
-        mode === "resize" ? "skew" : "resize"
+      const nextTransformMode =
+        context.selectionTransformMode === "resize" ? "skew" : "resize";
+
+      setSelectionTransformMode(nextTransformMode);
+      context.showContextualFillControl(
+        nextTransformMode === "skew" && activeInteraction.selectedIds.length === 1
+          ? activeInteraction.selectedIds[0] ?? null
+          : null
       );
     }
 

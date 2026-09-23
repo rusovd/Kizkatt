@@ -237,11 +237,30 @@ export function revertElementToObjectBase(
 
   const base = cloneObjectBase(element.base);
   const { center, ...baseElement } = base;
+  const {
+    groupId,
+    groupName,
+    id,
+    lineCombinationId,
+    name,
+    src,
+    svgContent,
+    svgUseElementStyle,
+    svgViewBox
+  } = element;
 
   return {
-    ...element,
     ...baseElement,
     base,
+    groupId,
+    groupName,
+    id,
+    lineCombinationId,
+    name,
+    src,
+    svgContent,
+    svgUseElementStyle,
+    svgViewBox,
     x: center.x - base.width / 2,
     y: center.y - base.height / 2
   };

@@ -60,5 +60,6 @@ export type PointerHandlerContext = UseToolPointerHandlersArgs & {
     event: PointerEvent<SVGSVGElement>,
     ignoredIds?: Iterable<string>
   ) => Point;
+  showContextualFillControl: (elementId: string | null) => void;
   updateInteraction: (nextInteraction: Interaction | null) => void;
 };

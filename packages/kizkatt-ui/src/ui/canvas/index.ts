@@ -1,4 +1,5 @@
 export { CanvasGrid } from "./CanvasGrid";
+export { ContextualFillControl } from "./ContextualFillControl";
 export {
   CENTER_DRAG_CURSOR,
   getCanvasCursor,

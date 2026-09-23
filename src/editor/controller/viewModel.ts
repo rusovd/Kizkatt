@@ -10,6 +10,7 @@ import type {
   DocumentControls,
   EditorCommandControls,
   EditorDisplayMode,
+  ContextualFillStyle,
   ObjectPanelProps,
   StylingPanelProps,
   TextEditorProps,
@@ -44,6 +45,10 @@ export type KizkattGraphicEditorViewModel = {
   selectionGeometryControls: ObjectPanelProps | null;
   state: {
     activeDisplayMode: EditorDisplayMode | null;
+    fillSettingsRequest: {
+      fillStyle: ContextualFillStyle;
+      id: number;
+    } | null;
     isLoading: boolean;
     menuOpen: boolean;
     theme: KizkattTheme;

@@ -2,6 +2,7 @@ import { describe, it } from "vitest";
 import { storeCanvasState } from "../platform/canvasStorage";
 import {
   CENTER_DRAG_CURSOR,
+  DEFAULT_BITMAP_TEXTURE_FILL,
   KizkattGraphicEditor,
   canGroupSelection,
   canUngroupSelection,
@@ -1328,6 +1329,37 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       x: element.x,
       y: element.y
     });
+  });
+
+  it("removes texture data that is absent from the object base", () => {
+    const element: KizkattElement = {
+      angle: 0,
+      backgroundColor: "#653b00",
+      fillStyle: "solid",
+      height: 40,
+      id: "rectangle",
+      opacity: 100,
+      strokeColor: "#f08c00",
+      strokeStyle: "solid",
+      strokeWidth: 2,
+      type: "rectangle",
+      width: 80,
+      x: 10,
+      y: 20
+    };
+    const based = withUpdatedObjectBase(element);
+    const restored = revertElementToObjectBase({
+      ...based,
+      bitmapTexture: {
+        ...DEFAULT_BITMAP_TEXTURE_FILL,
+        name: "Abstract 001",
+        textureId: "abstract-001"
+      },
+      fillStyle: "monochromeTexture"
+    });
+
+    expect(restored.fillStyle).toBe("solid");
+    expect(restored).not.toHaveProperty("bitmapTexture");
   });
 
   it("does not duplicate immutable image and SVG sources in object bases", () => {

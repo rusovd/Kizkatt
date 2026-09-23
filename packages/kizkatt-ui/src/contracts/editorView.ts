@@ -4,6 +4,7 @@ import type {
   Bounds,
   ContextMenuState,
   Dpi,
+  FillStyle,
   GridSettings,
   Interaction,
   KizkattElement,
@@ -236,6 +237,17 @@ export type KizkattPreviewTransformInteraction = Extract<
   { originalElements: KizkattElement[] }
 >;
 
+export type ContextualFillStyle = Extract<
+  FillStyle,
+  "gradient" | "monochromeTexture"
+>;
+
+export type ContextualFillControlState = {
+  element: KizkattElement;
+  fillStyle: ContextualFillStyle;
+  onActivate: () => void;
+};
+
 export type KizkattGraphicEditorCanvasViewModel = {
   activeDisplayMode: EditorDisplayMode | null;
   arrowMarkerId: string;
@@ -244,6 +256,7 @@ export type KizkattGraphicEditorCanvasViewModel = {
   canvasClassName: string;
   canvasCursor: string;
   canvasState: { elements: KizkattElement[] };
+  contextualFillControl: ContextualFillControlState | null;
   displayElements: KizkattElement[];
   getElementSelectionRenderState: (
     element: KizkattElement

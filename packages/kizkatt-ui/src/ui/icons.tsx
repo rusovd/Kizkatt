@@ -157,24 +157,16 @@ export const PolylineIcon = createIcon(
 );
 
 export const TextureIcon = createIcon(
-  <g>
+  <g strokeWidth="1.7">
     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-    <path fill="currentColor" d="M4 4h3.1l.8 1.1-.7 1.4-2.9.2-.8-1.2z" />
-    <path fill="currentColor" d="M8.5 4h2.2l1 .8-.5 1.3-2.3.4-1-.9z" />
-    <path fill="currentColor" d="M12.5 4h3.7l1.1.8-.4 2-3.8.2-1.2-1.4z" />
-    <path fill="currentColor" d="M18 4h2l.7.9-.3 2.3-2.7-.1-.5-1.4z" />
-    <path fill="currentColor" d="M4 7.6h3.4l1.2 1.2-.5 2-3.6.2-1.1-1.3z" />
-    <path fill="currentColor" d="M9.1 7.3h2.8l1.2 1-.7 2.2-2.9.4-1.1-1.5z" />
-    <path fill="currentColor" d="M13.4 7.8h2.4l1.3 1.1-.5 1.7-2.7.4-1.1-1.2z" />
-    <path fill="currentColor" d="M17.6 8h2.6l.8 1-.5 2.3-3-.4-.7-1.5z" />
-    <path fill="currentColor" d="M4 11.8h2.5l1 1.1-.5 2.3-2.5.3-.9-1.5z" />
-    <path fill="currentColor" d="M8.1 11.8h3.6l1.1 1.3-.8 2.6-3.2.2-1.4-1.6z" />
-    <path fill="currentColor" d="M13.2 11.9h3.4l1.2 1.2-.7 2.4-3.3.5-1.3-1.6z" />
-    <path fill="currentColor" d="M18 12.1h2.2l.9 1-.4 2.2-2.7.3-.7-1.6z" />
-    <path fill="currentColor" d="M4 16.4h3l1.1 1.1-.4 2.5H4.6l-1-1.2z" />
-    <path fill="currentColor" d="M8.6 16.8h3l1 1.2-.5 2H8.8l-.8-1.1z" />
-    <path fill="currentColor" d="M13 16.8h3.5l1 1.2-.6 2h-3.5l-1-1.3z" />
-    <path fill="currentColor" d="M18 16.6h2.2l.8 1.2-.5 2.2h-2.7l-.6-1.3z" />
+    <rect x="4" y="3.5" width="16" height="17" rx="1" />
+    <rect x="6" y="5.5" width="12" height="13" rx=".5" />
+    <path d="M6 3.5V2M9 3.5V2M12 3.5V2M15 3.5V2M18 3.5V2" />
+    <path d="M6 22v-1.5M9 22v-1.5M12 22v-1.5M15 22v-1.5M18 22v-1.5" />
+    <path d="m6.8 8.2 2-1.7 2 1.7 2-1.7 2 1.7 2-1.7 1.2 1" />
+    <path d="m6.8 15.8 2 1.7 2-1.7 2 1.7 2-1.7 2 1.7 1.2-1" />
+    <path d="m12 8.9 3.1 3.1-3.1 3.1L8.9 12z" />
+    <path d="m12 10.8 1.2 1.2-1.2 1.2-1.2-1.2z" />
   </g>,
 );
 
@@ -296,46 +288,7 @@ export const AddGradientStopIcon = createIcon(
   </g>
 );
 
-export const MonochromeTextureIcon = createIcon(
-  <g>
-    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-
-    <path
-      fill="currentColor"
-      opacity=".35"
-      d="M4.5 2.5h3v15h-3a2.5 2.5 0 1 0 0 5h15.5V5.5H7.5v-3z"
-    />
-
-    <path
-      fill="currentColor"
-      d="M8.5 8h2.8v1.4H8.5z"
-    />
-    <path
-      fill="currentColor"
-      d="M12.7 8h2.8v1.4h-2.8z"
-    />
-    <path
-      fill="currentColor"
-      d="M16.9 8h2.8v1.4h-2.8z"
-    />
-
-    <circle
-      cx="12"
-      cy="15"
-      r="4"
-      fill="currentColor"
-      opacity=".12"
-    />
-
-    <circle
-      cx="16.2"
-      cy="15"
-      r="4"
-      fill="currentColor"
-      opacity=".65"
-    />
-  </g>,
-);
+export const MonochromeTextureIcon = TextureIcon;
 
 export const ShapeIcon = createIcon(
   <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">

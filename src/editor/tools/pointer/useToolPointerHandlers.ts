@@ -21,6 +21,8 @@ import {
 
 export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
   const [interaction, setInteraction] = useState<Interaction | null>(null);
+  const [contextualFillElementId, setContextualFillElementId] =
+    useState<string | null>(null);
   const [imagePreviewPoint, setImagePreviewPoint] = useState<Point | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
   const snapElementsRef = useRef(args.canvasState.elements);
@@ -36,6 +38,12 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
       setImagePreviewPoint(null);
     }
   }, [args.pendingImageSrc, args.tool]);
+
+  useEffect(() => {
+    if (args.tool !== "select") {
+      setContextualFillElementId(null);
+    }
+  }, [args.tool]);
 
   useEffect(
     () => () => {
@@ -89,6 +97,7 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
     ...args,
     getPointerWorldPoint,
     getSnappedPointerWorldPoint,
+    showContextualFillControl: setContextualFillElementId,
     updateInteraction
   };
 
@@ -150,6 +159,8 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
     if (event.button !== 0) {
       return;
     }
+
+    setContextualFillElementId(null);
 
     const activeInteraction = interactionRef.current;
 
@@ -284,6 +295,18 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
       return;
     }
 
+    if (args.tool === "select") {
+      const activeCanvasState = args.canvasStateRef.current;
+      const hitElement = findElementAtPoint(
+        activeCanvasState.elements,
+        getPointerWorldPoint(event)
+      );
+
+      setContextualFillElementId(hitElement?.id ?? null);
+      event.preventDefault();
+      return;
+    }
+
     if (args.tool !== "nodeEdit") {
       return;
     }
@@ -351,6 +374,8 @@ export function useToolPointerHandlers(args: UseToolPointerHandlersArgs) {
   };
 
   return {
+    contextualFillElementId,
+    dismissContextualFillControl: () => setContextualFillElementId(null),
     imagePreviewPoint,
     interaction,
     onDoubleClick,

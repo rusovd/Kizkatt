@@ -167,6 +167,7 @@ import {
 } from "kizkatt-graphic-engine";
 import { isBreakApartableSvgElement } from "kizkatt-graphic-engine";
 import type {
+  ContextualFillStyle,
   DocumentFormatDialogAction,
   DocumentFormatSelection,
   KizkattRenderElementOptions,
@@ -572,7 +573,12 @@ export function KizkattGraphicEditorController({
   const currentDocumentFormatRef = useRef<SceneFileFormat | null>(null);
   const currentDocumentArchiveRef = useRef(true);
   const currentDocumentNameRef = useRef(DEFAULT_SCENE_FILE_NAME);
+  const fillSettingsRequestIdRef = useRef(0);
   const [tool, setTool] = useState<Tool>("select");
+  const [fillSettingsRequest, setFillSettingsRequest] = useState<{
+    fillStyle: ContextualFillStyle;
+    id: number;
+  } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [formatDialogAction, setFormatDialogAction] =
     useState<DocumentFormatDialogAction | null>(null);
@@ -2958,6 +2964,8 @@ export function KizkattGraphicEditorController({
   };
 
   const {
+    contextualFillElementId,
+    dismissContextualFillControl,
     imagePreviewPoint,
     interaction,
     onDoubleClick,
@@ -3099,6 +3107,17 @@ export function KizkattGraphicEditorController({
           pendingImageSize ?? DEFAULT_IMAGE_SIZE
         )
       : null;
+  const contextualFillElement =
+    activeDisplayMode !== "preview" && selectedElements.length === 1
+      ? selectedElements.find(
+          (element) => element.id === contextualFillElementId
+        ) ?? null
+      : null;
+  const contextualFillStyle: ContextualFillStyle | null =
+    contextualFillElement?.fillStyle === "gradient" ||
+    contextualFillElement?.fillStyle === "monochromeTexture"
+      ? contextualFillElement.fillStyle
+      : null;
   const getElementSelectionRenderState = (element: KizkattElement) => {
     const isSelected = selectedIdSet.has(element.id);
     const isNodeEditableLine =
@@ -3189,6 +3208,21 @@ export function KizkattGraphicEditorController({
     canvasClassName,
     canvasCursor,
     canvasState,
+    contextualFillControl:
+      contextualFillElement && contextualFillStyle
+        ? {
+            element: contextualFillElement,
+            fillStyle: contextualFillStyle,
+            onActivate: () => {
+              fillSettingsRequestIdRef.current += 1;
+              setFillSettingsRequest({
+                fillStyle: contextualFillStyle,
+                id: fillSettingsRequestIdRef.current
+              });
+              dismissContextualFillControl();
+            }
+          }
+        : null,
     displayElements,
     getElementSelectionRenderState,
     gridColor,
@@ -3317,6 +3351,7 @@ export function KizkattGraphicEditorController({
         }
       : null,
     state: {
+      fillSettingsRequest,
       isLoading: loadingOperationCount > 0,
       menuOpen,
       theme,

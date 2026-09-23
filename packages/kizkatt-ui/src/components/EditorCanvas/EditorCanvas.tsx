@@ -19,6 +19,7 @@ import {
   TransformPreview
 } from "../../preview/PreviewOverlays";
 import { CanvasGrid } from "../../ui/canvas/CanvasGrid";
+import { ContextualFillControl } from "../../ui/canvas/ContextualFillControl";
 import { InfoOverlay } from "../../ui/canvas/InfoOverlay";
 import {
   renderElement,
@@ -45,6 +46,7 @@ export function EditorCanvas({
     canvasClassName,
     canvasCursor,
     canvasState,
+    contextualFillControl,
     displayElements,
     getElementSelectionRenderState,
     gridColor,
@@ -148,6 +150,12 @@ export function EditorCanvas({
 
             return null;
           })}
+        {!previewTransformInteraction && contextualFillControl && (
+          <ContextualFillControl
+            control={contextualFillControl}
+            zoom={zoom}
+          />
+        )}
         {imagePlacementBounds && (
           <ImagePlacementPreview bounds={imagePlacementBounds} />
         )}

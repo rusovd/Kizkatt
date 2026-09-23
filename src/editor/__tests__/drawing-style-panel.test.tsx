@@ -194,6 +194,157 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(screen.getByLabelText("Color picker")).toBeInTheDocument();
   });
 
+  it("opens gradient settings from the fill control shown in skew mode", async () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 180, clientY: 140 });
+    firePointerEvent(canvas, "pointerup");
+    fireEvent.click(screen.getByRole("button", { name: "Gradient fill" }));
+    const angleInput = screen.getByRole("spinbutton", { name: "Angle" });
+    fireEvent.change(angleInput, { target: { value: "45" } });
+    fireEvent.blur(angleInput);
+
+    const gradientPanel = document.querySelector(
+      ".kizkatt-floating-panel--gradient-fill"
+    ) as HTMLElement;
+    fireEvent.click(
+      gradientPanel.querySelector("button[aria-label='Close panel']") as Element
+    );
+    expect(document.querySelector(".kizkatt-gradient-panel"))
+      .not.toBeInTheDocument();
+
+    const rectangle = canvas.querySelector(
+      "[data-element-id] > rect"
+    ) as Element;
+    firePointerEvent(rectangle, "pointerdown", {
+      clientX: 100,
+      clientY: 90
+    });
+    firePointerEvent(rectangle, "pointerup", {
+      clientX: 100,
+      clientY: 90
+    });
+
+    const fillControl = canvas.querySelector(
+      "[data-contextual-fill-control]"
+    ) as SVGGElement;
+    const topSkewHandle = canvas.querySelector("[data-skew-handle='top']");
+    const controlPosition = getTranslatePoint(fillControl);
+    const topSkewPoint = getCirclePoint(topSkewHandle);
+
+    expect(fillControl).toHaveAttribute("role", "button");
+    expect(fillControl).toHaveAttribute("aria-label", "Gradient fill");
+    expect(fillControl).toHaveAttribute("data-fill-style", "gradient");
+    expect(controlPosition.x).toBeCloseTo(topSkewPoint.x);
+    expect(controlPosition.y).toBeLessThan(topSkewPoint.y);
+
+    fireEvent.click(fillControl);
+
+    await waitFor(() => {
+      expect(document.querySelector(".kizkatt-gradient-panel"))
+        .toBeInTheDocument();
+      expect(canvas.querySelector("[data-contextual-fill-control]"))
+        .not.toBeInTheDocument();
+    });
+  });
+
+  it("opens texture settings from the fill control shown on double click", async () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 180, clientY: 140 });
+    firePointerEvent(canvas, "pointerup");
+    fireEvent.click(screen.getByRole("button", { name: "Texture fill" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose texture" }));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /^Abstract \d{3}$/ })[0]
+    );
+
+    const texturePanel = document.querySelector(
+      ".kizkatt-floating-panel--bitmap-pattern-fill"
+    ) as HTMLElement;
+    fireEvent.click(
+      texturePanel.querySelector("button[aria-label='Close panel']") as Element
+    );
+    await waitFor(() => {
+      expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
+        .not.toBeInTheDocument();
+    });
+
+    const rectangle = canvas.querySelector(
+      "[data-element-id] > rect"
+    ) as Element;
+    fireEvent.doubleClick(rectangle, { clientX: 100, clientY: 90 });
+
+    const fillControl = canvas.querySelector(
+      "[data-contextual-fill-control]"
+    ) as SVGGElement;
+
+    expect(fillControl).toHaveAttribute("aria-label", "Texture fill");
+    expect(fillControl).toHaveAttribute(
+      "data-fill-style",
+      "monochromeTexture"
+    );
+
+    fireEvent.click(fillControl);
+
+    await waitFor(() => {
+      expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
+        .toBeInTheDocument();
+      expect(canvas.querySelector("[data-contextual-fill-control]"))
+        .not.toBeInTheDocument();
+    });
+  });
+
+  it("reapplies the last texture after reverting to the object base", async () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 180, clientY: 140 });
+    firePointerEvent(canvas, "pointerup");
+    fireEvent.click(screen.getByRole("button", { name: "Texture fill" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose texture" }));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /^Abstract \d{3}$/ })[0]
+    );
+
+    const textureId = canvas
+      .querySelector("[data-bitmap-texture]")
+      ?.getAttribute("data-bitmap-texture");
+
+    expect(textureId).toBeTruthy();
+    window.localStorage.clear();
+    fireEvent.contextMenu(canvas, { clientX: 100, clientY: 90 });
+    fireEvent.click(screen.getByRole("menuitem", {
+      name: "Revert object base"
+    }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("menu", { name: "Canvas context menu" }))
+        .not.toBeInTheDocument();
+      expect(canvas.querySelector("[data-bitmap-texture]"))
+        .not.toBeInTheDocument();
+      expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
+        .not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Texture fill" }));
+
+    await waitFor(() => {
+      expect(canvas.querySelector("[data-bitmap-texture]")).toHaveAttribute(
+        "data-bitmap-texture",
+        textureId
+      );
+    });
+  });
+
   it("marks a loaded gradient preset as changed without replacing its stops", () => {
     render(<KizkattGraphicEditor />);
 
