@@ -26,6 +26,7 @@ import {
   moveBitmapTextureCrop,
   isExpectedCopiedPngSize,
   resizeElementFromHandle,
+  resizeElementsFromSelectionHandle,
   scaleBitmapTextureCrop,
   observeHitTesting,
   simplifyPolyline,
@@ -168,6 +169,91 @@ describe("engine scale safeguards", () => {
         point
       ).strokeWidth
     ).toBe(rectangle.strokeWidth * 2);
+  });
+
+  it("scales bitmap texture geometry with resized objects when enabled", () => {
+    const bitmapTexture = {
+      ...DEFAULT_BITMAP_TEXTURE_FILL,
+      height: 80,
+      offsetX: 12,
+      offsetY: -6,
+      transformWithObject: true,
+      width: 200
+    };
+    const rectangle = {
+      ...createRectangle(0),
+      bitmapTexture,
+      height: 40,
+      width: 100
+    };
+    const resized = resizeElementFromHandle(rectangle, "se", {
+      x: 200,
+      y: 120
+    });
+
+    expect(resized.bitmapTexture).toMatchObject({
+      height: 240,
+      offsetX: 24,
+      offsetY: -18,
+      width: 400
+    });
+
+    const [groupResized] = resizeElementsFromSelectionHandle(
+      [rectangle],
+      [rectangle.id],
+      getElementBounds(rectangle),
+      "se",
+      { x: 150, y: 80 }
+    );
+
+    expect(groupResized.bitmapTexture).toMatchObject({
+      height: 160,
+      offsetX: 18,
+      offsetY: -12,
+      width: 300
+    });
+
+    const objectPanelBaseRectangle = {
+      ...rectangle,
+      bitmapTexture: groupResized.bitmapTexture
+    };
+    const [objectPanelResized] = resizeElementsFromSelectionHandle(
+      [objectPanelBaseRectangle],
+      [objectPanelBaseRectangle.id],
+      getElementBounds(objectPanelBaseRectangle),
+      "se",
+      { x: 200, y: 120 },
+      {
+        bitmapTextureScale: {
+          x: 200 / 150,
+          y: 120 / 80
+        }
+      }
+    );
+
+    expect(objectPanelResized.bitmapTexture).toMatchObject({
+      height: 240,
+      offsetX: 24,
+      offsetY: -18,
+      width: 400
+    });
+
+    const fixedTextureRectangle = {
+      ...rectangle,
+      bitmapTexture: {
+        ...bitmapTexture,
+        transformWithObject: false
+      }
+    };
+    const fixedTextureResized = resizeElementFromHandle(
+      fixedTextureRectangle,
+      "se",
+      { x: 200, y: 120 }
+    );
+
+    expect(fixedTextureResized.bitmapTexture).toEqual(
+      fixedTextureRectangle.bitmapTexture
+    );
   });
 
   it("lets actual element strokes scale with viewport zoom", () => {

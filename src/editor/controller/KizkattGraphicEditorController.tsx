@@ -190,6 +190,7 @@ import {
   hasOwnStyleProperty,
   isSameStyle,
   mirrorElementAroundPoint,
+  MIN_OBJECT_GEOMETRY_PERCENT,
   RADIANS_PER_DEGREE,
   revertObjectBases,
   selectAllElements,
@@ -1970,6 +1971,22 @@ export function KizkattGraphicEditorController({
       {
         x: baseBounds.x + Math.max(MIN_ELEMENT_SIZE, nextWidth),
         y: baseBounds.y + Math.max(MIN_ELEMENT_SIZE, nextHeight)
+      },
+      {
+        bitmapTextureScale: {
+          x:
+            nextGeometry.widthPercent /
+            Math.max(
+              MIN_OBJECT_GEOMETRY_PERCENT,
+              objectPanelGeometry.widthPercent
+            ),
+          y:
+            nextGeometry.heightPercent /
+            Math.max(
+              MIN_OBJECT_GEOMETRY_PERCENT,
+              objectPanelGeometry.heightPercent
+            )
+        }
       }
     );
     const scaledBounds =

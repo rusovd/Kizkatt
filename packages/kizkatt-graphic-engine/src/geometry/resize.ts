@@ -31,6 +31,10 @@ type ResizeHandleConfig = {
 };
 
 export type ResizeOptions = {
+  bitmapTextureScale?: {
+    x: number;
+    y: number;
+  };
   preserveAspectRatio?: boolean;
 };
 
@@ -209,6 +213,26 @@ function getScaledStrokeWidth(
   const scale = Math.sqrt(Math.abs(scaleX * scaleY));
 
   return element.strokeWidth * scale;
+}
+
+function getScaledBitmapTexture(
+  element: KizkattElement,
+  scaleX: number,
+  scaleY: number
+) {
+  const texture = element.bitmapTexture;
+
+  if (!texture?.transformWithObject) {
+    return texture;
+  }
+
+  return {
+    ...texture,
+    height: texture.height * Math.abs(scaleY),
+    offsetX: texture.offsetX * scaleX,
+    offsetY: texture.offsetY * scaleY,
+    width: texture.width * Math.abs(scaleX)
+  };
 }
 
 function scalePathData(
@@ -390,6 +414,15 @@ export function resizeElementFromHandle(
       element.bends || element.curve
         ? getElementBends(element).map(scaleElementLocalPoint)
         : undefined,
+    ...(element.bitmapTexture
+      ? {
+          bitmapTexture: getScaledBitmapTexture(
+            element,
+            options.bitmapTextureScale?.x ?? scaleX,
+            options.bitmapTextureScale?.y ?? scaleY
+          )
+        }
+      : {}),
     curve: undefined,
     height: nextHeight,
     pathData: scalePathData(element.pathData, scaleX, scaleY, scaleElementLocalPoint),
@@ -477,6 +510,15 @@ export function resizeElementsFromSelectionHandle(
               scaleLocalPoint(bend, scaleX, scaleY)
             )
           : undefined,
+      ...(element.bitmapTexture
+        ? {
+            bitmapTexture: getScaledBitmapTexture(
+              element,
+              options.bitmapTextureScale?.x ?? scaleX,
+              options.bitmapTextureScale?.y ?? scaleY
+            )
+          }
+        : {}),
       curve: undefined,
       height: scaleElementDimension(element.height, scaleY),
       pathData: scalePathData(element.pathData, scaleX, scaleY),
