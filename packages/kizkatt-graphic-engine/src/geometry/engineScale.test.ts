@@ -570,6 +570,7 @@ describe("engine scale safeguards", () => {
         brightnessEnabled: true,
         color: 30,
         colorEnabled: true,
+        desaturateEnabled: true,
         edgeMatch: 50,
         edgeMatchEnabled: true,
         luminance: 15,

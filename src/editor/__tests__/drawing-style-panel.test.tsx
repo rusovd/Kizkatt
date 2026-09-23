@@ -64,20 +64,43 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(
       document.querySelector(".kizkatt-gradient-transform-halo")
     ).toBeInTheDocument();
-    const gradientOverlayToggle = screen.getByRole("checkbox", {
+    const gradientOverlayToggle = screen.getByRole("button", {
       name: "Overlay contrast"
     });
-    const gradientDeformationToggle = screen.getByRole("checkbox", {
+    const gradientDeformationToggle = screen.getByRole("button", {
       name: "Free deformation"
     });
-    expect(gradientOverlayToggle).toBeChecked();
-    expect(gradientDeformationToggle).not.toBeChecked();
+    const gradientResetButton = screen.getByRole("button", {
+      name: "Reset gradient transformations"
+    });
+
+    expect(gradientOverlayToggle).toHaveAttribute("aria-pressed", "true");
+    expect(gradientOverlayToggle).toHaveAttribute(
+      "title",
+      "Overlay contrast"
+    );
+    expect(gradientDeformationToggle).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    expect(gradientDeformationToggle).toHaveAttribute(
+      "title",
+      "Free deformation"
+    );
+    expect(gradientResetButton).toHaveAttribute(
+      "title",
+      "Reset gradient transformations"
+    );
+    expect(
+      gradientResetButton.closest(".kizkatt-gradient-preview-actions")
+    ).toBeInTheDocument();
     expect(
       document.querySelectorAll(".kizkatt-gradient-transform-stop")
     ).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "Resize gradient" }))
       .not.toBeInTheDocument();
     fireEvent.click(gradientOverlayToggle);
+    expect(gradientOverlayToggle).toHaveAttribute("aria-pressed", "false");
     expect(document.querySelector(".kizkatt-gradient-transform-halo"))
       .not.toBeInTheDocument();
     expect(window.localStorage.getItem(
@@ -87,6 +110,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       .toMatch(/^url\(#kizkatt-fill-/);
 
     fireEvent.click(gradientDeformationToggle);
+    expect(gradientDeformationToggle).toHaveAttribute("aria-pressed", "true");
     expect(window.localStorage.getItem(
       "kizkatt:graphic-editor:settings:gradient-free-deformation"
     )).toBe("true");
@@ -107,6 +131,19 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       clientX: 150,
       clientY: 140
     });
+    expect(
+      canvas
+        .querySelector("linearGradient")
+        ?.getAttribute("gradientTransform")
+    ).not.toContain("scale(1 1)");
+    fireEvent.click(gradientResetButton);
+    expect(
+      canvas
+        .querySelector("linearGradient")
+        ?.getAttribute("gradientTransform")
+    ).toBe(
+      "translate(0.5 0.5) rotate(0) skewX(0) scale(1 1) translate(-0.5 -0.5)"
+    );
     const gradientAfterOutsideRelease = canvas
       .querySelector("linearGradient")
       ?.outerHTML;
@@ -349,18 +386,24 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(bitmapPanel).toBeInTheDocument();
     expect(
       screen
-        .getByRole("button", { name: "Reset texture transformations" })
-        .closest(".kizkatt-panel-chrome")
+        .getByRole("button", { name: "Reset crop transformations" })
+        .closest(".kizkatt-texture-preview-actions")
     ).toBeInTheDocument();
-    const textureOverlayToggle = screen.getByRole("checkbox", {
+    const textureOverlayToggle = screen.getByRole("button", {
       name: "Overlay contrast"
     });
-    const textureDeformationToggle = screen.getByRole("checkbox", {
+    const textureDeformationToggle = screen.getByRole("button", {
       name: "Free deformation"
     });
-    expect(textureOverlayToggle).toBeChecked();
-    expect(textureDeformationToggle).toBeChecked();
+    expect(textureOverlayToggle).toHaveAttribute("aria-pressed", "true");
+    expect(textureOverlayToggle).toHaveAttribute("title", "Overlay contrast");
+    expect(textureDeformationToggle).toHaveAttribute("aria-pressed", "true");
+    expect(textureDeformationToggle).toHaveAttribute(
+      "title",
+      "Free deformation"
+    );
     fireEvent.click(textureOverlayToggle);
+    expect(textureOverlayToggle).toHaveAttribute("aria-pressed", "false");
     expect(screen.queryByRole("dialog", { name: "Choose texture" }))
       .not.toBeInTheDocument();
     const textureLibraryTrigger = bitmapPanel.querySelector(
@@ -445,7 +488,39 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       target: { files: [textureFile] }
     });
 
+    const importDialog = await screen.findByRole("dialog", {
+      name: "Add texture"
+    });
+    const addTextureButton = screen.getByRole("button", {
+      name: "Add texture"
+    });
+
+    expect(
+      screen.getByRole("textbox", { name: "Original file name" })
+    ).toHaveValue("Abstract Lines.svg");
+    expect(addTextureButton).toBeDisabled();
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Texture type" }),
+      { target: { value: "monochrome" } }
+    );
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Texture group" }),
+      { target: { value: "abstract" } }
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Author" }), {
+      target: { value: "The Painted Square" }
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "From" }), {
+      target: { value: "https://example.com/texture" }
+    });
+    expect(importDialog).toHaveTextContent(
+      "The texture will be named after its group"
+    );
+    fireEvent.click(addTextureButton);
+
     await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Add texture" }))
+        .not.toBeInTheDocument();
       expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
         .toBeInTheDocument();
       expect(
@@ -457,6 +532,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     const pattern = canvas.querySelector("[data-bitmap-texture]");
     const patternImage = pattern?.querySelector("image");
+    const importedTextureId = pattern?.getAttribute("data-bitmap-texture");
     const bitmapDragHandle = bitmapPanel.querySelector(
       "[data-panel-drag-handle]"
     );
@@ -467,6 +543,31 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(patternImage?.getAttribute("href")).toMatch(
       /^data:image\/svg\+xml/
     );
+    expect(pattern?.getAttribute("data-bitmap-texture")).toMatch(
+      /^custom\.monochrome\.abstract\.abstract-035\./
+    );
+    expect(importedTextureId).toBeTruthy();
+    expect(
+      screen.getByRole("textbox", { name: "Name" })
+    ).toHaveValue("Abstract 035");
+    const textureInfoButton = screen.getByRole("button", {
+      name: "Show author and source"
+    });
+
+    expect(bitmapPanel).not.toHaveTextContent("The Painted Square");
+    fireEvent.click(textureInfoButton);
+
+    const textureInfoDialog = screen.getByRole("dialog", {
+      name: "Texture information"
+    });
+
+    expect(textureInfoDialog).toHaveTextContent("The Painted Square");
+    expect(
+      screen.getByRole("link", { name: "https://example.com/texture" })
+    ).toHaveAttribute("href", "https://example.com/texture");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "Texture information" }))
+      .not.toBeInTheDocument();
     expect(pattern).toHaveAttribute("data-texture-anchor", "center");
     expect(pattern).toHaveAttribute("data-texture-coordinate-space", "object");
     expect(pattern).toHaveAttribute("patternUnits", "objectBoundingBox");
@@ -490,36 +591,34 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Transparency" })
-    ).toBeChecked();
-    expect(
-      screen.getByRole("checkbox", { name: "Desaturate" })
-    ).toBeChecked();
-    expect(
-      screen.getByRole("slider", { name: "Desaturate value" })
-    ).toHaveValue("100");
-    expect(
-      screen.getByRole("checkbox", { name: "Color" })
-    ).toBeDisabled();
+    ).not.toBeChecked();
+    const desaturateToggle = screen.getByRole("checkbox", {
+      name: "Desaturate"
+    });
+    const desaturateSlider = screen.getByRole("slider", {
+      name: "Desaturate value"
+    });
+
+    expect(desaturateToggle).not.toBeChecked();
+    expect(desaturateSlider).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Color" })).toBeEnabled();
     expect(
       screen.getByRole("slider", { name: "Color value" })
     ).toBeDisabled();
-    fireEvent.change(
-      screen.getByRole("slider", { name: "Desaturate value" }),
-      { target: { value: "50" } }
-    );
+    fireEvent.click(desaturateToggle);
+    expect(desaturateSlider).toBeEnabled();
+    expect(screen.getByRole("checkbox", { name: "Color" })).toBeDisabled();
+    fireEvent.change(desaturateSlider, { target: { value: "50" } });
     expect(
       screen.getByRole("checkbox", { name: "Color" })
     ).toBeEnabled();
-    fireEvent.change(
-      screen.getByRole("slider", { name: "Desaturate value" }),
-      { target: { value: "100" } }
-    );
+    fireEvent.change(desaturateSlider, { target: { value: "100" } });
     expect(
       canvas.querySelector("[data-bitmap-texture-filter]")
     ).toHaveAttribute("data-saturation", "0");
     expect(
       screen.getByRole("slider", { name: "Shade range" })
-    ).toHaveValue("100");
+    ).toBeDisabled();
     const normalBlendButton = screen.getByRole("button", {
       name: "Normal"
     });
@@ -568,7 +667,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     ).toContain('"fillStyle":"monochromeTexture"');
     expect(
       canvas.querySelector("[data-element-id] metadata")?.textContent
-    ).toContain('"name":"Abstract Lines"');
+    ).toContain('"name":"Abstract 035"');
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Luminance" }));
     expect(
@@ -645,7 +744,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(patternImage).toHaveAttribute("width", "120");
     expect(patternImage).toHaveAttribute("height", "70");
     fireEvent.click(
-      screen.getByRole("button", { name: "Reset texture transformations" })
+      screen.getByRole("button", { name: "Reset crop transformations" })
     );
     expect(screen.getByRole("checkbox", { name: "Fit to object size" }))
       .not.toBeChecked();
@@ -670,6 +769,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       cropStage.querySelectorAll('[aria-label="Resize texture crop"]')
     ).toHaveLength(8);
     fireEvent.click(textureDeformationToggle);
+    expect(textureDeformationToggle).toHaveAttribute("aria-pressed", "false");
     expect(window.localStorage.getItem(
       "kizkatt:graphic-editor:settings:texture-free-deformation"
     )).toBe("false");
@@ -677,6 +777,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       cropStage.querySelectorAll('[aria-label="Resize texture crop"]')
     ).toHaveLength(0);
     fireEvent.click(textureDeformationToggle);
+    expect(textureDeformationToggle).toHaveAttribute("aria-pressed", "true");
     expect(
       cropStage.querySelectorAll('[aria-label="Resize texture crop"]')
     ).toHaveLength(8);
@@ -759,9 +860,24 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     await waitFor(() => {
       expect(canvas.querySelector("[data-bitmap-texture]")).toHaveAttribute(
         "data-bitmap-texture",
-        "monochrome.abstract.abstract-001"
+        importedTextureId
       );
     });
+    fireEvent.click(screen.getByRole("button", { name: "Choose texture" }));
+
+    const reopenedLibrary = screen.getByRole("dialog", {
+      name: "Choose texture"
+    });
+
+    expect(
+      reopenedLibrary.querySelector('button[aria-label="Texture type"]')
+    ).toHaveTextContent("Monochrome");
+    expect(
+      reopenedLibrary.querySelector('select[aria-label="Texture group"]')
+    ).toHaveValue("abstract");
+    expect(
+      screen.getByRole("button", { name: "Abstract 035" })
+    ).toHaveClass("is-active");
   });
 
   it("keeps Monochrome Texture visible only while it is stuck", async () => {
@@ -809,6 +925,119 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     });
   });
 
+  it("creates a texture type and group while importing a texture", async () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 160, clientY: 120 });
+    firePointerEvent(canvas, "pointerup");
+    fireEvent.click(screen.getByRole("button", { name: "Texture fill" }));
+
+    const bitmapPanel = document.querySelector(
+      ".kizkatt-floating-panel--bitmap-pattern-fill"
+    ) as HTMLElement;
+    const fileInput = bitmapPanel.querySelector<HTMLInputElement>(
+      "input[type='file']"
+    );
+    const textureFile = new File(
+      [
+        '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>'
+      ],
+      "source-file.svg",
+      { type: "image/svg+xml" }
+    );
+
+    fireEvent.change(fileInput as HTMLInputElement, {
+      target: { files: [textureFile] }
+    });
+
+    await screen.findByRole("dialog", { name: "Add texture" });
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Texture type" }),
+      { target: { value: "__new__" } }
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "New texture type" }),
+      { target: { value: "Color Textures" } }
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "New group" }),
+      { target: { value: "Wood" } }
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add texture" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("textbox", { name: "Name" }))
+        .toHaveValue("Wood 001");
+    });
+    expect(
+      screen.queryByRole("button", { name: "Show author and source" })
+    ).not.toBeInTheDocument();
+    expect(
+      document.querySelector(".kizkatt-bitmap-pattern-panel")
+    ).toHaveAttribute("aria-label", "Texture - Color Textures");
+
+    const appliedTextureId = canvas
+      .querySelector("[data-bitmap-texture]")
+      ?.getAttribute("data-bitmap-texture");
+
+    fireEvent.click(
+      bitmapPanel.querySelector("button[aria-label='Close panel']") as Element
+    );
+    await waitFor(() => {
+      expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
+        .not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Texture fill" }));
+    await waitFor(() => {
+      expect(canvas.querySelector("[data-bitmap-texture]")).toHaveAttribute(
+        "data-bitmap-texture",
+        appliedTextureId
+      );
+      expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
+        .toHaveAttribute("aria-label", "Texture - Color Textures");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose texture" }));
+
+    const library = screen.getByRole("dialog", { name: "Choose texture" });
+    expect(
+      library.querySelector('button[aria-label="Texture type"]')
+    ).toHaveTextContent("Color Textures");
+    const categorySelect = library.querySelector(
+      'select[aria-label="Texture group"]'
+    ) as HTMLSelectElement;
+
+    expect(categorySelect).toHaveValue("wood");
+    expect(
+      screen.getByRole("button", { name: "Wood 001" })
+    ).toHaveClass("is-active");
+
+    fireEvent.click(
+      library.querySelector('button[aria-label="Texture type"]') as Element
+    );
+    fireEvent.click(screen.getByRole("option", { name: "All" }));
+
+    expect(
+      Array.from(categorySelect.options).map((option) => option.text)
+    ).toEqual(expect.arrayContaining([
+      "Wood (Monochrome)",
+      "Wood (Color Textures)"
+    ]));
+    expect(
+      Array.from(categorySelect.options).map((option) => option.value)
+    ).toContain("color-textures:wood");
+    fireEvent.change(categorySelect, {
+      target: { value: "color-textures:wood" }
+    });
+    expect(
+      screen.getByRole("button", { name: "Wood 001" })
+    ).toBeInTheDocument();
+  });
+
   it("shows the texture library as a popup and remembers its category", async () => {
     render(<KizkattGraphicEditor />);
 
@@ -823,7 +1052,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       ".kizkatt-floating-panel--texture-library"
     ) as HTMLElement;
     const categorySelect = library.querySelector(
-      'select[aria-label="Texture category"]'
+      'select[aria-label="Texture group"]'
     ) as HTMLSelectElement;
 
     fireEvent.change(categorySelect, { target: { value: "stone" } });
@@ -844,7 +1073,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Choose texture" }));
     library = screen.getByRole("dialog", { name: "Choose texture" });
     expect(
-      library.querySelector('select[aria-label="Texture category"]')
+      library.querySelector('select[aria-label="Texture group"]')
     ).toHaveValue("stone");
 
     fireEvent.click(
