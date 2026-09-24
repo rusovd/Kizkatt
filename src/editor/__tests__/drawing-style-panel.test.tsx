@@ -202,7 +202,11 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
     firePointerEvent(canvas, "pointermove", { clientX: 180, clientY: 140 });
     firePointerEvent(canvas, "pointerup");
-    fireEvent.click(screen.getByRole("button", { name: "Gradient fill" }));
+    const gradientFillButton = screen.getByRole("button", {
+      name: "Gradient fill"
+    });
+    fireEvent.click(gradientFillButton);
+    expect(gradientFillButton).toHaveAttribute("aria-pressed", "true");
     const angleInput = screen.getByRole("spinbutton", { name: "Angle" });
     fireEvent.change(angleInput, { target: { value: "45" } });
     fireEvent.blur(angleInput);
@@ -215,6 +219,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     );
     expect(document.querySelector(".kizkatt-gradient-panel"))
       .not.toBeInTheDocument();
+    expect(gradientFillButton).toHaveAttribute("aria-pressed", "false");
 
     const rectangle = canvas.querySelector(
       "[data-element-id] > rect"
@@ -259,7 +264,11 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
     firePointerEvent(canvas, "pointermove", { clientX: 180, clientY: 140 });
     firePointerEvent(canvas, "pointerup");
-    fireEvent.click(screen.getByRole("button", { name: "Texture fill" }));
+    const textureFillButton = screen.getByRole("button", {
+      name: "Texture fill"
+    });
+    fireEvent.click(textureFillButton);
+    expect(textureFillButton).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(screen.getByRole("button", { name: "Choose texture" }));
     fireEvent.click(
       screen.getAllByRole("button", { name: /^Abstract \d{3}$/ })[0]
@@ -274,6 +283,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     await waitFor(() => {
       expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
         .not.toBeInTheDocument();
+      expect(textureFillButton).toHaveAttribute("aria-pressed", "false");
     });
 
     const rectangle = canvas.querySelector(
@@ -1381,7 +1391,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       "is-active"
     );
     expect(
-      screen.getByRole("complementary", { name: "Styling" })
+      screen.getByRole("complementary", { name: "Colors" })
     ).toBeInTheDocument();
   });
 
@@ -1907,7 +1917,12 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     const closeColorsButton = screen.getByRole("button", {
       name: "Close colors"
     });
-    expect(screen.getByText("Colors").closest(".kizkatt-panel-chrome"))
+    expect(
+      closeColorsButton
+        .closest(".kizkatt-color-popover")
+        ?.querySelector(".kizkatt-panel-title")
+        ?.closest(".kizkatt-panel-chrome")
+    )
       .toHaveClass("kizkatt-color-popover-header");
     expect(closeColorsButton.closest(".kizkatt-panel-actions"))
       .toBeInTheDocument();
@@ -2210,7 +2225,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     );
   });
 
-  it("applies line controls from the object panel and fill controls from the style panel", () => {
+  it("applies line and fill controls from the object panel", () => {
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
@@ -2230,10 +2245,37 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     const strokeWidthInput = screen.getByLabelText("Line width");
     const strokeStyleSelect = screen.getByLabelText("Stroke style");
     const opacityInput = screen.getByLabelText("Opacity value");
+    const opacityToggle = screen.getByRole("button", {
+      name: "Uniform opacity"
+    });
+    const colorsPanel = screen.getByRole("complementary", { name: "Colors" });
+    const colorPanelGroups = Array.from(
+      colorsPanel.querySelectorAll("[data-feature-group]")
+    );
 
     expect(strokeWidthInput).toHaveValue(10);
     expect(screen.queryByLabelText("Fill weight")).not.toBeInTheDocument();
     expect(opacityInput).toHaveValue(100);
+    expect(colorPanelGroups[0]).toHaveClass("kizkatt-style-feature--background");
+    expect(colorPanelGroups[1]).toHaveClass("kizkatt-style-feature--stroke");
+    expect(colorsPanel).not.toContainElement(opacityToggle);
+    const opacityFeature = opacityToggle.closest("[data-feature-group]");
+    const fillFeature = document.querySelector(
+      ".kizkatt-object-feature--fill"
+    );
+
+    expect(opacityFeature).toHaveClass("kizkatt-object-feature--opacity");
+    expect(
+      (opacityFeature as Node).compareDocumentPosition(fillFeature as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      colorsPanel.querySelector(".kizkatt-style-feature--fill")
+    ).not.toBeInTheDocument();
+    expect(opacityToggle).toHaveAttribute("aria-pressed", "false");
+    expect(
+      screen.getByRole("button", { name: "Gradient opacity" })
+    ).toBeDisabled();
 
     fireEvent.change(strokeWidthInput, {
       target: { value: "24" }
@@ -2316,14 +2358,15 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     const fillControls = Array.from(
       document.querySelectorAll(
-        ".kizkatt-style-feature--fill .kizkatt-icon-segmented button"
+        ".kizkatt-object-feature--fill .kizkatt-object-fill-controls button"
       )
     ).map((button) => button.getAttribute("aria-label"));
     expect(fillControls).toEqual([
       "Fill solid",
+      "No fill",
       "Gradient fill",
-      "SVG fill",
       "Texture fill",
+      "SVG fill",
       "Fill hachure"
     ]);
 
@@ -2335,6 +2378,11 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       "width",
       "8"
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "No fill" }));
+    expect(elementRect).toHaveAttribute("fill", "transparent");
+    expect(canvas.querySelector("[data-element-id] pattern"))
+      .not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Texture fill" }));
     expect(document.querySelector(".kizkatt-bitmap-pattern-panel"))
@@ -2384,8 +2432,12 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       target: { value: "35" }
     });
     fireEvent.pointerUp(opacitySlider);
-    expect(elementRect).toHaveAttribute("opacity", "0.35");
+    expect(elementRect).toHaveAttribute("opacity", "1");
     expect(opacityInput).toHaveValue(35);
+
+    fireEvent.click(opacityToggle);
+    expect(opacityToggle).toHaveAttribute("aria-pressed", "true");
+    expect(elementRect).toHaveAttribute("opacity", "0.35");
 
     fireEvent.change(opacityInput, {
       target: { value: "125" }
@@ -2398,6 +2450,13 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     });
     expect(elementRect).toHaveAttribute("opacity", "0");
     expect(opacityInput).toHaveValue(0);
+
+    fireEvent.click(opacityToggle);
+    expect(elementRect).toHaveAttribute("opacity", "1");
+    expect(opacityInput).toHaveValue(0);
+
+    fireEvent.click(opacityToggle);
+    expect(elementRect).toHaveAttribute("opacity", "0");
 
     fireEvent.click(screen.getByTitle("Use straight corners"));
     expect(elementRect).toHaveAttribute("rx", "0");
@@ -2488,8 +2547,12 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     const elementRect = canvas.querySelector("[data-element-id] rect");
     const opacityInput = screen.getByLabelText("Opacity value");
+    const opacityToggle = screen.getByRole("button", {
+      name: "Uniform opacity"
+    });
 
     expect(elementRect).toHaveAttribute("opacity", "1");
+    fireEvent.click(opacityToggle);
 
     fireEvent.focus(opacityInput);
     const opacitySlider = screen.getByRole("slider", {

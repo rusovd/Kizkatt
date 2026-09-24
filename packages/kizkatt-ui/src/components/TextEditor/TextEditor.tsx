@@ -1,5 +1,5 @@
 import {
-  PERCENT_MAX_VALUE,
+  getElementOpacity,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
   TEXT_ELEMENT_DEFAULT_WIDTH
 } from "kizkatt-graphic-engine";
@@ -27,7 +27,7 @@ export function TextEditor({
         color: element.strokeColor,
         height: Math.max(TEXT_ELEMENT_DEFAULT_HEIGHT, element.height * zoom),
         left: pan.x + element.x * zoom,
-        opacity: element.opacity / PERCENT_MAX_VALUE,
+        opacity: getElementOpacity(element),
         top: pan.y + element.y * zoom,
         width: Math.max(TEXT_ELEMENT_DEFAULT_WIDTH, element.width * zoom)
       }}

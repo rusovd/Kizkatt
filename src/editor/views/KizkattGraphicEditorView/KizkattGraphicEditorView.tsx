@@ -576,14 +576,21 @@ export function KizkattGraphicEditorView({
       )}
 
       {showObjectPanel && visibleSelectionGeometryControls && (
-        <ObjectPanel {...visibleSelectionGeometryControls} />
+        <ObjectPanel
+          {...visibleSelectionGeometryControls}
+          canToggleClosedPath={stylingControls.canToggleClosedPath}
+          closedPath={stylingControls.closedPath}
+          gradientFillPanelOpen={showGradientPanel}
+          onClosedPathChange={stylingControls.onClosedPathChange}
+          onGradientOpen={openGradientPanel}
+          onTextureFillOpen={openBitmapPatternPanel}
+          textureFillPanelOpen={showBitmapPatternPanel}
+        />
       )}
       {showStylingPanel && (
         <StylingPanel
           {...stylingControls}
           colorColumnCount={COLOR_PANEL_COLUMN_COUNT}
-          onGradientOpen={openGradientPanel}
-          onTextureFillOpen={openBitmapPatternPanel}
         />
       )}
       {!previewMode && textureLibraryOpen && (

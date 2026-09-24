@@ -1,9 +1,9 @@
 import {
   DEFAULT_SELECTED_SLOPPINESS,
   DEFAULT_SLOPPINESS,
-  MIN_RENDERED_STROKE_WIDTH,
-  PERCENT_MAX_VALUE
+  MIN_RENDERED_STROKE_WIDTH
 } from "../config/constants";
+import { getElementOpacity } from "../model/element";
 import type { KizkattElement } from "../model/types";
 import { getElementCenter } from "./primitives";
 import { transformSvgPathData } from "./svgPathData";
@@ -172,7 +172,7 @@ export function getElementShapeProps(element: KizkattElement) {
     stroke: element.strokeColor,
     strokeWidth: getRenderedStrokeWidth(element),
     strokeDasharray: getStrokeDasharray(element),
-    opacity: element.opacity / PERCENT_MAX_VALUE,
+    opacity: getElementOpacity(element),
     paintOrder: element.strokeBehindFill ? "stroke fill markers" : undefined,
     strokeLinecap,
     strokeLinejoin

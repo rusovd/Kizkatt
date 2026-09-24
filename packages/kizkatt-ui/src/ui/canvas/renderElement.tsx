@@ -5,6 +5,7 @@ import { GradientFillDefinition } from "../../rendering/GradientFill";
 import {
   getElementBends,
   getElementCenter,
+  getElementOpacity,
   getElementTransformedCorners,
   getLinearElementSegmentControls,
   getLinearElementPath,
@@ -21,8 +22,7 @@ import {
   ARROW_MARKER_PATH,
   ARROW_MARKER_REF_Y,
   DEFAULT_BITMAP_TEXTURE_FILL,
-  DEFAULT_GRADIENT_FILL,
-  PERCENT_MAX_VALUE
+  DEFAULT_GRADIENT_FILL
 } from "../../config/constants";
 import {
   getArrowheadGeometry,
@@ -418,7 +418,7 @@ function Arrowhead({
         }
         d={ARROW_MARKER_PATH}
         fill={element.strokeColor}
-        opacity={element.opacity / PERCENT_MAX_VALUE}
+        opacity={getElementOpacity(element)}
         pointerEvents={SVG_POINTER_EVENTS_NONE}
         transform={transform}
       />
@@ -454,7 +454,7 @@ function Arrowhead({
       data-decorative-arrowhead={
         isDecorativeStrokeStyle(element.strokeStyle) ? "true" : undefined
       }
-      opacity={element.opacity / PERCENT_MAX_VALUE}
+      opacity={getElementOpacity(element)}
       pointerEvents={SVG_POINTER_EVENTS_NONE}
       transform={transform}
     >
@@ -481,7 +481,7 @@ function getSecondaryStrokeProps(
     fill: SVG_FILL_NONE,
     filter,
     opacity:
-      (element.opacity / PERCENT_MAX_VALUE) *
+      getElementOpacity(element) *
       SECONDARY_STROKE_OPACITY_MULTIPLIER,
     pointerEvents: SVG_POINTER_EVENTS_NONE
   };
@@ -601,7 +601,7 @@ function InlineSvgObject({
       color={wireframe ? WIREFRAME_STROKE : element.strokeColor}
       fill={wireframe ? SVG_FILL_NONE : fill}
       height={element.height}
-      opacity={wireframe ? 1 : element.opacity / PERCENT_MAX_VALUE}
+      opacity={wireframe ? 1 : getElementOpacity(element)}
       preserveAspectRatio="none"
       stroke={wireframe ? WIREFRAME_STROKE : element.strokeColor}
       strokeDasharray={wireframe ? undefined : shapeProps.strokeDasharray}
@@ -1316,7 +1316,7 @@ export function renderElement(
         width={element.width}
         height={element.height}
         preserveAspectRatio="none"
-        opacity={element.opacity / PERCENT_MAX_VALUE}
+        opacity={getElementOpacity(element)}
       />
     ) : (
       <rect
@@ -1327,7 +1327,7 @@ export function renderElement(
         rx={edgeRadius}
         fill={getElementFill(element)}
         stroke={SVG_FILL_NONE}
-        opacity={element.opacity / PERCENT_MAX_VALUE}
+        opacity={getElementOpacity(element)}
       />
     );
     const imageBorder = (
@@ -1599,7 +1599,7 @@ export function renderElement(
         y={element.y + TEXT_BASELINE_OFFSET}
         className="kizkatt-text"
         fill={element.strokeColor}
-            opacity={element.opacity / PERCENT_MAX_VALUE}
+            opacity={getElementOpacity(element)}
       >
         {element.text}
       </text>

@@ -8,8 +8,6 @@ import {
   COLOR_PANEL_COLUMN_COUNT,
   DARK_THEME_BACKGROUND_COLORS,
   DARK_THEME_STROKE_COLORS,
-  DEFAULT_FILL_STYLE,
-  DEFAULT_OPACITY,
   EMPTY_COLLECTION_LENGTH,
   FIRST_ARRAY_INDEX,
   LIGHT_THEME_BACKGROUND_COLORS,
@@ -25,21 +23,13 @@ import {
 import { useI18n } from "../../i18n";
 import {
   CloseIcon,
-  ClosedPathIcon,
   EyedropperIcon,
-  GradientIcon,
-  FillHachureIcon,
-  FillSolidIcon,
-  OpacityIcon,
   PaletteIcon,
-  SvgFillIcon,
-  StrokeStyleSolidIcon,
-  TextureIcon
+  StrokeStyleSolidIcon
 } from "../icons";
 import { Panel } from "../../components/Panel";
 import { useGraphicEditorSettings } from "../settings/GraphicEditorSettings";
 import { FeatureGroup } from "../../components/FeatureGroup";
-import { NumberInput } from "../../components/NumberInput";
 import {
   closeOtherFloatingPanels,
   useActiveFloatingPanel,
@@ -61,17 +51,11 @@ type EyeDropperConstructor = new () => {
 
 type StylingPanelProps = {
   activeTool: Tool;
-  canToggleClosedPath: boolean;
-  closedPath: boolean;
   colorColumnCount?: number;
-  onClosedPathChange: (closed: boolean) => void;
-  onTextureFillOpen: () => void;
-  onGradientOpen: () => void;
   onStyleChange: (
     patch: Partial<StyleState>,
     options?: { transient?: boolean }
   ) => void;
-  onStyleChangeEnd: () => void;
   selectedElements: KizkattElement[];
   style: StyleState;
   theme: KizkattTheme;
@@ -108,50 +92,6 @@ const LIGHT_SHADE_MIXES = [
 const DEFAULT_POPOVER_PALETTE =
   COLOR_PALETTES.find((palette) => palette.id === DEFAULT_POPOVER_PALETTE_ID) ??
   COLOR_PALETTES[DEFAULT_POPOVER_PALETTE_INDEX];
-const FILL_CONTROLS = [
-  {
-    disabled: false,
-    icon: FillSolidIcon,
-    labelKey: "fillSolid",
-    opensGradient: false,
-    opensTextureFill: false,
-    style: "solid"
-  },
-  {
-    disabled: false,
-    icon: GradientIcon,
-    labelKey: "fillGradient",
-    opensGradient: true,
-    opensTextureFill: false,
-    style: "gradient"
-  },
-  {
-    disabled: true,
-    icon: SvgFillIcon,
-    labelKey: "fillSvg",
-    opensGradient: false,
-    opensTextureFill: false,
-    style: undefined
-  },
-  {
-    disabled: false,
-    icon: TextureIcon,
-    labelKey: "fillCrossHatch",
-    opensGradient: false,
-    opensTextureFill: true,
-    style: "monochromeTexture"
-  },
-  {
-    disabled: false,
-    icon: FillHachureIcon,
-    labelKey: "fillHachure",
-    opensGradient: false,
-    opensTextureFill: false,
-    style: "hachure"
-  }
-] as const;
-const MIN_OPACITY = 0;
-const MAX_OPACITY = DEFAULT_OPACITY;
 const DARK_THEME_STROKE_SOURCE_BY_PALETTE_ID: Record<string, string> = {
   blue: DARK_THEME_STROKE_COLORS[STROKE_COLOR_INDEX.blue],
   gray: DARK_THEME_STROKE_COLORS[STROKE_COLOR_INDEX.gray],
@@ -317,16 +257,6 @@ function getSwatchClassName({
     .join(" ");
 }
 
-function normalizeOpacity(value: string) {
-  const numericValue = Number(value);
-
-  if (!Number.isFinite(numericValue)) {
-    return MIN_OPACITY;
-  }
-
-  return Math.min(MAX_OPACITY, Math.max(MIN_OPACITY, numericValue));
-}
-
 function isBackgroundControlDisabled(
   activeTool: Tool,
   selectedElements: readonly KizkattElement[]
@@ -346,14 +276,8 @@ function isBackgroundControlDisabled(
 
 export function StylingPanel({
   activeTool,
-  canToggleClosedPath,
-  closedPath,
   colorColumnCount = COLOR_PANEL_COLUMN_COUNT,
-  onClosedPathChange,
-  onTextureFillOpen,
-  onGradientOpen,
   onStyleChange,
-  onStyleChangeEnd,
   selectedElements,
   style,
   theme
@@ -466,9 +390,6 @@ export function StylingPanel({
     const result = await new EyeDropper().open();
     commitCustomColor(target, result.sRGBHex);
   };
-  const updateOpacity = (value: string) => {
-    onStyleChange({ opacity: normalizeOpacity(value) });
-  };
   const backgroundControlDisabled = isBackgroundControlDisabled(
     activeTool,
     selectedElements
@@ -497,12 +418,12 @@ export function StylingPanel({
         .join(":")}`}
       resizable
       resizeAxes={{ horizontal: "horizontal", vertical: "both" }}
-      title={strings.stylePanel.styling}
+      title={strings.stylePanel.colors}
     >
       {({ actions, chrome, orientation }) => (
         <aside
           className={`kizkatt-style-panel kizkatt-style-panel--${orientation}`}
-          aria-label={strings.stylePanel.styling}
+          aria-label={strings.stylePanel.colors}
         >
           {chrome}
           <FeatureGroup
@@ -587,96 +508,6 @@ export function StylingPanel({
                 pickerMode={pickerMode}
               />
             )}
-          <FeatureGroup
-            className="kizkatt-style-feature--fill"
-            icon={FillSolidIcon}
-            label={strings.stylePanel.fill}
-          >
-            <div
-              className={[
-                "kizkatt-fill-control",
-                canToggleClosedPath ? "kizkatt-fill-control--with-path" : ""
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              <div className="kizkatt-segmented kizkatt-icon-segmented">
-                {FILL_CONTROLS.map((control) => (
-                  <button
-                    key={control.labelKey}
-                    type="button"
-                    disabled={control.disabled}
-                    aria-label={
-                      strings.stylePanel[control.labelKey]
-                    }
-                    title={tooltips[control.labelKey]}
-                    className={
-                      control.style &&
-                      (style.fillStyle ?? DEFAULT_FILL_STYLE) === control.style
-                        ? "is-active"
-                        : undefined
-                    }
-                    onClick={() => {
-                      if (control.opensGradient) {
-                        onGradientOpen();
-                        return;
-                      }
-
-                      if (control.opensTextureFill) {
-                        onTextureFillOpen();
-                        return;
-                      }
-
-                      if (control.style) {
-                        onStyleChange({ fillStyle: control.style });
-                      }
-                    }}
-                  >
-                    {control.icon}
-                  </button>
-                ))}
-              </div>
-              {canToggleClosedPath && (
-                <button
-                  type="button"
-                  className={closedPath ? "is-active" : undefined}
-                  aria-label={strings.stylePanel.closePath}
-                  title={tooltips.closePath}
-                  onClick={() => onClosedPathChange(!closedPath)}
-                >
-                  {ClosedPathIcon}
-                </button>
-              )}
-            </div>
-          </FeatureGroup>
-          <FeatureGroup
-            className="kizkatt-style-feature--opacity"
-            icon={OpacityIcon}
-            label={strings.stylePanel.opacity}
-            labelFor="opacity"
-          >
-            <div className="kizkatt-numeric-slider-control">
-              <NumberInput
-                id="opacity"
-                className="kizkatt-numeric-slider-input"
-                label={strings.stylePanel.opacityValue}
-                title={tooltips.opacityValue}
-                min={MIN_OPACITY}
-                max={MAX_OPACITY}
-                showSliderPopover
-                value={style.opacity ?? DEFAULT_OPACITY}
-                onSliderChangeEnd={onStyleChangeEnd}
-                onSliderValueChange={(value) =>
-                  onStyleChange(
-                    { opacity: normalizeOpacity(value) },
-                    { transient: true }
-                  )
-                }
-                onValueChange={updateOpacity}
-                valueType="integer"
-              />
-            </div>
-          </FeatureGroup>
           {actions}
         </aside>
       )}

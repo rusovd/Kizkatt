@@ -1751,7 +1751,7 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
     const lineWidthPreset = screen.getByLabelText("Line width preset");
     const objectPanel = lineWidth.closest(".kizkatt-floating-panel");
     expect(objectPanel?.querySelectorAll("[data-feature-group]")).toHaveLength(
-      9
+      11
     );
     expect(strokeStyle.closest(".kizkatt-object-panel-stack")).toBe(
       lineWidth.closest(".kizkatt-object-panel-stack")
@@ -1868,6 +1868,8 @@ describe("KizkattGraphicEditor selection, transforms, and groups", () => {
       "Rotation",
       "Mirroring",
       "Edges",
+      "Opacity",
+      "Fill",
       "Line",
       "Layers",
       "Actions"

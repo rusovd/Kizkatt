@@ -109,6 +109,7 @@ export function isSameStyle(
     firstStyle.gradientFill === secondStyle.gradientFill &&
     firstStyle.fillWeight === secondStyle.fillWeight &&
     firstStyle.opacity === secondStyle.opacity &&
+    firstStyle.opacityEnabled === secondStyle.opacityEnabled &&
     firstStyle.sloppiness === secondStyle.sloppiness &&
     firstStyle.sloppinessGap === secondStyle.sloppinessGap &&
     firstStyle.scaleStrokeWithObject === secondStyle.scaleStrokeWithObject &&

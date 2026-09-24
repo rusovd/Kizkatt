@@ -130,12 +130,16 @@ export type DocumentControls = {
 
 export type ObjectPanelProps = {
   activeTool: Tool;
+  canToggleClosedPath?: boolean;
   canUseNodeAction?: (action: NodeEditorAction) => boolean;
   canZoomToAll: boolean;
   canZoomToSelected: boolean;
   geometry: ObjectPanelGeometry | null;
+  gradientFillPanelOpen?: boolean;
   gridSettings: GridSettings;
+  closedPath?: boolean;
   onAction: (action: "delete" | "duplicate") => void;
+  onClosedPathChange?: (closed: boolean) => void;
   onDimensionChange: (
     axis: ObjectDimensionAxis,
     value: number,
@@ -150,6 +154,7 @@ export type ObjectPanelProps = {
   ) => void;
   onGeometryChangeEnd: () => void;
   onMirror: (axis: ObjectMirrorAxis) => void;
+  onGradientOpen?: () => void;
   onNodeAction?: (action: NodeEditorAction) => void;
   onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
   onStyleChange: (
@@ -157,9 +162,11 @@ export type ObjectPanelProps = {
     options?: { transient?: boolean }
   ) => void;
   onStyleChangeEnd: () => void;
+  onTextureFillOpen?: () => void;
   onViewportZoomAction: (action: ViewportZoomAction) => void;
   selectedElements: KizkattElement[];
   style: StyleState;
+  textureFillPanelOpen?: boolean;
   theme: KizkattTheme;
 };
 

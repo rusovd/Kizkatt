@@ -488,7 +488,8 @@ const DEFAULT_STYLE_BASE = {
   strokeLineCount: 1,
   strokeWidth: DEFAULT_STROKE_WIDTH,
   strokeStyle: DEFAULT_STROKE_STYLE,
-  opacity: DEFAULT_OPACITY
+  opacity: DEFAULT_OPACITY,
+  opacityEnabled: false
 } as const;
 
 export const DEFAULT_ELEMENT_STYLE_BY_THEME: Record<KizkattTheme, StyleState> = {

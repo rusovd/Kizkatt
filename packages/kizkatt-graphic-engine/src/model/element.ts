@@ -4,6 +4,7 @@ import {
   MIN_ELEMENT_SIZE,
   MIN_PIXEL_SIZE,
   PATH_CLOSED_ENDPOINT_TOLERANCE,
+  PERCENT_MAX_VALUE,
   TEXT_ELEMENT_DEFAULT_CONTENT,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
   TEXT_ELEMENT_DEFAULT_WIDTH
@@ -345,6 +346,15 @@ export function canElementUseBackground(element: KizkattElement) {
   }
 
   return true;
+}
+
+export function getElementOpacity(element: Pick<
+  KizkattElement,
+  "opacity" | "opacityEnabled"
+>) {
+  return element.opacityEnabled === false
+    ? 1
+    : element.opacity / PERCENT_MAX_VALUE;
 }
 
 export function isBitmapImageElement(element: KizkattElement) {

@@ -131,15 +131,26 @@ export const ShovelIcon = createIcon(
 );
 
 export const OpacityIcon = createIcon(
-  <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+  <g strokeWidth="1.5">
     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-    <circle cx="8.5" cy="8.5" r="6" />
-    <circle cx="15.5" cy="15.5" r="6" />
-    <path d="M10.2 8.9l4.9 4.9" />
-    <path d="M8.9 10.2l4.9 4.9" />
-    <path d="M8.3 12.3l3.4 3.4" />
-    <path d="M12.3 8.3l3.4 3.4" />
-  </g>,
+    <path d="M6 3h12l-1 8.2a5 5 0 0 1-10 0z" />
+    <path d="M7 9h10" />
+    <path d="M12 16v5M9 21h6" />
+    <path
+      d="M7 9h10l-.3 2.2a4.7 4.7 0 0 1-9.4 0z"
+      fill="currentColor"
+      stroke="none"
+    />
+  </g>
+);
+
+export const GradientOpacityIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M5 3h10l-.8 7a4.2 4.2 0 0 1-8.4 0z" />
+    <path d="M10 14.2V20M7.5 20h5" />
+    <path d="M19 4v13M16.8 6.2 19 4l2.2 2.2M16.8 14.8 19 17l2.2-2.2" />
+  </g>
 );
 
 export const PolylineIcon = createIcon(
@@ -555,8 +566,15 @@ export const FillCrossHatchIcon = createIcon(
 );
 
 export const FillSolidIcon = createIcon(
-  <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />,
+  <rect x="3" y="3" width="18" height="18" rx="2" fill="currentColor" />,
   { fill: "currentColor" }
+);
+
+export const FillNoneIcon = createIcon(
+  <g fill="none" stroke="currentColor" strokeWidth="1.8">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M5 5 19 19M19 5 5 19" />
+  </g>
 );
 
 export const SloppinessArchitectIcon = createIcon(

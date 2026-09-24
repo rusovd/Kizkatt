@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
+  DEFAULT_OPACITY,
   DEFAULT_SELECTED_SLOPPINESS,
   DEFAULT_STROKE_STYLE,
   DEFAULT_STROKE_WIDTH,
@@ -24,11 +25,16 @@ import {
   BringForwardIcon,
   BringToFrontIcon,
   CloseIcon,
+  ClosedPathIcon,
   DiameterIcon,
   DimensionHeightIcon,
   DimensionWidthIcon,
   EdgeRoundIcon,
   EdgeSharpIcon,
+  FillHachureIcon,
+  FillNoneIcon,
+  FillSolidIcon,
+  GradientIcon,
   DuplicateIcon,
   GlobeIcon,
   MirrorHorizontalIcon,
@@ -39,10 +45,14 @@ import {
   NodeMergePointsIcon,
   NodeSplitPointIcon,
   NodeStraightSegmentIcon,
+  GradientOpacityIcon,
+  OpacityIcon,
   PenNibIcon,
   RotationAngleIcon,
   SendBackwardIcon,
   SendToBackIcon,
+  SvgFillIcon,
+  TextureIcon,
   TrashIcon,
   ZoomToAllIcon,
   ZoomToPageHeightIcon,
@@ -56,11 +66,70 @@ import { LineSettingsPopover } from "./LineSettingsPopover";
 
 const HORIZONTAL_MIRROR_AXIS = "horizontal";
 const VERTICAL_MIRROR_AXIS = "vertical";
+const MIN_OPACITY = 0;
+const MAX_OPACITY = DEFAULT_OPACITY;
 
 const EDGE_ICONS = {
   round: EdgeRoundIcon,
   sharp: EdgeSharpIcon
 } as const;
+
+const FILL_CONTROLS = [
+  {
+    clearsFill: false,
+    disabled: false,
+    icon: FillSolidIcon,
+    labelKey: "fillSolid",
+    opensGradient: false,
+    opensTextureFill: false,
+    style: "solid"
+  },
+  {
+    clearsFill: true,
+    disabled: false,
+    icon: FillNoneIcon,
+    labelKey: "fillNone",
+    opensGradient: false,
+    opensTextureFill: false,
+    style: undefined
+  },
+  {
+    clearsFill: false,
+    disabled: false,
+    icon: GradientIcon,
+    labelKey: "fillGradient",
+    opensGradient: true,
+    opensTextureFill: false,
+    style: "gradient"
+  },
+  {
+    clearsFill: false,
+    disabled: false,
+    icon: TextureIcon,
+    labelKey: "fillCrossHatch",
+    opensGradient: false,
+    opensTextureFill: true,
+    style: "monochromeTexture"
+  },
+  {
+    clearsFill: false,
+    disabled: true,
+    icon: SvgFillIcon,
+    labelKey: "fillSvg",
+    opensGradient: false,
+    opensTextureFill: false,
+    style: undefined
+  },
+  {
+    clearsFill: false,
+    disabled: false,
+    icon: FillHachureIcon,
+    labelKey: "fillHachure",
+    opensGradient: false,
+    opensTextureFill: false,
+    style: "hachure"
+  }
+] as const;
 
 const STROKE_STYLE_LABEL_KEYS = {
   dashed: "strokeStyleDashed",
@@ -140,6 +209,16 @@ const NODE_EDITOR_ACTIONS = [
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function normalizeOpacity(value: number | string) {
+  const parsed = typeof value === "number" ? value : Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return MIN_OPACITY;
+  }
+
+  return clamp(parsed, MIN_OPACITY, MAX_OPACITY);
 }
 
 function formatNumber(value: number, precision: number) {
@@ -413,23 +492,30 @@ function StrokeWidthPresetSelect({
 
 export function ObjectPanel({
   activeTool,
+  canToggleClosedPath = false,
   canUseNodeAction,
   canZoomToAll,
   canZoomToSelected,
+  closedPath = false,
   geometry,
+  gradientFillPanelOpen = false,
   gridSettings,
   onAction,
+  onClosedPathChange,
   onDimensionChange,
   onGeometryChange,
   onGeometryChangeEnd,
+  onGradientOpen,
   onLayerAction,
   onMirror,
   onNodeAction,
   onStyleChange,
   onStyleChangeEnd,
+  onTextureFillOpen,
   onViewportZoomAction,
   selectedElements,
   style,
+  textureFillPanelOpen = false,
   theme
 }: ObjectPanelProps) {
   const { strings } = useI18n();
@@ -922,6 +1008,115 @@ export function ObjectPanel({
                       {EDGE_ICONS[option]}
                     </IconButton>
                   ))}
+                </FeatureGroup>
+                <FeatureGroup
+                  className="kizkatt-object-feature--opacity"
+                  label={
+                    orientation === "vertical"
+                      ? strings.stylePanel.opacity
+                      : undefined
+                  }
+                >
+                  <div className="kizkatt-object-opacity-controls">
+                    <IconButton
+                      active={Boolean(style.opacityEnabled)}
+                      ariaLabel={strings.stylePanel.opacityUniform}
+                      title={strings.stylePanel.tooltips.opacityUniform}
+                      onClick={() =>
+                        onStyleChange({
+                          opacityEnabled: !style.opacityEnabled
+                        })
+                      }
+                    >
+                      {OpacityIcon}
+                    </IconButton>
+                    <NumberInput
+                      className="kizkatt-object-opacity-input"
+                      label={strings.stylePanel.opacityValue}
+                      title={strings.stylePanel.tooltips.opacityValue}
+                      min={MIN_OPACITY}
+                      max={MAX_OPACITY}
+                      showSliderPopover
+                      value={style.opacity ?? DEFAULT_OPACITY}
+                      onSliderChangeEnd={onStyleChangeEnd}
+                      onSliderValueChange={(value) =>
+                        onStyleChange(
+                          { opacity: normalizeOpacity(value) },
+                          { transient: true }
+                        )
+                      }
+                      onValueChange={(value) =>
+                        onStyleChange({ opacity: normalizeOpacity(value) })
+                      }
+                      valueType="integer"
+                    />
+                    <IconButton
+                      ariaLabel={strings.stylePanel.opacityGradient}
+                      disabled
+                      title={strings.stylePanel.tooltips.opacityGradient}
+                      onClick={() => undefined}
+                    >
+                      {GradientOpacityIcon}
+                    </IconButton>
+                  </div>
+                </FeatureGroup>
+                <FeatureGroup
+                  className="kizkatt-object-feature--fill"
+                  label={
+                    orientation === "vertical"
+                      ? strings.stylePanel.fill
+                      : undefined
+                  }
+                >
+                  <div className="kizkatt-object-fill-controls">
+                    {FILL_CONTROLS.map((control) => (
+                      <IconButton
+                        key={control.labelKey}
+                        active={
+                          control.opensGradient
+                            ? gradientFillPanelOpen
+                            : control.opensTextureFill
+                              ? textureFillPanelOpen
+                              : false
+                        }
+                        ariaLabel={strings.stylePanel[control.labelKey]}
+                        disabled={control.disabled}
+                        title={strings.stylePanel.tooltips[control.labelKey]}
+                        onClick={() => {
+                          if (control.clearsFill) {
+                            updateStyle({ backgroundColor: "transparent" });
+                            return;
+                          }
+
+                          if (control.opensGradient) {
+                            onGradientOpen?.();
+                            return;
+                          }
+
+                          if (control.opensTextureFill) {
+                            onTextureFillOpen?.();
+                            return;
+                          }
+
+                          if (control.style) {
+                            updateStyle({ fillStyle: control.style });
+                          }
+                        }}
+                      >
+                        {control.icon}
+                      </IconButton>
+                    ))}
+                    {canToggleClosedPath && onClosedPathChange && (
+                      <IconButton
+                        active={closedPath}
+                        ariaLabel={strings.stylePanel.closePath}
+                        title={strings.stylePanel.tooltips.closePath}
+                        onClick={() => onClosedPathChange(!closedPath)}
+                      >
+                        {ClosedPathIcon}
+                      </IconButton>
+                    )}
+                  </div>
                 </FeatureGroup>
                 <FeatureGroup
                   className="kizkatt-object-feature--line"

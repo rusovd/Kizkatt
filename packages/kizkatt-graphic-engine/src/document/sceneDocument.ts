@@ -165,13 +165,21 @@ function normalizeStyleState(value: unknown, fallback: StyleState): StyleState {
 
   const candidate = { ...fallback, ...value } as StyleState;
 
+  const opacity = normalizeNumber(candidate.opacity, fallback.opacity, 0, 100);
+
   return {
     ...candidate,
     backgroundColor: normalizeString(
       candidate.backgroundColor,
       fallback.backgroundColor
     ),
-    opacity: normalizeNumber(candidate.opacity, fallback.opacity, 0, 100),
+    opacity,
+    opacityEnabled:
+      typeof value.opacityEnabled === "boolean"
+        ? value.opacityEnabled
+        : typeof value.opacity === "number"
+          ? opacity < 100
+          : fallback.opacityEnabled,
     strokeColor: normalizeString(candidate.strokeColor, fallback.strokeColor),
     strokeWidth: normalizeNumber(candidate.strokeWidth, fallback.strokeWidth, 0)
   };
@@ -317,6 +325,10 @@ function normalizeSceneElement(value: unknown): KizkattElement | null {
     angle: normalizeNumber(value.angle, 0),
     height: value.height,
     id: value.id,
+    opacityEnabled:
+      typeof value.opacityEnabled === "boolean"
+        ? value.opacityEnabled
+        : undefined,
     type: value.type,
     width: value.width,
     x: value.x,

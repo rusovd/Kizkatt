@@ -190,6 +190,7 @@ export type KizkattElement = {
   sloppiness?: "architect" | "artist" | "cartoonist" | "double";
   sloppinessGap?: number;
   opacity: number;
+  opacityEnabled?: boolean;
   text?: string;
   src?: string;
   imageBorderEnabled?: boolean;
@@ -396,6 +397,7 @@ export type StyleState = Pick<
   | "fillWeight"
   | "gradientFill"
   | "opacity"
+  | "opacityEnabled"
   | "sloppiness"
   | "sloppinessGap"
   | "scaleStrokeWithObject"

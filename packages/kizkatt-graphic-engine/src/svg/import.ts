@@ -2,7 +2,6 @@ import {
   DEFAULT_BITMAP_TEXTURE_FILL,
   DEFAULT_IMAGE_SIZE,
   MIN_ELEMENT_SIZE,
-  PERCENT_MAX_VALUE,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
   TEXT_ELEMENT_DEFAULT_WIDTH,
   TRANSPARENT_COLOR,
@@ -12,6 +11,7 @@ import { normalizeGradientFill, transformSvgPathData } from "../geometry";
 import {
   createElement,
   createId,
+  getElementOpacity,
   normalizeFillStyle,
   normalizeElement,
   withUpdatedObjectBase
@@ -556,7 +556,7 @@ function getGenericSvgElementStyle(
         : rawStyle.backgroundColor,
     fillStyle: sourceElement.fillStyle ?? rawStyle.fillStyle,
     fillWeight: sourceElement.fillWeight ?? rawStyle.fillWeight,
-    opacity: (rawStyle.opacity * sourceElement.opacity) / PERCENT_MAX_VALUE,
+    opacity: rawStyle.opacity * getElementOpacity(sourceElement),
     sloppiness: sourceElement.sloppiness ?? rawStyle.sloppiness,
     sloppinessGap: sourceElement.sloppinessGap ?? rawStyle.sloppinessGap,
     strokeColor: hasStroke ? sourceElement.strokeColor : TRANSPARENT_COLOR,

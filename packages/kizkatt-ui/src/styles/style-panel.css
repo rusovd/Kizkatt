@@ -75,23 +75,6 @@
   height: 100%;
 }
 
-@container kizkatt-style-panel (min-width: 260px) {
-  .kizkatt-style-feature--fill .kizkatt-fill-control,
-  .kizkatt-style-feature--opacity .kizkatt-numeric-slider-control {
-    width: 100%;
-  }
-}
-
-@container kizkatt-style-panel (min-width: 340px) {
-  .kizkatt-style-feature--opacity .kizkatt-numeric-slider-control {
-    grid-template-columns: minmax(0, 1fr) 72px;
-  }
-
-  .kizkatt-style-feature--opacity input[type="number"] {
-    width: 72px;
-  }
-}
-
 .kizkatt-style-panel--horizontal .kizkatt-feature-group {
   grid-template-columns: 20px minmax(0, 1fr);
   align-items: center;
@@ -297,65 +280,6 @@
   height: 14px;
 }
 
-.kizkatt-segmented {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.kizkatt-segmented button {
-  min-width: 0;
-  height: 24px;
-  padding: 0 4px;
-  overflow: hidden;
-  border-radius: 6px;
-  color: var(--kizkatt-text-secondary);
-  cursor: pointer;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.kizkatt-icon-segmented button {
-  display: grid;
-  height: 30px;
-  place-items: center;
-}
-
-.kizkatt-icon-segmented .kizkatt-tool-icon {
-  width: 22px;
-  height: 16px;
-}
-
-.kizkatt-fill-control {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  gap: 6px;
-}
-
-.kizkatt-fill-control--with-path {
-  grid-template-columns: minmax(0, 1fr) 30px;
-}
-
-.kizkatt-fill-control .kizkatt-segmented {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-.kizkatt-fill-control > button {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border-radius: 6px;
-  color: var(--kizkatt-text-secondary);
-  cursor: pointer;
-}
-
-.kizkatt-fill-control > button .kizkatt-tool-icon {
-  width: 16px;
-  height: 16px;
-}
-
 .kizkatt-action-controls {
   grid-template-columns: repeat(3, minmax(0, 32px));
   gap: 6px;
@@ -375,22 +299,10 @@
   accent-color: var(--kizkatt-selection);
 }
 
-.kizkatt-numeric-slider-control {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
-  align-items: center;
-  gap: 7px;
-}
-
-.kizkatt-numeric-slider-control .kizkatt-numeric-slider-input {
-  grid-column: 2;
-}
-
 .kizkatt-number-control {
   display: flex;
 }
 
-.kizkatt-numeric-slider-control input[type="number"],
 .kizkatt-number-control input[type="number"] {
   box-sizing: border-box;
   width: 44px;
@@ -406,7 +318,6 @@
   outline: 0;
 }
 
-.kizkatt-numeric-slider-control input[type="number"]:focus-visible,
 .kizkatt-number-control input[type="number"]:focus-visible {
   border-color: var(--kizkatt-selection);
 }

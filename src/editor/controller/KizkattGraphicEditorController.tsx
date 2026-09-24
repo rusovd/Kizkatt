@@ -888,6 +888,8 @@ export function KizkattGraphicEditorController({
         gradientFill: selectedElements[0].gradientFill,
         fillWeight: selectedElements[0].fillWeight ?? DEFAULT_FILL_WEIGHT,
         opacity: selectedElements[0].opacity,
+        opacityEnabled:
+          selectedElements[0].opacityEnabled ?? selectedElements[0].opacity < 100,
         sloppiness: selectedElements[0].sloppiness ?? DEFAULT_SELECTED_SLOPPINESS,
         sloppinessGap:
           selectedElements[0].sloppinessGap ?? defaultStyle.sloppinessGap,
@@ -1725,6 +1727,7 @@ export function KizkattGraphicEditorController({
               edgeStyle: primaryElement.edgeStyle,
               lineCombinationId: combinationId,
               opacity: primaryElement.opacity,
+              opacityEnabled: primaryElement.opacityEnabled,
               scaleStrokeWithObject: primaryElement.scaleStrokeWithObject,
               sloppiness: primaryElement.sloppiness,
               sloppinessGap: primaryElement.sloppinessGap,
