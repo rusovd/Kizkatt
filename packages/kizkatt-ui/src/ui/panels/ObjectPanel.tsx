@@ -6,6 +6,7 @@ import {
   DEFAULT_SELECTED_SLOPPINESS,
   DEFAULT_STROKE_STYLE,
   DEFAULT_STROKE_WIDTH,
+  canElementUseBackground,
   getCalibratedMillimetersWorldSize,
   type StyleState
 } from "kizkatt-graphic-engine";
@@ -25,7 +26,6 @@ import {
   BringForwardIcon,
   BringToFrontIcon,
   CloseIcon,
-  ClosedPathIcon,
   DiameterIcon,
   DimensionHeightIcon,
   DimensionWidthIcon,
@@ -492,16 +492,13 @@ function StrokeWidthPresetSelect({
 
 export function ObjectPanel({
   activeTool,
-  canToggleClosedPath = false,
   canUseNodeAction,
   canZoomToAll,
   canZoomToSelected,
-  closedPath = false,
   geometry,
   gradientFillPanelOpen = false,
   gridSettings,
   onAction,
-  onClosedPathChange,
   onDimensionChange,
   onGeometryChange,
   onGeometryChangeEnd,
@@ -527,6 +524,13 @@ export function ObjectPanel({
   const lineSettingsRef = useRef<HTMLDivElement | null>(null);
   const canUseArrowheads = selectedElements.every(
     (element) => element.type === "line" || element.type === "arrow"
+  );
+  const hasUnclosedPath = selectedElements.some(
+    (element) =>
+      (element.type === "arrow" ||
+        element.type === "draw" ||
+        element.type === "line") &&
+      !canElementUseBackground(element)
   );
 
   useEffect(() => {
@@ -1080,7 +1084,12 @@ export function ObjectPanel({
                               : false
                         }
                         ariaLabel={strings.stylePanel[control.labelKey]}
-                        disabled={control.disabled}
+                        disabled={
+                          control.disabled ||
+                          (hasUnclosedPath &&
+                            !control.clearsFill &&
+                            control.style !== "solid")
+                        }
                         title={strings.stylePanel.tooltips[control.labelKey]}
                         onClick={() => {
                           if (control.clearsFill) {
@@ -1106,16 +1115,6 @@ export function ObjectPanel({
                         {control.icon}
                       </IconButton>
                     ))}
-                    {canToggleClosedPath && onClosedPathChange && (
-                      <IconButton
-                        active={closedPath}
-                        ariaLabel={strings.stylePanel.closePath}
-                        title={strings.stylePanel.tooltips.closePath}
-                        onClick={() => onClosedPathChange(!closedPath)}
-                      >
-                        {ClosedPathIcon}
-                      </IconButton>
-                    )}
                   </div>
                 </FeatureGroup>
                 <FeatureGroup

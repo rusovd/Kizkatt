@@ -130,16 +130,13 @@ export type DocumentControls = {
 
 export type ObjectPanelProps = {
   activeTool: Tool;
-  canToggleClosedPath?: boolean;
   canUseNodeAction?: (action: NodeEditorAction) => boolean;
   canZoomToAll: boolean;
   canZoomToSelected: boolean;
   geometry: ObjectPanelGeometry | null;
   gradientFillPanelOpen?: boolean;
   gridSettings: GridSettings;
-  closedPath?: boolean;
   onAction: (action: "delete" | "duplicate") => void;
-  onClosedPathChange?: (closed: boolean) => void;
   onDimensionChange: (
     axis: ObjectDimensionAxis,
     value: number,

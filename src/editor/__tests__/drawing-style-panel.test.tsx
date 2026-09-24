@@ -2185,7 +2185,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     );
   });
 
-  it("enables fill colors after an open line is closed", () => {
+  it("disables non-color fills for an open line", () => {
     storeCanvasState({
       elements: [
         {
@@ -2207,22 +2207,22 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     });
     render(<KizkattGraphicEditor />);
 
-    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
-
     expect(
       screen.getByRole("button", { name: "Background custom #653b00" })
     ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Fill solid" }))
+      .not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "No fill" }))
+      .not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Gradient fill" }))
+      .toBeDisabled();
+    expect(screen.getByRole("button", { name: "Texture fill" }))
+      .toBeDisabled();
+    expect(screen.getByRole("button", { name: "Fill hachure" }))
+      .toBeDisabled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Close path" }));
-
-    expect(
-      screen.getByRole("button", { name: "Background custom #653b00" })
-    ).not.toBeDisabled();
-    expect(canvas.querySelector("[data-element-type='line'] > path"))
-      .toHaveAttribute(
-      "fill",
-      "#653b00"
-    );
+    expect(screen.queryByRole("button", { name: "Close path" }))
+      .not.toBeInTheDocument();
   });
 
   it("applies line and fill controls from the object panel", () => {
