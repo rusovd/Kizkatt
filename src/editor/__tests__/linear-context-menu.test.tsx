@@ -422,6 +422,86 @@ describe("KizkattGraphicEditor linear tools and context menus", () => {
     expect(canvas.querySelector("[data-element-id] path")).toBeInTheDocument();
   });
 
+  it("inserts the first point when the second click lands on the segment overlay", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          edgeStyle: "sharp",
+          endArrowhead: "none",
+          height: -516.8966108075242,
+          id: "line",
+          opacity: 100,
+          sloppiness: "architect",
+          startArrowhead: "triangle",
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 10,
+          type: "line",
+          width: -193.4826706154117,
+          x: 1874.5400436622865,
+          y: 1018.1466108075248
+        }
+      ],
+      selectedIds: []
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    fireEvent.click(screen.getByRole("button", { name: "Node edit" }));
+
+    const renderedLine = canvas.querySelector(
+      "[data-element-type='line'] > line"
+    );
+    expect(renderedLine).toBeInTheDocument();
+
+    firePointerEvent(renderedLine as Element, "pointerdown", {
+      clientX: 1777.7987083545807,
+      clientY: 759.6983054037627
+    });
+    firePointerEvent(renderedLine as Element, "pointerup", {
+      clientX: 1777.7987083545807,
+      clientY: 759.6983054037627
+    });
+
+    const selectedSegment = canvas.querySelector(
+      ".kizkatt-linear-segment-hit"
+    );
+    expect(selectedSegment).toBeInTheDocument();
+
+    firePointerEvent(selectedSegment as Element, "pointerdown", {
+      clientX: 1777.7987083545807,
+      clientY: 759.6983054037627,
+      detail: 2
+    });
+
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
+      .toHaveLength(1);
+    const insertedPoint = canvas.querySelector(
+      ".kizkatt-bend-point-handle"
+    );
+    const insertedPointWidth = Number(insertedPoint?.getAttribute("width"));
+    const insertedPointHeight = Number(insertedPoint?.getAttribute("height"));
+    expect(
+      Number(insertedPoint?.getAttribute("x")) + insertedPointWidth / 2
+    ).toBeCloseTo(1777.7987083545807);
+    expect(
+      Number(insertedPoint?.getAttribute("y")) + insertedPointHeight / 2
+    ).toBeCloseTo(759.6983054037627);
+
+    fireEvent.doubleClick(
+      canvas.querySelector(".kizkatt-linear-segment-hit") as Element,
+      {
+        clientX: 1777.7987083545807,
+        clientY: 759.6983054037627
+      }
+    );
+
+    expect(canvas.querySelectorAll(".kizkatt-bend-point-handle"))
+      .toHaveLength(1);
+  });
+
   it("splits a curved line segment on double-click without changing its shape", () => {
     storeCanvasState({
       elements: [
