@@ -2271,8 +2271,8 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       .toBeDisabled();
     expect(screen.getByRole("button", { name: "Texture fill" }))
       .toBeDisabled();
-    expect(screen.getByRole("button", { name: "Fill hachure" }))
-      .toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Fill hachure" }))
+      .not.toBeInTheDocument();
 
     expect(screen.queryByRole("button", { name: "Close path" }))
       .not.toBeInTheDocument();
@@ -2419,22 +2419,10 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
       "No fill",
       "Gradient fill",
       "Texture fill",
-      "SVG fill",
-      "Fill hachure"
+      "SVG fill"
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Fill hachure" }));
-    expect(elementRect?.getAttribute("fill")).toMatch(
-      /^url\(#kizkatt-fill-/
-    );
-    expect(canvas.querySelector("[data-element-id] pattern")).toHaveAttribute(
-      "width",
-      "8"
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "No fill" }));
-    expect(elementRect).toHaveAttribute("fill", "transparent");
-    expect(canvas.querySelector("[data-element-id] pattern"))
+    expect(screen.queryByRole("button", { name: "Fill hachure" }))
       .not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Texture fill" }));

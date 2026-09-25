@@ -168,16 +168,11 @@ export const PolylineIcon = createIcon(
 );
 
 export const TextureIcon = createIcon(
-  <g strokeWidth="1.7">
-    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-    <rect x="4" y="3.5" width="16" height="17" rx="1" />
-    <rect x="6" y="5.5" width="12" height="13" rx=".5" />
-    <path d="M6 3.5V2M9 3.5V2M12 3.5V2M15 3.5V2M18 3.5V2" />
-    <path d="M6 22v-1.5M9 22v-1.5M12 22v-1.5M15 22v-1.5M18 22v-1.5" />
-    <path d="m6.8 8.2 2-1.7 2 1.7 2-1.7 2 1.7 2-1.7 1.2 1" />
-    <path d="m6.8 15.8 2 1.7 2-1.7 2 1.7 2-1.7 2 1.7 1.2-1" />
-    <path d="m12 8.9 3.1 3.1-3.1 3.1L8.9 12z" />
-    <path d="m12 10.8 1.2 1.2-1.2 1.2-1.2-1.2z" />
+  <g strokeWidth="1.5">
+    <rect x="4" y="4" width="16" height="16" rx="3" />
+    <path d="M7 19 19 7" />
+    <path d="M5 13 13 5" />
+    <path d="M11 21 21 11" />
   </g>,
 );
 

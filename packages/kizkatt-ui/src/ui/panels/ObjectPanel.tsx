@@ -31,7 +31,6 @@ import {
   DimensionWidthIcon,
   EdgeRoundIcon,
   EdgeSharpIcon,
-  FillHachureIcon,
   FillNoneIcon,
   FillSolidIcon,
   GradientIcon,
@@ -119,15 +118,6 @@ const FILL_CONTROLS = [
     opensGradient: false,
     opensTextureFill: false,
     style: undefined
-  },
-  {
-    clearsFill: false,
-    disabled: false,
-    icon: FillHachureIcon,
-    labelKey: "fillHachure",
-    opensGradient: false,
-    opensTextureFill: false,
-    style: "hachure"
   }
 ] as const;
 
