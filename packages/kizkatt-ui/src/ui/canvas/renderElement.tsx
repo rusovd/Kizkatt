@@ -1208,7 +1208,7 @@ function WireframeElement({
     const pathData = getLinearElementPath(
       renderedLinePoints,
       element.edgeStyle,
-      getLinearElementSegmentControls(element, renderedLinePoints),
+      getLinearElementSegmentControls(element, linePoints),
       Boolean(element.closed)
     );
 
@@ -1449,7 +1449,7 @@ export function renderElement(
     const canUseFill = canElementUseBackground(element);
     const segmentControls = getLinearElementSegmentControls(
       element,
-      renderedLinePoints
+      linePoints
     );
     const hasCurvedSegments = segmentControls.some(
       (control) => control.mode === "curve" && control.cp1 && control.cp2

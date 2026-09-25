@@ -10,6 +10,7 @@ import {
   ARROW_MARKER_WIDTH,
   MIN_RENDERED_STROKE_WIDTH
 } from "../config/constants";
+import { getLinearElementSegmentControls } from "./linearElements";
 
 export type ArrowheadGeometry = {
   angle: number;
@@ -68,17 +69,36 @@ export function getArrowheadGeometry(
     return null;
   }
 
-  let tangentStart: Point | undefined;
+  const segmentControls = getLinearElementSegmentControls(element, linePoints);
+  const endpointControl = isStart
+    ? segmentControls[0]
+    : segmentControls[segmentControls.length - 1];
+  let tangentStart =
+    endpointControl?.mode === "curve"
+      ? isStart
+        ? endpointControl.cp1
+        : endpointControl.cp2
+      : undefined;
   const firstIndex = isStart ? 1 : linePoints.length - 2;
   const lastIndex = isStart ? linePoints.length : -1;
   const step = isStart ? 1 : -1;
 
-  for (let index = firstIndex; index !== lastIndex; index += step) {
-    const point = linePoints[index];
+  if (
+    !tangentStart ||
+    Math.hypot(end.x - tangentStart.x, end.y - tangentStart.y) <= Number.EPSILON
+  ) {
+    tangentStart = undefined;
 
-    if (point && Math.hypot(end.x - point.x, end.y - point.y) > Number.EPSILON) {
-      tangentStart = point;
-      break;
+    for (let index = firstIndex; index !== lastIndex; index += step) {
+      const point = linePoints[index];
+
+      if (
+        point &&
+        Math.hypot(end.x - point.x, end.y - point.y) > Number.EPSILON
+      ) {
+        tangentStart = point;
+        break;
+      }
     }
   }
 
@@ -161,20 +181,20 @@ export function shortenLinePoints(linePoints: Point[], length: number) {
   return linePoints.slice(0, 1);
 }
 
-function shortenLinePointsAtStart(linePoints: Point[], length: number) {
-  return shortenLinePoints([...linePoints].reverse(), length).reverse();
-}
-
 export function shortenLinePointsForArrowheads(
   linePoints: Point[],
   startGeometry: ArrowheadGeometry | null,
   endGeometry: ArrowheadGeometry | null
 ) {
-  const shortenedAtEnd = endGeometry
-    ? shortenLinePoints(linePoints, endGeometry.length)
-    : linePoints;
+  const shortened = linePoints.map((point) => ({ ...point }));
 
-  return startGeometry
-    ? shortenLinePointsAtStart(shortenedAtEnd, startGeometry.length)
-    : shortenedAtEnd;
+  if (startGeometry && shortened.length > 0) {
+    shortened[0] = { ...startGeometry.base };
+  }
+
+  if (endGeometry && shortened.length > 0) {
+    shortened[shortened.length - 1] = { ...endGeometry.base };
+  }
+
+  return shortened;
 }

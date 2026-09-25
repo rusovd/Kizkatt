@@ -2073,7 +2073,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
 
     expect(decorativeArrowhead).toHaveAttribute(
       "d",
-      "M 0 0 L 10 5 L 0 10 z"
+      "M -0.75 0 L 10 5 L -0.75 10 z"
     );
     expect(
       Number(decorativeArrowhead?.getAttribute("data-arrowhead-angle"))
@@ -2098,6 +2098,59 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(enlargedScale).toBeGreaterThan(expectedDefaultScale);
     expect(enlargedScale / expectedDefaultScale).toBeLessThan(2);
     expect(enlargedScale).toBeCloseTo((8 * (1 + Math.log(50))) / 10);
+  });
+
+  it("aligns an arrowhead with a curved line endpoint tangent", () => {
+    storeCanvasState({
+      elements: [
+        {
+          angle: 0,
+          backgroundColor: "transparent",
+          edgeStyle: "sharp",
+          endArrowhead: "triangle",
+          height: 0,
+          id: "curved-arrow",
+          linearSegmentControls: [
+            {
+              cp1: { x: 0, y: 100 },
+              cp2: { x: 100, y: 100 },
+              mode: "curve"
+            }
+          ],
+          opacity: 100,
+          sloppiness: "architect",
+          strokeColor: "#f08c00",
+          strokeStyle: "solid",
+          strokeWidth: 4,
+          type: "line",
+          width: 100,
+          x: 40,
+          y: 50
+        }
+      ],
+      selectedIds: ["curved-arrow"]
+    });
+    render(<KizkattGraphicEditor />);
+
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    const arrowhead = canvas.querySelector(
+      "[data-element-id='curved-arrow'] > [data-arrowhead]"
+    );
+    const linePath = canvas.querySelector(
+      "[data-element-id='curved-arrow'] > path:not([data-arrowhead])"
+    );
+    const expectedBaseY = 50 + 8 * (1 + Math.log(4));
+
+    expect(Number(arrowhead?.getAttribute("data-arrowhead-angle")))
+      .toBeCloseTo(-90);
+    expect(Number(arrowhead?.getAttribute("data-arrowhead-base-x")))
+      .toBeCloseTo(140);
+    expect(Number(arrowhead?.getAttribute("data-arrowhead-base-y")))
+      .toBeCloseTo(expectedBaseY);
+    expect(linePath).toHaveAttribute(
+      "d",
+      `M 40 50 C 40 150 140 150 140 ${expectedBaseY}`
+    );
   });
 
   it("creates arrows from lines through the fine outline settings", () => {

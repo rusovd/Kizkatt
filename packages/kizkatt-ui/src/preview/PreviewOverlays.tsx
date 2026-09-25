@@ -17,7 +17,7 @@ import {
 } from "kizkatt-graphic-engine";
 import {
   getArrowheadGeometry,
-  shortenLinePoints
+  shortenLinePointsForArrowheads
 } from "kizkatt-graphic-engine";
 import { getElementTransform, getFreehandPath } from "../rendering/elementProps";
 
@@ -45,12 +45,12 @@ function TransformPreviewContour({
     const linePoints = getLinearElementPoints(element);
     const arrowheadGeometry = getArrowheadGeometry(element, linePoints);
     const renderedLinePoints = arrowheadGeometry
-      ? shortenLinePoints(linePoints, arrowheadGeometry.length)
+      ? shortenLinePointsForArrowheads(linePoints, null, arrowheadGeometry)
       : linePoints;
     const pathData = getLinearElementPath(
       renderedLinePoints,
       element.edgeStyle,
-      getLinearElementSegmentControls(element, renderedLinePoints),
+      getLinearElementSegmentControls(element, linePoints),
       Boolean(element.closed)
     );
     const closedPathData = `${pathData}${
