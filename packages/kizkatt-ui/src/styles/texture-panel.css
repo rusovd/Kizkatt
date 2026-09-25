@@ -260,8 +260,7 @@
   pointer-events: none;
 }
 
-.kizkatt-bitmap-pattern-panel
-  .kizkatt-bitmap-texture-crop-handle {
+.kizkatt-bitmap-texture-crop-handle {
   position: absolute;
   z-index: 2;
   box-sizing: border-box;

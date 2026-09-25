@@ -135,6 +135,7 @@ export type ObjectPanelProps = {
   canZoomToSelected: boolean;
   geometry: ObjectPanelGeometry | null;
   gradientFillPanelOpen?: boolean;
+  svgFillPanelOpen?: boolean;
   gridSettings: GridSettings;
   onAction: (action: "delete" | "duplicate") => void;
   onDimensionChange: (
@@ -152,6 +153,7 @@ export type ObjectPanelProps = {
   onGeometryChangeEnd: () => void;
   onMirror: (axis: ObjectMirrorAxis) => void;
   onGradientOpen?: () => void;
+  onSvgFillOpen?: () => void;
   onNodeAction?: (action: NodeEditorAction) => void;
   onLayerAction: (action: "back" | "backward" | "forward" | "front") => void;
   onStyleChange: (

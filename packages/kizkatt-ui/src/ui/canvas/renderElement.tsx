@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { BitmapTextureFillPattern } from "../../rendering/BitmapTexturePattern";
 import { GradientFillDefinition } from "../../rendering/GradientFill";
+import { SvgTextureFillPattern } from "../../rendering/SvgTexturePattern";
 
 import {
   getElementBends,
@@ -68,6 +69,7 @@ import {
   EMPTY_REPLACEMENT,
   FILL_PATTERN_ID_PREFIX,
   FILL_STYLE_MONOCHROME_TEXTURE,
+  FILL_STYLE_SVG_TEXTURE,
   FILL_STYLE_GRADIENT,
   FILL_STYLE_CROSS_HATCH,
   FILL_STYLE_HACHURE,
@@ -635,6 +637,12 @@ function ElementFillPattern({ element }: { element: KizkattElement }) {
   const bitmapTextureSource = bitmapTexture
     ? bitmapTexture.source ?? resolvedTextureSource
     : null;
+  const resolvedSvgTextureSource = useTextureSource(
+    element.svgTexture?.textureId ?? ""
+  );
+  const svgTextureSource = element.svgTexture
+    ? element.svgTexture.source ?? resolvedSvgTextureSource
+    : null;
 
   if (fillStyle === FILL_STYLE_GRADIENT && element.gradientFill) {
     return (
@@ -656,6 +664,20 @@ function ElementFillPattern({ element }: { element: KizkattElement }) {
         patternId={patternId}
         source={bitmapTextureSource}
         texture={bitmapTexture}
+      />
+    );
+  }
+
+  if (
+    fillStyle === FILL_STYLE_SVG_TEXTURE &&
+    element.svgTexture &&
+    svgTextureSource
+  ) {
+    return (
+      <SvgTextureFillPattern
+        element={element}
+        patternId={patternId}
+        source={svgTextureSource}
       />
     );
   }

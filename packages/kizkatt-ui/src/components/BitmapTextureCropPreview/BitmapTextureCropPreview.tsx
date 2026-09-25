@@ -291,10 +291,12 @@ export function getBitmapTextureCropPreviewLayout(
 }
 
 export function BitmapTextureCropPreview({
+  combinedTransformHandles = false,
   cropEnabled = true,
   freeDeformation = false,
   imageRef,
   labels,
+  naturalSize: controlledNaturalSize,
   onClick,
   onNaturalSizeChange,
   onTextureChange,
@@ -306,10 +308,12 @@ export function BitmapTextureCropPreview({
   targetTransform,
   texture
 }: {
+  combinedTransformHandles?: boolean;
   cropEnabled?: boolean;
   freeDeformation?: boolean;
   imageRef?: RefObject<HTMLImageElement | null>;
   labels: BitmapTextureCropPreviewLabels;
+  naturalSize?: BitmapTextureSize;
   onClick?: (event: MouseEvent<HTMLDivElement>) => void;
   onNaturalSizeChange?: (size: BitmapTextureSize) => void;
   onTextureChange: (change: Partial<BitmapTextureFill>) => void;
@@ -328,10 +332,12 @@ export function BitmapTextureCropPreview({
   const interactionRef = useRef<CropInteraction | null>(null);
   const previewFrameRef = useRef({ imageLeft: 0, imageTop: 0 });
   const [interactionActive, setInteractionActive] = useState(false);
-  const [naturalSize, setNaturalSize] = useState<BitmapTextureSize>({
-    height: Math.max(MIN_TEXTURE_SIZE, texture.height),
-    width: Math.max(MIN_TEXTURE_SIZE, texture.width)
-  });
+  const [detectedNaturalSize, setDetectedNaturalSize] =
+    useState<BitmapTextureSize>({
+      height: Math.max(MIN_TEXTURE_SIZE, texture.height),
+      width: Math.max(MIN_TEXTURE_SIZE, texture.width)
+    });
+  const naturalSize = controlledNaturalSize ?? detectedNaturalSize;
   const [viewportSize, setViewportSize] = useState<BitmapTextureSize>({
     height: DEFAULT_PREVIEW_SIZE,
     width: DEFAULT_PREVIEW_SIZE
@@ -341,7 +347,7 @@ export function BitmapTextureCropPreview({
 
   useEffect(() => {
     setTransformMode("resize");
-    setNaturalSize({
+    setDetectedNaturalSize({
       height: Math.max(MIN_TEXTURE_SIZE, texture.height),
       width: Math.max(MIN_TEXTURE_SIZE, texture.width)
     });
@@ -476,7 +482,7 @@ export function BitmapTextureCropPreview({
       height: Math.max(MIN_TEXTURE_SIZE, image.naturalHeight),
       width: Math.max(MIN_TEXTURE_SIZE, image.naturalWidth)
     };
-    setNaturalSize(nextSize);
+    setDetectedNaturalSize(nextSize);
     onNaturalSizeChange?.(nextSize);
   };
 
@@ -710,6 +716,7 @@ export function BitmapTextureCropPreview({
 
     if (
       freeDeformation &&
+      !combinedTransformHandles &&
       allowModeToggle &&
       interaction.action === "move" &&
       !interaction.hasMoved
@@ -812,7 +819,9 @@ export function BitmapTextureCropPreview({
               onPointerDown={(event) => beginInteraction(event, "move")}
             />
           )}
-          {cropEnabled && freeDeformation && transformMode === "resize" && (
+          {cropEnabled &&
+            freeDeformation &&
+            (combinedTransformHandles || transformMode === "resize") && (
             <>
               {RESIZE_HANDLES.map((handle) => (
                 <button
@@ -845,7 +854,10 @@ export function BitmapTextureCropPreview({
               </span>
             </>
           )}
-          {cropEnabled && freeDeformation && transformMode === "skew" && (
+          {cropEnabled &&
+            freeDeformation &&
+            !combinedTransformHandles &&
+            transformMode === "skew" && (
             <>
               {SKEW_HANDLES.map((handle) => (
                 <button
@@ -862,19 +874,6 @@ export function BitmapTextureCropPreview({
                   <SkewHandleIcon handle={handle} />
                 </button>
               ))}
-              {CORNER_HANDLES.map((corner) => (
-                <button
-                  key={corner}
-                  type="button"
-                  aria-label={labels.rotate}
-                  className={`kizkatt-bitmap-texture-crop-handle is-corner-rotate is-${corner}`}
-                  style={cornerRotatePoints[corner]}
-                  title={labels.rotate}
-                  onPointerDown={(event) => beginInteraction(event, "rotate")}
-                >
-                  <CornerRotateIcon corner={corner} />
-                </button>
-              ))}
               <span
                 aria-hidden="true"
                 className="kizkatt-bitmap-texture-transform-center is-skew"
@@ -887,6 +886,22 @@ export function BitmapTextureCropPreview({
               </span>
             </>
           )}
+          {cropEnabled &&
+            freeDeformation &&
+            (combinedTransformHandles || transformMode === "skew") &&
+            CORNER_HANDLES.map((corner) => (
+              <button
+                key={corner}
+                type="button"
+                aria-label={labels.rotate}
+                className={`kizkatt-bitmap-texture-crop-handle is-corner-rotate is-${corner}`}
+                style={cornerRotatePoints[corner]}
+                title={labels.rotate}
+                onPointerDown={(event) => beginInteraction(event, "rotate")}
+              >
+                <CornerRotateIcon corner={corner} />
+              </button>
+            ))}
         </div>
       ) : (
         <span className="kizkatt-bitmap-texture-preview-empty" />

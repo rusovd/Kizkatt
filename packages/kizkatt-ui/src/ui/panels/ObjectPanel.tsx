@@ -80,6 +80,7 @@ const FILL_CONTROLS = [
     icon: FillSolidIcon,
     labelKey: "fillSolid",
     opensGradient: false,
+    opensSvgFill: false,
     opensTextureFill: false,
     style: "solid"
   },
@@ -89,6 +90,7 @@ const FILL_CONTROLS = [
     icon: FillNoneIcon,
     labelKey: "fillNone",
     opensGradient: false,
+    opensSvgFill: false,
     opensTextureFill: false,
     style: undefined
   },
@@ -98,6 +100,7 @@ const FILL_CONTROLS = [
     icon: GradientIcon,
     labelKey: "fillGradient",
     opensGradient: true,
+    opensSvgFill: false,
     opensTextureFill: false,
     style: "gradient"
   },
@@ -107,17 +110,19 @@ const FILL_CONTROLS = [
     icon: TextureIcon,
     labelKey: "fillCrossHatch",
     opensGradient: false,
+    opensSvgFill: false,
     opensTextureFill: true,
     style: "monochromeTexture"
   },
   {
     clearsFill: false,
-    disabled: true,
+    disabled: false,
     icon: SvgFillIcon,
     labelKey: "fillSvg",
     opensGradient: false,
+    opensSvgFill: true,
     opensTextureFill: false,
-    style: undefined
+    style: "svgTexture"
   }
 ] as const;
 
@@ -493,6 +498,7 @@ export function ObjectPanel({
   onGeometryChange,
   onGeometryChangeEnd,
   onGradientOpen,
+  onSvgFillOpen,
   onLayerAction,
   onMirror,
   onNodeAction,
@@ -502,6 +508,7 @@ export function ObjectPanel({
   onViewportZoomAction,
   selectedElements,
   style,
+  svgFillPanelOpen = false,
   textureFillPanelOpen = false,
   theme
 }: ObjectPanelProps) {
@@ -1069,9 +1076,11 @@ export function ObjectPanel({
                         active={
                           control.opensGradient
                             ? gradientFillPanelOpen
-                            : control.opensTextureFill
-                              ? textureFillPanelOpen
-                              : false
+                            : control.opensSvgFill
+                              ? svgFillPanelOpen
+                              : control.opensTextureFill
+                                ? textureFillPanelOpen
+                                : false
                         }
                         ariaLabel={strings.stylePanel[control.labelKey]}
                         disabled={
@@ -1089,6 +1098,11 @@ export function ObjectPanel({
 
                           if (control.opensGradient) {
                             onGradientOpen?.();
+                            return;
+                          }
+
+                          if (control.opensSvgFill) {
+                            onSvgFillOpen?.();
                             return;
                           }
 

@@ -1,0 +1,435 @@
+.kizkatt-floating-panel--svg-fill {
+  top: 120px;
+  left: 300px;
+  z-index: 8;
+}
+
+.kizkatt-floating-panel--svg-fill.is-positioned {
+  transform: scale(var(--kizkatt-ui-scale));
+  transform-origin: top left;
+}
+
+.kizkatt-floating-panel--svg-fill.is-resized > .kizkatt-svg-texture-panel {
+  height: 100%;
+  width: 100%;
+}
+
+.kizkatt-floating-panel--svg-fill.is-resizing,
+.kizkatt-floating-panel--svg-fill .kizkatt-panel-resize-handle {
+  cursor: nwse-resize;
+}
+
+.kizkatt-svg-texture-panel,
+.kizkatt-svg-texture-library {
+  box-sizing: border-box;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 8px;
+  background: var(--kizkatt-control-bg);
+  color: var(--kizkatt-text-primary);
+  box-shadow: 0 18px 45px var(--kizkatt-shadow);
+  font-size: 0.78rem;
+}
+
+.kizkatt-svg-texture-panel {
+  position: relative;
+  display: grid;
+  width: 720px;
+  height: 540px;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.kizkatt-svg-texture-content {
+  display: grid;
+  box-sizing: border-box;
+  min-height: 0;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(340px, 1.1fr);
+  gap: 16px;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.kizkatt-svg-texture-source-column,
+.kizkatt-svg-texture-code-column {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 12px;
+}
+
+.kizkatt-svg-texture-source-column {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: stretch;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.kizkatt-svg-texture-name {
+  display: grid;
+  gap: 4px;
+}
+
+.kizkatt-svg-texture-name-controls {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 30px 30px;
+  gap: 5px;
+}
+
+.kizkatt-svg-texture-panel input,
+.kizkatt-svg-texture-library input {
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid var(--kizkatt-divider);
+  border-radius: 6px;
+  outline: none;
+  background: var(--kizkatt-control-bg-hover);
+  color: var(--kizkatt-text-primary);
+  font: inherit;
+}
+
+.kizkatt-svg-texture-panel input,
+.kizkatt-svg-texture-library input {
+  height: 30px;
+  padding: 0 8px;
+}
+
+.kizkatt-svg-texture-panel input:focus-visible,
+.kizkatt-svg-texture-library input:focus-visible {
+  border-color: var(--kizkatt-selection);
+}
+
+.kizkatt-svg-texture-panel button,
+.kizkatt-svg-texture-library button {
+  border: 0;
+  background: color-mix(in srgb, var(--kizkatt-selection) 12%, transparent);
+  color: var(--kizkatt-text-secondary);
+  cursor: pointer;
+}
+
+.kizkatt-svg-texture-panel button:hover,
+.kizkatt-svg-texture-library button:hover,
+.kizkatt-svg-texture-library button.is-active {
+  background: var(--kizkatt-control-bg-hover);
+  color: var(--kizkatt-text-primary);
+}
+
+.kizkatt-svg-texture-fill-button {
+  display: grid;
+  height: 30px;
+  grid-template-columns: minmax(0, 1fr) 18px;
+  align-items: center;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--kizkatt-divider) !important;
+  border-radius: 6px;
+}
+
+.kizkatt-svg-texture-fill-button img {
+  width: 100%;
+  height: 100%;
+  min-height: 30px;
+  object-fit: cover;
+}
+
+.kizkatt-svg-texture-fill-button .kizkatt-tool-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.kizkatt-svg-texture-upload-button,
+.kizkatt-svg-texture-save-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--kizkatt-divider) !important;
+  border-radius: 6px;
+}
+
+.kizkatt-svg-texture-upload-button .kizkatt-tool-icon,
+.kizkatt-svg-texture-save-button .kizkatt-tool-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.kizkatt-svg-texture-preview-area {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.kizkatt-svg-texture-preview,
+.kizkatt-svg-texture-preview-area > .kizkatt-bitmap-pattern-preview {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.kizkatt-svg-texture-preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--kizkatt-divider);
+  background-color: var(--kizkatt-canvas-bg);
+  background-image:
+    linear-gradient(45deg, var(--kizkatt-divider) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--kizkatt-divider) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--kizkatt-divider) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--kizkatt-divider) 75%);
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+  color: var(--kizkatt-text-secondary);
+}
+
+.kizkatt-svg-texture-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  user-select: none;
+}
+
+.kizkatt-svg-texture-fit-crop {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 2px solid var(--kizkatt-selection);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.92),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.72);
+  pointer-events: none;
+}
+
+.kizkatt-svg-texture-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kizkatt-svg-texture-preview-actions button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--kizkatt-divider) !important;
+  border-radius: 6px;
+}
+
+.kizkatt-svg-texture-preview-actions .kizkatt-tool-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.kizkatt-svg-texture-fit-control {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 7px;
+}
+
+.kizkatt-svg-texture-fit-control input {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+}
+
+.kizkatt-svg-texture-code-column {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 42px;
+}
+
+.kizkatt-svg-texture-code-body {
+  position: absolute;
+  inset: 0 0 42px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.kizkatt-svg-code-editor {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--kizkatt-divider);
+  border-radius: 6px;
+  background: var(--kizkatt-control-bg-hover);
+}
+
+.kizkatt-svg-code-editor:focus-within {
+  border-color: var(--kizkatt-selection);
+}
+
+.kizkatt-svg-code-editor.is-invalid {
+  border-color: var(--kizkatt-danger, #d9485f);
+}
+
+.kizkatt-svg-code-editor > .cm-editor {
+  height: 100%;
+  min-height: 0;
+}
+
+.kizkatt-svg-code-editor .cm-scroller {
+  min-height: 0;
+  overflow: auto;
+}
+
+.kizkatt-svg-texture-code-error {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--kizkatt-control-bg) 88%, transparent);
+  color: var(--kizkatt-danger, #d9485f);
+}
+
+.kizkatt-svg-texture-code-actions {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  height: 30px;
+  min-height: 30px;
+  justify-content: flex-end;
+  gap: 8px;
+  background: var(--kizkatt-control-bg);
+}
+
+.kizkatt-svg-texture-code-actions button {
+  min-width: 72px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--kizkatt-divider);
+  border-radius: 6px;
+}
+
+.kizkatt-svg-texture-code-actions button.is-primary {
+  border-color: var(--kizkatt-selection);
+  background: var(--kizkatt-selection);
+  color: var(--kizkatt-selection-text, #fff);
+}
+
+.kizkatt-svg-texture-panel button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.kizkatt-floating-panel--svg-fill-library {
+  z-index: 11;
+}
+
+.kizkatt-svg-texture-library {
+  position: relative;
+  display: grid;
+  width: 380px;
+  height: min(650px, calc(100vh - 130px));
+  min-height: 420px;
+  grid-template-rows: auto auto minmax(220px, 1fr);
+  gap: 8px;
+  overflow: hidden;
+  padding: 0 10px 10px;
+}
+
+.kizkatt-svg-texture-library > .kizkatt-panel-chrome {
+  width: auto;
+  margin-inline: -10px;
+}
+
+.kizkatt-svg-texture-search {
+  padding: 0 10px;
+}
+
+.kizkatt-svg-texture-grid {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: 8px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.kizkatt-svg-texture-grid button {
+  display: grid;
+  min-width: 0;
+  padding: 3px;
+  grid-template-rows: 82px auto;
+  gap: 4px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+}
+
+.kizkatt-svg-texture-grid button.is-active {
+  box-shadow: inset 0 0 0 1px var(--kizkatt-selection);
+}
+
+.kizkatt-svg-texture-grid img {
+  width: 100%;
+  height: 82px;
+  border-radius: 4px;
+  object-fit: fill;
+}
+
+.kizkatt-svg-texture-grid button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kizkatt-svg-texture-empty {
+  grid-column: 1 / -1;
+  color: var(--kizkatt-text-secondary);
+  text-align: center;
+}
+
+.kizkatt-svg-texture-save-dialog {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.kizkatt-svg-texture-save-dialog > label {
+  display: grid;
+  gap: 5px;
+  margin-top: 18px;
+  color: var(--kizkatt-panel-label);
+  font-size: 0.82rem;
+}
+
+.kizkatt-svg-texture-save-dialog input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--kizkatt-border);
+  border-radius: 8px;
+  outline: none;
+  background: var(--kizkatt-control-bg-hover);
+  color: var(--kizkatt-text-primary);
+  font: inherit;
+}
+
+.kizkatt-svg-texture-save-dialog input:focus-visible {
+  border-color: var(--kizkatt-selection);
+}
+
+@media (max-width: 820px) {
+  .kizkatt-svg-texture-content {
+    grid-template-columns: 1fr;
+  }
+
+  .kizkatt-svg-texture-panel {
+    width: min(720px, calc(100vw - 24px));
+  }
+}

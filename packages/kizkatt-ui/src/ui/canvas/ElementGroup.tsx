@@ -21,6 +21,7 @@ export function ElementGroup({
     backgroundColor: element.backgroundColor,
     bitmapTexture: element.bitmapTexture,
     gradientFill: element.gradientFill,
+    svgTexture: element.svgTexture,
     calligraphy: element.calligraphy,
     calligraphyStretch: element.calligraphyStretch,
     endArrowhead: element.endArrowhead,

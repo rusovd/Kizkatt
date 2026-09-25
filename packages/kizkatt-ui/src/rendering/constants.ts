@@ -76,6 +76,7 @@ export const SECONDARY_HAND_DRAWN_INSET_MULTIPLIER = 0.55;
 export const SECONDARY_SHAPE_MAX_INSET_MULTIPLIER = 0.38;
 
 export const FILL_STYLE_MONOCHROME_TEXTURE = "monochromeTexture";
+export const FILL_STYLE_SVG_TEXTURE = "svgTexture";
 export const FILL_STYLE_GRADIENT = "gradient";
 export const FILL_STYLE_HACHURE = "hachure";
 export const FILL_STYLE_CROSS_HATCH = "crossHatch";

@@ -2,6 +2,12 @@
   --kizkatt-active: #4f4d87;
   --kizkatt-border: #2f2f3b;
   --kizkatt-canvas-grid: rgba(255, 255, 255, 0.1);
+  --kizkatt-code-attribute: #79c0ff;
+  --kizkatt-code-invalid: #ff7b72;
+  --kizkatt-code-number: #ffa657;
+  --kizkatt-code-punctuation: #c9d1d9;
+  --kizkatt-code-string: #a5d6a7;
+  --kizkatt-code-tag: #b7b3ff;
   --kizkatt-control-bg: #23232d;
   --kizkatt-control-bg-hover: #31303f;
   --kizkatt-divider: #343441;
@@ -34,6 +40,12 @@
   --kizkatt-active: #e0dfff;
   --kizkatt-border: #d7d7df;
   --kizkatt-canvas-grid: rgba(30, 30, 40, 0.12);
+  --kizkatt-code-attribute: #006a9c;
+  --kizkatt-code-invalid: #b42318;
+  --kizkatt-code-number: #9a5200;
+  --kizkatt-code-punctuation: #4f4f5a;
+  --kizkatt-code-string: #2e7d32;
+  --kizkatt-code-tag: #4f46b6;
   --kizkatt-control-bg: #ffffff;
   --kizkatt-control-bg-hover: #f1f1f7;
   --kizkatt-divider: #d7d7df;
