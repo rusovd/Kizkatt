@@ -38,6 +38,7 @@ export function getExclusiveFillStylePatch(
   if (patch.gradientFill) {
     nextPatch.backgroundColor = TRANSPARENT_COLOR;
     nextPatch.bitmapTexture = undefined;
+    nextPatch.svgTexture = undefined;
     nextPatch.fillStyle = "gradient";
     return nextPatch;
   }
@@ -45,13 +46,23 @@ export function getExclusiveFillStylePatch(
   if (patch.bitmapTexture) {
     nextPatch.backgroundColor = TRANSPARENT_COLOR;
     nextPatch.gradientFill = undefined;
+    nextPatch.svgTexture = undefined;
     nextPatch.fillStyle = "monochromeTexture";
+    return nextPatch;
+  }
+
+  if (patch.svgTexture) {
+    nextPatch.backgroundColor = TRANSPARENT_COLOR;
+    nextPatch.bitmapTexture = undefined;
+    nextPatch.gradientFill = undefined;
+    nextPatch.fillStyle = "svgTexture";
     return nextPatch;
   }
 
   if (hasOwnStyleProperty(patch, "backgroundColor")) {
     nextPatch.bitmapTexture = undefined;
     nextPatch.gradientFill = undefined;
+    nextPatch.svgTexture = undefined;
     nextPatch.fillStyle = "solid";
   } else if (
     hasOwnStyleProperty(patch, "fillStyle") &&
@@ -65,6 +76,13 @@ export function getExclusiveFillStylePatch(
     patch.fillStyle !== "gradient"
   ) {
     nextPatch.gradientFill = undefined;
+  }
+
+  if (
+    hasOwnStyleProperty(patch, "fillStyle") &&
+    patch.fillStyle !== "svgTexture"
+  ) {
+    nextPatch.svgTexture = undefined;
   }
 
   return nextPatch;
@@ -90,6 +108,13 @@ export function applyStylePatch<T extends StyleState>(
     delete nextStyle.gradientFill;
   }
 
+  if (
+    hasOwnStyleProperty(patch, "svgTexture") &&
+    patch.svgTexture === undefined
+  ) {
+    delete nextStyle.svgTexture;
+  }
+
   return nextStyle;
 }
 
@@ -107,6 +132,7 @@ export function isSameStyle(
     firstStyle.endArrowhead === secondStyle.endArrowhead &&
     firstStyle.fillStyle === secondStyle.fillStyle &&
     firstStyle.gradientFill === secondStyle.gradientFill &&
+    firstStyle.svgTexture === secondStyle.svgTexture &&
     firstStyle.fillWeight === secondStyle.fillWeight &&
     firstStyle.opacity === secondStyle.opacity &&
     firstStyle.opacityEnabled === secondStyle.opacityEnabled &&

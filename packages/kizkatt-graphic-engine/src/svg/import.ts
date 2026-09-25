@@ -1,6 +1,7 @@
 import {
   DEFAULT_BITMAP_TEXTURE_FILL,
   DEFAULT_IMAGE_SIZE,
+  DEFAULT_SVG_TEXTURE_FILL,
   MIN_ELEMENT_SIZE,
   TEXT_ELEMENT_DEFAULT_HEIGHT,
   TEXT_ELEMENT_DEFAULT_WIDTH,
@@ -25,7 +26,8 @@ import type {
   GradientFill,
   KizkattElement,
   Point,
-  StyleState
+  StyleState,
+  SvgTextureFill
 } from "../model/types";
 import {
   getBreakApartSvgCode,
@@ -1407,6 +1409,53 @@ function getImportedGradientFill(value: unknown): GradientFill | null {
     : null;
 }
 
+function getImportedSvgTexture(value: unknown): SvgTextureFill | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const texture = value as Record<string, unknown>;
+  const textureId =
+    typeof texture.textureId === "string" ? texture.textureId : "";
+  const source = typeof texture.source === "string" ? texture.source : undefined;
+
+  if (!textureId && !source) {
+    return null;
+  }
+
+  return {
+    fitToObject: getBoolean(
+      texture.fitToObject,
+      DEFAULT_SVG_TEXTURE_FILL.fitToObject
+    ),
+    height: Math.max(
+      MIN_ELEMENT_SIZE,
+      getFiniteNumber(texture.height, DEFAULT_SVG_TEXTURE_FILL.height)
+    ),
+    name: typeof texture.name === "string" ? texture.name : "",
+    offsetX: getFiniteNumber(
+      texture.offsetX,
+      DEFAULT_SVG_TEXTURE_FILL.offsetX
+    ),
+    offsetY: getFiniteNumber(
+      texture.offsetY,
+      DEFAULT_SVG_TEXTURE_FILL.offsetY
+    ),
+    rotation: getFiniteNumber(
+      texture.rotation,
+      DEFAULT_SVG_TEXTURE_FILL.rotation
+    ),
+    skew: getFiniteNumber(texture.skew, DEFAULT_SVG_TEXTURE_FILL.skew),
+    skewY: getFiniteNumber(texture.skewY, DEFAULT_SVG_TEXTURE_FILL.skewY),
+    source,
+    textureId,
+    width: Math.max(
+      MIN_ELEMENT_SIZE,
+      getFiniteNumber(texture.width, DEFAULT_SVG_TEXTURE_FILL.width)
+    )
+  };
+}
+
 function getImportedOutlineSettings(group: Element): ImportedElementSettings {
   const startArrowhead = group.getAttribute("data-kizkatt-start-arrowhead");
   const endArrowhead = group.getAttribute("data-kizkatt-end-arrowhead");
@@ -1445,6 +1494,10 @@ function getImportedOutlineSettings(group: Element): ImportedElementSettings {
   const gradientFill = getImportedGradientFill(metadata?.gradientFill);
   if (gradientFill) {
     settings.gradientFill = gradientFill;
+  }
+  const svgTexture = getImportedSvgTexture(metadata?.svgTexture);
+  if (svgTexture) {
+    settings.svgTexture = svgTexture;
   }
   const fillStyle = normalizeFillStyle(metadata?.fillStyle);
   if (fillStyle) {

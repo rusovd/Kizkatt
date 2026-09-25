@@ -23,6 +23,7 @@ import { normalizeGradientFill } from "../geometry/gradients";
 
 const FILL_STYLES = new Set<FillStyle>([
   "monochromeTexture",
+  "svgTexture",
   "gradient",
   "crossHatch",
   "hachure",

@@ -65,6 +65,7 @@ export type BitmapTextureBlendMode = "multiply" | "normal";
 export type BitmapTextureOffsetMode = "column" | "row";
 export type FillStyle =
   | "monochromeTexture"
+  | "svgTexture"
   | "gradient"
   | "hachure"
   | "crossHatch"
@@ -106,6 +107,20 @@ export type BitmapTextureFill = {
   transparencyEnabled: boolean;
   transparencyTolerance: number;
   width: number;
+};
+
+export type SvgTextureFill = {
+  fitToObject?: boolean;
+  height?: number;
+  name: string;
+  offsetX?: number;
+  offsetY?: number;
+  rotation?: number;
+  skew?: number;
+  skewY?: number;
+  source?: string;
+  textureId: string;
+  width?: number;
 };
 
 export type GradientType = "linear" | "radial" | "conic" | "diamond";
@@ -167,6 +182,7 @@ export type KizkattElement = {
   backgroundColor: string;
   bitmapTexture?: BitmapTextureFill;
   gradientFill?: GradientFill;
+  svgTexture?: SvgTextureFill;
   fillStyle?: FillStyle;
   fillWeight?: number;
   strokeWidth: number;
@@ -396,6 +412,7 @@ export type StyleState = Pick<
   | "fillStyle"
   | "fillWeight"
   | "gradientFill"
+  | "svgTexture"
   | "opacity"
   | "opacityEnabled"
   | "sloppiness"

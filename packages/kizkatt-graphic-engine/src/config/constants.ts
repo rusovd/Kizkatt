@@ -192,6 +192,16 @@ export const DEFAULT_BITMAP_TEXTURE_FILL = {
   transparencyTolerance: 100,
   width: 100
 } as const;
+export const DEFAULT_SVG_TEXTURE_FILL = {
+  fitToObject: true,
+  height: 1000,
+  offsetX: 0,
+  offsetY: 0,
+  rotation: 0,
+  skew: 0,
+  skewY: 0,
+  width: 1000
+} as const;
 export const DEFAULT_SLOPPINESS = "architect";
 export const DEFAULT_SELECTED_SLOPPINESS = "artist";
 export const DEFAULT_SLOPPINESS_GAP = 16;
