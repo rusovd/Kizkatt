@@ -5,13 +5,21 @@ import type {
   TextureCatalogCollection,
   TextureCatalogTexture
 } from "kizkatt-graphic-engine";
-import type { TextureImportRequest } from "kizkatt-ui";
+import type {
+  SvgTextureOption,
+  SvgTextureSaveRequest,
+  TextureImportRequest
+} from "kizkatt-ui";
 
 import {
   browserCustomTextureStorage,
   type CustomTextureStorage,
   type StoredCustomTexture
 } from "../platform/customTextureStorage";
+import {
+  browserCustomSvgTextureStorage,
+  type CustomSvgTextureStorage
+} from "../platform/customSvgTextureStorage";
 
 type TextureLibraryBase = {
   catalog: TextureCatalog;
@@ -21,6 +29,7 @@ type TextureLibraryBase = {
   getTextureThumbnailSource: (
     texture: TextureCatalogTexture
   ) => string | null;
+  svgTextures: readonly SvgTextureOption[];
 };
 
 function slug(value: string) {
@@ -281,12 +290,17 @@ export function createStoredCustomTexture({
 
 export function useCustomTextureLibrary(
   baseLibrary: TextureLibraryBase,
-  storage: CustomTextureStorage = browserCustomTextureStorage
+  storage: CustomTextureStorage = browserCustomTextureStorage,
+  svgStorage: CustomSvgTextureStorage = browserCustomSvgTextureStorage
 ) {
   const [storedTextures, setStoredTextures] = useState<StoredCustomTexture[]>(
     []
   );
   const storedTexturesRef = useRef(storedTextures);
+  const [storedSvgTextures, setStoredSvgTextures] = useState<
+    SvgTextureOption[]
+  >([]);
+  const storedSvgTexturesRef = useRef(storedSvgTextures);
   const catalog = useMemo(
     () => mergeCustomTexturesIntoCatalog(baseLibrary.catalog, storedTextures),
     [baseLibrary.catalog, storedTextures]
@@ -297,6 +311,17 @@ export function useCustomTextureLibrary(
         storedTextures.map((record) => [record.texture.id, record] as const)
       ),
     [storedTextures]
+  );
+  const svgTextureById = useMemo(
+    () =>
+      new Map(
+        storedSvgTextures.map((texture) => [texture.id, texture] as const)
+      ),
+    [storedSvgTextures]
+  );
+  const svgTextures = useMemo(
+    () => [...baseLibrary.svgTextures, ...storedSvgTextures],
+    [baseLibrary.svgTextures, storedSvgTextures]
   );
 
   useEffect(() => {
@@ -331,6 +356,38 @@ export function useCustomTextureLibrary(
     };
   }, [storage]);
 
+  useEffect(() => {
+    let active = true;
+
+    void svgStorage.load().then(
+      (loadedTextures) => {
+        if (!active || loadedTextures.length === 0) {
+          return;
+        }
+
+        setStoredSvgTextures((currentTextures) => {
+          const currentIds = new Set(
+            currentTextures.map((texture) => texture.id)
+          );
+          const nextTextures = [
+            ...loadedTextures.filter(
+              (texture) => !currentIds.has(texture.id)
+            ),
+            ...currentTextures
+          ];
+
+          storedSvgTexturesRef.current = nextTextures;
+          return nextTextures;
+        });
+      },
+      () => undefined
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [svgStorage]);
+
   const addTexture = useCallback(
     (request: TextureImportRequest) => {
       const currentCatalog = mergeCustomTexturesIntoCatalog(
@@ -351,6 +408,24 @@ export function useCustomTextureLibrary(
     },
     [baseLibrary.catalog, storage]
   );
+  const addSvgTexture = useCallback(
+    (request: SvgTextureSaveRequest) => {
+      const uniquePart = globalThis.crypto?.randomUUID?.() ??
+        `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const texture: SvgTextureOption = {
+        ...request,
+        id: `svg.custom.${uniquePart}`
+      };
+      const nextTextures = [...storedSvgTexturesRef.current, texture];
+
+      storedSvgTexturesRef.current = nextTextures;
+      setStoredSvgTextures(nextTextures);
+      void svgStorage.save(texture).catch(() => undefined);
+
+      return texture;
+    },
+    [svgStorage]
+  );
   const getTextureById = useCallback(
     (textureId: string) =>
       recordByTextureId.get(textureId)?.texture ??
@@ -360,8 +435,9 @@ export function useCustomTextureLibrary(
   const getTextureSource = useCallback(
     (textureId: string) =>
       recordByTextureId.get(textureId)?.source ??
+      svgTextureById.get(textureId)?.source ??
       baseLibrary.getTextureSource(textureId),
-    [baseLibrary, recordByTextureId]
+    [baseLibrary, recordByTextureId, svgTextureById]
   );
   const getTextureThumbnailSource = useCallback(
     (texture: TextureCatalogTexture) =>
@@ -373,9 +449,11 @@ export function useCustomTextureLibrary(
   return {
     ...baseLibrary,
     addTexture,
+    addSvgTexture,
     catalog,
     getTextureById,
     getTextureSource,
-    getTextureThumbnailSource
+    getTextureThumbnailSource,
+    svgTextures
   };
 }

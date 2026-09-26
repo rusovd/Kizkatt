@@ -886,6 +886,7 @@ export function KizkattGraphicEditorController({
           (selectedElements[0].type === "arrow" ? "triangle" : "none"),
         fillStyle: selectedElements[0].fillStyle ?? DEFAULT_FILL_STYLE,
         gradientFill: selectedElements[0].gradientFill,
+        svgTexture: selectedElements[0].svgTexture,
         fillWeight: selectedElements[0].fillWeight ?? DEFAULT_FILL_WEIGHT,
         opacity: selectedElements[0].opacity,
         opacityEnabled:

@@ -44,9 +44,12 @@ import {
   GradientFillPanel,
   GradientLibraryPopover,
   ObjectPanel,
+  SvgTextureFillPanel,
   StylingPanel,
   TextureLibraryPopover,
   type TextureImportRequest,
+  type SvgTextureSaveRequest,
+  type SvgTextureOption,
   useGraphicEditorSettings
 } from "kizkatt-ui";
 import { decodeImageForSimpleTrace } from "../../platform/decodeTraceImage";
@@ -62,6 +65,7 @@ import type {
 import type { KizkattGraphicEditorViewModel } from "../../controller/viewModel";
 
 export type GraphicEditorTextureLibrary = {
+  addSvgTexture?: (request: SvgTextureSaveRequest) => SvgTextureOption;
   addTexture?: (request: TextureImportRequest) => TextureCatalogTexture;
   catalog: TextureCatalog;
   defaultCollectionId: string;
@@ -70,6 +74,7 @@ export type GraphicEditorTextureLibrary = {
   getTextureThumbnailSource: (
     texture: TextureCatalogTexture
   ) => string | null;
+  svgTextures: readonly SvgTextureOption[];
 };
 
 export function KizkattGraphicEditorView({
@@ -81,11 +86,13 @@ export function KizkattGraphicEditorView({
 }) {
   const {
     catalog: textureCatalog,
+    addSvgTexture,
     addTexture,
     defaultCollectionId,
     getTextureById,
     getTextureSource,
-    getTextureThumbnailSource
+    getTextureThumbnailSource,
+    svgTextures
   } = textureLibrary;
   const textureCatalogEntries = useMemo(
     () => getTextureCatalogEntries(textureCatalog),
@@ -125,6 +132,7 @@ export function KizkattGraphicEditorView({
   const objectPanelPinned = isPanelPinned("object-panel");
   const bitmapPatternPanelPinned = isPanelPinned("bitmap-pattern-fill");
   const gradientPanelPinned = isPanelPinned("gradient-fill");
+  const svgFillPanelPinned = isPanelPinned("svg-fill");
   const [textureLibraryOpen, setTextureLibraryOpen] = useState(false);
   const [textureLibraryAnchor, setTextureLibraryAnchor] =
     useState<HTMLButtonElement | null>(null);
@@ -134,6 +142,8 @@ export function KizkattGraphicEditorView({
     useState(0);
   const [gradientPanelOpen, setGradientPanelOpen] = useState(false);
   const [gradientPanelReopenKey, setGradientPanelReopenKey] = useState(0);
+  const [svgFillPanelOpen, setSvgFillPanelOpen] = useState(false);
+  const [svgFillPanelReopenKey, setSvgFillPanelReopenKey] = useState(0);
   const [gradientLibraryOpen, setGradientLibraryOpen] = useState(false);
   const [gradientLibraryAnchor, setGradientLibraryAnchor] =
     useState<HTMLButtonElement | null>(null);
@@ -165,6 +175,8 @@ export function KizkattGraphicEditorView({
     stylingControls.style.gradientFill ?? DEFAULT_GRADIENT_FILL
   );
   const previousGradientRef = useRef(stylingControls.style.gradientFill);
+  const lastSvgTextureRef = useRef(stylingControls.style.svgTexture);
+  const previousSvgTextureRef = useRef(stylingControls.style.svgTexture);
   const selectedBitmapTextureEntry = stylingControls.style.bitmapTexture
     ? textureEntryById.get(stylingControls.style.bitmapTexture.textureId)
     : undefined;
@@ -285,6 +297,17 @@ export function KizkattGraphicEditorView({
     previousGradientRef.current = stylingControls.style.gradientFill;
   }, [stylingControls.style.gradientFill]);
 
+  useEffect(() => {
+    if (
+      previousSvgTextureRef.current &&
+      !stylingControls.style.svgTexture
+    ) {
+      setSvgFillPanelOpen(false);
+    }
+
+    previousSvgTextureRef.current = stylingControls.style.svgTexture;
+  }, [stylingControls.style.svgTexture]);
+
   if (selectionGeometryControls) {
     lastSelectionGeometryControlsRef.current = selectionGeometryControls;
   }
@@ -295,6 +318,10 @@ export function KizkattGraphicEditorView({
 
   if (stylingControls.style.gradientFill) {
     lastGradientRef.current = stylingControls.style.gradientFill;
+  }
+
+  if (stylingControls.style.svgTexture) {
+    lastSvgTextureRef.current = stylingControls.style.svgTexture;
   }
 
   const visibleSelectionGeometryControls =
@@ -334,8 +361,19 @@ export function KizkattGraphicEditorView({
     (bitmapPatternPanelPinned || bitmapPatternPanelOpen);
   const showGradientPanel =
     !previewMode && (gradientPanelPinned || gradientPanelOpen);
+  const showSvgFillPanel =
+    !previewMode && (svgFillPanelPinned || svgFillPanelOpen);
   const visibleGradientFill =
     stylingControls.style.gradientFill ?? lastGradientRef.current;
+  const visibleSvgTexture =
+    stylingControls.style.svgTexture ??
+    lastSvgTextureRef.current ??
+    (svgTextures[0]
+      ? {
+          name: svgTextures[0].name,
+          textureId: svgTextures[0].id
+        }
+      : undefined);
   const bitmapTextureTargetSize = useMemo(
     () =>
       stylingControls.selectedElements.reduce(
@@ -417,6 +455,33 @@ export function KizkattGraphicEditorView({
       { gradientFill: gradient, fillStyle: "gradient" },
       options
     );
+  };
+  const applySvgTexture = (
+    texture: NonNullable<StylingPanelProps["style"]["svgTexture"]>,
+    options?: { transient?: boolean }
+  ) => {
+    lastSvgTextureRef.current = texture;
+    stylingControls.onStyleChange(
+      { fillStyle: "svgTexture", svgTexture: texture },
+      options
+    );
+  };
+  const openSvgFillPanel = () => {
+    const canApplyToCurrentTarget =
+      stylingControls.selectedElements.length === EMPTY_COLLECTION_LENGTH ||
+      stylingControls.selectedElements.every(canElementUseBackground);
+
+    if (
+      !stylingControls.style.svgTexture &&
+      visibleSvgTexture &&
+      canApplyToCurrentTarget
+    ) {
+      applySvgTexture(visibleSvgTexture);
+      stylingControls.onStyleChangeEnd();
+    }
+
+    setSvgFillPanelOpen(true);
+    setSvgFillPanelReopenKey((value) => value + 1);
   };
   const openGradientPanel = () => {
     const rememberedPreset = getRememberedGradientPreset();
@@ -580,7 +645,9 @@ export function KizkattGraphicEditorView({
           {...visibleSelectionGeometryControls}
           gradientFillPanelOpen={showGradientPanel}
           onGradientOpen={openGradientPanel}
+          onSvgFillOpen={openSvgFillPanel}
           onTextureFillOpen={openBitmapPatternPanel}
+          svgFillPanelOpen={showSvgFillPanel}
           textureFillPanelOpen={showBitmapPatternPanel}
         />
       )}
@@ -640,6 +707,25 @@ export function KizkattGraphicEditorView({
           onOpenLibrary={openGradientLibrary}
           onSavePreset={saveGradientPreset}
           reopenKey={gradientPanelReopenKey}
+        />
+      )}
+      {showSvgFillPanel && (
+        <SvgTextureFillPanel
+          onChange={applySvgTexture}
+          onChangeEnd={stylingControls.onStyleChangeEnd}
+          onClose={() => setSvgFillPanelOpen(false)}
+          onSaveTexture={(request) => {
+            if (!addSvgTexture) {
+              throw new Error("SVG texture storage is not configured.");
+            }
+
+            return addSvgTexture(request);
+          }}
+          reopenKey={svgFillPanelReopenKey}
+          targetSize={bitmapTextureTargetSize}
+          targetTransform={bitmapTextureTargetTransform}
+          texture={visibleSvgTexture}
+          textures={svgTextures}
         />
       )}
       {!previewMode && gradientLibraryOpen && (
