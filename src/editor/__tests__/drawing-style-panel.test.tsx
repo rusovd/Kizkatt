@@ -355,6 +355,158 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     });
   });
 
+  it("chooses and automatically applies an SVG fill", async () => {
+    render(<KizkattGraphicEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+    const canvas = screen.getByRole("application", { name: "Drawing canvas" });
+    firePointerEvent(canvas, "pointerdown", { clientX: 40, clientY: 50 });
+    firePointerEvent(canvas, "pointermove", { clientX: 180, clientY: 140 });
+    firePointerEvent(canvas, "pointerup");
+
+    const svgFillButton = screen.getByRole("button", { name: "SVG fill" });
+
+    expect(svgFillButton).not.toBeDisabled();
+    fireEvent.click(svgFillButton);
+
+    expect(svgFillButton).toHaveAttribute("aria-pressed", "true");
+    expect(document.querySelector(".kizkatt-svg-texture-panel"))
+      .toBeInTheDocument();
+    expect(screen.getByLabelText("SVG texture preview").querySelector("img"))
+      .toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        canvas
+          .querySelector("[data-svg-texture-fill]")
+          ?.querySelector("image")
+          ?.getAttribute("href")
+      )
+        .toMatch(/^data:image\/svg\+xml;charset=utf-8,/);
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Choose an SVG texture" })
+    );
+    fireEvent.click(
+      screen.getByRole("option", { name: "Abstract Envelope" })
+    );
+
+    const pattern = canvas.querySelector("[data-svg-texture-fill]");
+    const image = pattern?.querySelector("image");
+    const rectangle = canvas.querySelector("[data-element-id] > rect");
+    const metadata = JSON.parse(
+      canvas.querySelector("[data-element-id] > metadata")?.textContent ?? "{}"
+    );
+
+    expect(pattern).toHaveAttribute("width", "1");
+    expect(pattern).toHaveAttribute("height", "1");
+    expect(pattern).toHaveAttribute("viewBox", "0 0 140 90");
+    expect(pattern).toHaveAttribute("preserveAspectRatio", "none");
+    expect(image?.getAttribute("href"))
+      .toMatch(/^data:image\/svg\+xml;charset=utf-8,/);
+    expect(rectangle?.getAttribute("fill")).toMatch(/^url\(#kizkatt-fill-/);
+    expect(metadata).toMatchObject({
+      fillStyle: "svgTexture",
+      svgTexture: {
+        fitToObject: true,
+        name: "Abstract Envelope",
+        textureId: "svg.abstract-envelope"
+      }
+    });
+
+    const fitToObject = screen.getByRole("checkbox", {
+      name: "Fit to object size"
+    });
+
+    expect(fitToObject).toBeChecked();
+    fireEvent.click(fitToObject);
+
+    await waitFor(() => {
+      expect(canvas.querySelector("[data-svg-texture-fill] image"))
+        .toHaveAttribute("width", "1024");
+      expect(canvas.querySelector("[data-svg-texture-fill] image"))
+        .toHaveAttribute("height", "512");
+    });
+    expect(screen.getByLabelText("SVG texture preview")
+      .querySelector("[data-bitmap-texture-crop]"))
+      .toBeInTheDocument();
+    expect(screen.getAllByRole("button", {
+      name: "Resize SVG texture crop"
+    })).toHaveLength(8);
+    expect(screen.getAllByRole("button", {
+      name: "Rotate SVG texture crop"
+    })).toHaveLength(4);
+
+    const crop = screen.getByLabelText("Object crop on SVG texture");
+    const cropElement = crop as HTMLElement;
+    cropElement.getBoundingClientRect = () => {
+      const width = Number.parseFloat(cropElement.style.width);
+      const height = Number.parseFloat(cropElement.style.height);
+      const centerX = Number.parseFloat(cropElement.style.left);
+      const centerY = Number.parseFloat(cropElement.style.top);
+
+      return new DOMRect(
+        centerX - width / 2,
+        centerY - height / 2,
+        width,
+        height
+      );
+    };
+
+    const southeastResizeHandle = screen.getAllByRole("button", {
+      name: "Resize SVG texture crop"
+    })[4] as HTMLElement;
+    const resizeStartX = Number.parseFloat(southeastResizeHandle.style.left);
+    const resizeStartY = Number.parseFloat(southeastResizeHandle.style.top);
+
+    firePointerEvent(southeastResizeHandle, "pointerdown", {
+      clientX: resizeStartX,
+      clientY: resizeStartY
+    });
+    firePointerEvent(window, "pointermove", {
+      clientX: resizeStartX - 20,
+      clientY: resizeStartY - 12
+    });
+    firePointerEvent(window, "pointerup", {
+      clientX: resizeStartX - 20,
+      clientY: resizeStartY - 12
+    });
+    expect(Number(canvas.querySelector("[data-svg-texture-fill] image")
+      ?.getAttribute("width"))).toBeGreaterThan(1024);
+
+    const rotateHandle = screen.getAllByRole("button", {
+      name: "Rotate SVG texture crop"
+    })[0] as HTMLElement;
+    const rotateStartX = Number.parseFloat(rotateHandle.style.left);
+    const rotateStartY = Number.parseFloat(rotateHandle.style.top);
+    const cropCenterX = Number.parseFloat(cropElement.style.left);
+    const cropCenterY = Number.parseFloat(cropElement.style.top);
+    const vectorX = rotateStartX - cropCenterX;
+    const vectorY = rotateStartY - cropCenterY;
+
+    firePointerEvent(rotateHandle, "pointerdown", {
+      clientX: rotateStartX,
+      clientY: rotateStartY
+    });
+    firePointerEvent(window, "pointermove", {
+      clientX: cropCenterX - vectorY,
+      clientY: cropCenterY + vectorX
+    });
+    firePointerEvent(window, "pointerup", {
+      clientX: cropCenterX - vectorY,
+      clientY: cropCenterY + vectorX
+    });
+    expect(canvas.querySelector("[data-svg-texture-transform]"))
+      .toHaveAttribute("transform", expect.stringContaining("rotate(-90)"));
+
+    const codeEditor = await screen.findByRole("textbox", { name: "SVG code" });
+
+    expect(codeEditor).toHaveTextContent("<svg");
+    expect(codeEditor.querySelectorAll(".cm-line").length).toBeGreaterThan(1);
+    expect(document.querySelector(".cm-lineNumbers")).toBeInTheDocument();
+  });
+
   it("marks a loaded gradient preset as changed without replacing its stops", () => {
     render(<KizkattGraphicEditor />);
 

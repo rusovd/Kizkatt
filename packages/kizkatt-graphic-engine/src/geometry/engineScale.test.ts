@@ -412,6 +412,47 @@ describe("engine scale safeguards", () => {
     });
   });
 
+  it("restores SVG texture settings from Kizkatt SVG metadata", () => {
+    const svgTexture = {
+      name: "Abstract Envelope",
+      textureId: "svg.abstract-envelope"
+    };
+    const metadata = JSON.stringify({
+      backgroundColor: "transparent",
+      fillStyle: "svgTexture",
+      svgTexture
+    });
+    const sourceElement: KizkattElement = {
+      ...createRectangle(0),
+      svgContent: `<g data-element-id="svg-texture-rectangle" data-element-type="rectangle"><metadata>${metadata}</metadata><rect x="0" y="0" width="32" height="32" fill="url(#svg-texture)" stroke="#000000"/></g>`,
+      svgViewBox: "0 0 32 32",
+      type: "image"
+    };
+
+    const [imported] = breakApartSvgElement(
+      sourceElement,
+      [],
+      sourceElement
+    );
+
+    expect(imported).toMatchObject({
+      backgroundColor: "transparent",
+      fillStyle: "svgTexture",
+      svgTexture: {
+        ...svgTexture,
+        fitToObject: true,
+        height: 1000,
+        offsetX: 0,
+        offsetY: 0,
+        rotation: 0,
+        skew: 0,
+        skewY: 0,
+        width: 1000
+      },
+      type: "rectangle"
+    });
+  });
+
   it("keeps bitmap texture sizing and centered crop geometry in the engine", () => {
     expect(
       createBitmapTextureFill({
