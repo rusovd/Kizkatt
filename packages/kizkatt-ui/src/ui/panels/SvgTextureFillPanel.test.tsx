@@ -13,7 +13,7 @@ import {
 
 const originalCode = [
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">',
-  '  <rect width="10" height="10" fill="#fff"/>',
+  '  <rect width="10" height="10" fill="#fff" stroke="#000" stroke-width="2"/>',
   "</svg>"
 ].join("\n");
 const editedCode = originalCode.replace("#fff", "#f00");
@@ -51,6 +51,12 @@ function renderPanel({
   return { onChange, onSaveTexture };
 }
 
+async function openCodeEditor() {
+  fireEvent.click(screen.getByRole("tab", { name: "SVG code" }));
+
+  return screen.findByRole("textbox", { name: "SVG code" });
+}
+
 describe("SvgTextureFillPanel", () => {
   it("sizes the full SVG texture to one screen axis", () => {
     expect(
@@ -79,7 +85,7 @@ describe("SvgTextureFillPanel", () => {
 
   it("keeps code as a draft until Apply and resets it", async () => {
     const { onChange } = renderPanel();
-    const content = await screen.findByRole("textbox", { name: "SVG code" });
+    const content = await openCodeEditor();
     const view = EditorView.findFromDOM(content);
 
     act(() => {
@@ -119,6 +125,29 @@ describe("SvgTextureFillPanel", () => {
     );
   });
 
+  it("adjusts SVG colors and line width without editing code", () => {
+    const { onChange } = renderPanel();
+    const adjustmentsTab = screen.getByRole("tab", { name: "Adjustments" });
+
+    expect(adjustmentsTab).toHaveAttribute("aria-selected", "true");
+    fireEvent.change(screen.getByLabelText("Change color #ffffff"), {
+      target: { value: "#336699" }
+    });
+    fireEvent.change(screen.getByRole("slider", { name: "Line width" }), {
+      target: { value: "200" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    const appliedTexture = onChange.mock.calls.at(-1)?.[0];
+    const source = appliedTexture?.source ?? "";
+    const appliedCode = decodeURIComponent(
+      source.slice(source.indexOf(",") + 1)
+    );
+
+    expect(appliedCode).toContain('fill="#336699"');
+    expect(appliedCode).toContain('stroke-width="4"');
+  });
+
   it("switches from fitted fill to a screen-sized interactive crop", () => {
     const { onChange } = renderPanel();
 
@@ -141,7 +170,7 @@ describe("SvgTextureFillPanel", () => {
   it("saves a named copy with an automatic sequence", async () => {
     const { onChange, onSaveTexture } = renderPanel();
 
-    await screen.findByRole("textbox", { name: "SVG code" });
+    await openCodeEditor();
     fireEvent.click(screen.getByRole("button", { name: "Save SVG" }));
 
     const dialog = screen.getByRole("dialog", { name: "Save SVG fill" });

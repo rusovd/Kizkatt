@@ -500,6 +500,7 @@ describe("KizkattGraphicEditor drawing and style panel", () => {
     expect(canvas.querySelector("[data-svg-texture-transform]"))
       .toHaveAttribute("transform", expect.stringContaining("rotate(-90)"));
 
+    fireEvent.click(screen.getByRole("tab", { name: "SVG code" }));
     const codeEditor = await screen.findByRole("textbox", { name: "SVG code" });
 
     expect(codeEditor).toHaveTextContent("<svg");

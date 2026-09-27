@@ -32,6 +32,7 @@ export * from "./hooks/useGradientFillDraft";
 export * from "./i18n";
 export type * from "./model/types";
 export * from "./model/gradientPresets";
+export * from "./model/svgAdjustments";
 export * from "./model/svgTextures";
 export * from "./platform/keyboard";
 export * from "./platform/storage";

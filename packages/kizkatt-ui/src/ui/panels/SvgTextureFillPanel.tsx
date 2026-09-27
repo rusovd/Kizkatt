@@ -18,6 +18,12 @@ import {
   getSvgTextureCanvas
 } from "../../model/svgTextures";
 import {
+  getSvgColorAdjustments,
+  replaceSvgColor,
+  scaleSvgStrokeWidths,
+  svgHasEditableStrokes
+} from "../../model/svgAdjustments";
+import {
   ChevronDownIcon,
   CodeIcon,
   ResetIcon,
@@ -30,6 +36,7 @@ const LIBRARY_PANEL_ID = "svg-fill-library";
 const SVG_FILE_ACCEPT = ".svg,image/svg+xml";
 const DEFAULT_SCREEN_WIDTH = 1920;
 const DEFAULT_SCREEN_HEIGHT = 1080;
+type SvgTextureEditorTab = "adjustments" | "code";
 const SvgCodeEditor = lazy(() =>
   import("../../components/SvgCodeEditor").then((module) => ({
     default: module.SvgCodeEditor
@@ -360,6 +367,9 @@ export function SvgTextureFillPanel({
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryReopenKey, setLibraryReopenKey] = useState(0);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [activeEditorTab, setActiveEditorTab] =
+    useState<SvgTextureEditorTab>("adjustments");
+  const [lineWidthScale, setLineWidthScale] = useState(100);
   const activeTexture = textures.find(
     (option) => option.id === texture?.textureId
   );
@@ -379,6 +389,14 @@ export function SvgTextureFillPanel({
     ? createSvgTextureDataUrl(code)
     : source;
   const draftChanged = code !== resolvedCode || name !== (texture?.name ?? "");
+  const colorAdjustments = useMemo(
+    () => codeValid ? getSvgColorAdjustments(code) : [],
+    [code, codeValid]
+  );
+  const hasEditableStrokes = useMemo(
+    () => codeValid && svgHasEditableStrokes(code),
+    [code, codeValid]
+  );
   const sourceNaturalSize = useMemo(
     () => getScreenSizedSvgTextureSize(codeValid ? code : resolvedCode),
     [code, codeValid, resolvedCode]
@@ -422,6 +440,8 @@ export function SvgTextureFillPanel({
     setCode(resolvedCode);
     setName(texture?.name ?? "");
     setCodeValid(!resolvedCode || isValidSvgCode(resolvedCode));
+    setActiveEditorTab("adjustments");
+    setLineWidthScale(100);
     setLibraryOpen(false);
     setSaveDialogOpen(false);
   }, [reopenKey, resolvedCode, texture?.name, texture?.textureId]);
@@ -466,6 +486,8 @@ export function SvgTextureFillPanel({
     setCode(formatSvgCode(option.code));
     setName(option.name);
     setCodeValid(true);
+    setActiveEditorTab("adjustments");
+    setLineWidthScale(100);
     onChange({
       ...DEFAULT_SVG_TEXTURE_FILL,
       height: nextSourceSize.height,
@@ -481,6 +503,18 @@ export function SvgTextureFillPanel({
 
     setCode(nextCode);
     setCodeValid(valid);
+    setLineWidthScale(100);
+  };
+  const updateColorAdjustment = (previousColor: string, nextColor: string) => {
+    setCode(formatSvgCode(replaceSvgColor(code, previousColor, nextColor)));
+    setCodeValid(true);
+  };
+  const updateLineWidthScale = (nextScale: number) => {
+    const factor = nextScale / lineWidthScale;
+
+    setCode(formatSvgCode(scaleSvgStrokeWidths(code, factor)));
+    setCodeValid(true);
+    setLineWidthScale(nextScale);
   };
   const applyCode = () => {
     if (!codeValid || !code.trim()) {
@@ -499,6 +533,7 @@ export function SvgTextureFillPanel({
     setCode(resolvedCode);
     setCodeValid(!resolvedCode || isValidSvgCode(resolvedCode));
     setName(texture?.name ?? "");
+    setLineWidthScale(100);
   };
   const importTexture = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -514,6 +549,7 @@ export function SvgTextureFillPanel({
 
     setCode(nextCode);
     setCodeValid(valid);
+    setLineWidthScale(100);
 
     if (!valid) {
       return;
@@ -694,24 +730,97 @@ export function SvgTextureFillPanel({
               </div>
 
               <div className="kizkatt-svg-texture-code-column">
-                <div className="kizkatt-svg-texture-code-body">
-                  <Suspense
-                    fallback={
-                      <div className="kizkatt-svg-code-editor is-loading" />
-                    }
-                  >
-                    <SvgCodeEditor
-                      invalid={!codeValid}
-                      label={labels.code}
-                      value={code}
-                      onBlur={() => undefined}
-                      onChange={updateCode}
-                    />
-                  </Suspense>
-                  {!codeValid && (
-                    <span className="kizkatt-svg-texture-code-error">
-                      {labels.codeError}
-                    </span>
+                <nav
+                  aria-label={labels.title}
+                  className="kizkatt-svg-texture-editor-tabs"
+                  role="tablist"
+                >
+                  {(["adjustments", "code"] as const).map((tab) => (
+                    <button
+                      aria-selected={activeEditorTab === tab}
+                      className={activeEditorTab === tab ? "is-active" : undefined}
+                      key={tab}
+                      role="tab"
+                      type="button"
+                      onClick={() => setActiveEditorTab(tab)}
+                    >
+                      {labels[tab]}
+                    </button>
+                  ))}
+                </nav>
+                <div className="kizkatt-svg-texture-editor-body">
+                  {activeEditorTab === "code" ? (
+                    <>
+                      <Suspense
+                        fallback={
+                          <div className="kizkatt-svg-code-editor is-loading" />
+                        }
+                      >
+                        <SvgCodeEditor
+                          invalid={!codeValid}
+                          label={labels.code}
+                          value={code}
+                          onBlur={() => undefined}
+                          onChange={updateCode}
+                        />
+                      </Suspense>
+                      {!codeValid && (
+                        <span className="kizkatt-svg-texture-code-error">
+                          {labels.codeError}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <div className="kizkatt-svg-texture-adjustments">
+                      <section>
+                        <h3>{labels.colors}</h3>
+                        {colorAdjustments.length > 0 ? (
+                          <div className="kizkatt-svg-texture-color-grid">
+                            {colorAdjustments.map((adjustment) => (
+                              <label key={adjustment.value}>
+                                <input
+                                  aria-label={`${labels.changeColor} ${adjustment.value}`}
+                                  type="color"
+                                  value={adjustment.color}
+                                  onChange={(event) =>
+                                    updateColorAdjustment(
+                                      adjustment.value,
+                                      event.target.value
+                                    )
+                                  }
+                                />
+                                <code>{adjustment.value}</code>
+                                <small>×{adjustment.count}</small>
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <p>{labels.noColors}</p>
+                        )}
+                      </section>
+                      <section>
+                        <h3>{labels.lines}</h3>
+                        {hasEditableStrokes ? (
+                          <label className="kizkatt-svg-texture-line-width">
+                            <span>{labels.lineWidth}</span>
+                            <input
+                              aria-label={labels.lineWidth}
+                              max="400"
+                              min="10"
+                              step="5"
+                              type="range"
+                              value={lineWidthScale}
+                              onChange={(event) =>
+                                updateLineWidthScale(Number(event.target.value))
+                              }
+                            />
+                            <output>{lineWidthScale}%</output>
+                          </label>
+                        ) : (
+                          <p>{labels.noLines}</p>
+                        )}
+                      </section>
+                    </div>
                   )}
                 </div>
                 <div className="kizkatt-svg-texture-code-actions">
