@@ -645,6 +645,15 @@ describe("KizkattGraphicEditor shell", () => {
   });
 
   it("closes, reopens, rotates, and resizes capable panels", () => {
+    let compactColorListHeight = 170;
+    const clientHeightSpy = vi
+      .spyOn(HTMLElement.prototype, "clientHeight", "get")
+      .mockImplementation(function (this: HTMLElement) {
+        return this.classList.contains("kizkatt-quick-color-list")
+          ? compactColorListHeight
+          : 0;
+      });
+
     render(<KizkattGraphicEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
@@ -699,7 +708,8 @@ describe("KizkattGraphicEditor shell", () => {
     fireEvent.doubleClick(dragHandle as Element);
 
     expect(screen.getByLabelText("Colors")).toHaveClass(
-      "kizkatt-style-panel--horizontal"
+      "kizkatt-style-panel--horizontal",
+      "kizkatt-style-panel--compact-columns"
     );
     expect(
       stylePanel.querySelectorAll(".kizkatt-feature-group-icon")
@@ -714,7 +724,7 @@ describe("KizkattGraphicEditor shell", () => {
 
     expect(horizontalColorLists).toHaveLength(2);
     expect(
-      horizontalColorLists.every((list) => list.children.length >= 9)
+      horizontalColorLists.every((list) => list.children.length === 7)
     ).toBe(true);
     expect(
       screen.getByRole("button", { name: "Background custom #653b00" })
@@ -726,10 +736,10 @@ describe("KizkattGraphicEditor shell", () => {
       stylePanel.querySelector("[data-panel-resize-handle]")
     ).toBeInTheDocument();
 
-    const horizontalResizeHandle = stylePanel.querySelector(
+    const compactResizeHandle = stylePanel.querySelector(
       "[data-panel-resize-handle]"
     );
-    fireEvent.mouseDown(horizontalResizeHandle as Element, {
+    fireEvent.mouseDown(compactResizeHandle as Element, {
       button: 0,
       clientX: 10,
       clientY: 10
@@ -737,7 +747,13 @@ describe("KizkattGraphicEditor shell", () => {
     fireEvent.mouseMove(stylePanel, { clientX: 110, clientY: 180 });
     fireEvent.mouseUp(stylePanel, { clientX: 110, clientY: 180 });
 
-    expect(stylePanel.style.height).toBe("");
+    expect(stylePanel.style.width).toBe("");
+    expect(stylePanel.style.height).toBe("300px");
+    compactColorListHeight = 295;
+    fireEvent(window, new Event("resize"));
+    expect(
+      horizontalColorLists.every((list) => list.children.length === 12)
+    ).toBe(true);
     expect(
       window.localStorage.getItem(
         "kizkatt:graphic-editor:panel:style-panel:size:horizontal"
@@ -752,6 +768,7 @@ describe("KizkattGraphicEditor shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Text" }));
     fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
     expect(screen.getByLabelText("Colors")).toBeInTheDocument();
+    clientHeightSpy.mockRestore();
   });
 
   it("returns from the hand tool on an empty click but keeps it after panning", () => {

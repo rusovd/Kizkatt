@@ -63,7 +63,7 @@ type StylingPanelProps = {
 
 const BASE_QUICK_SWATCH_COUNT = DARK_THEME_STROKE_COLORS.length + 1;
 const COMPACT_QUICK_SWATCH_COUNT = BASE_QUICK_SWATCH_COUNT;
-const HORIZONTAL_QUICK_SWATCH_COUNT = BASE_QUICK_SWATCH_COUNT + 2;
+const EXPANDED_QUICK_SWATCH_COUNT = BASE_QUICK_SWATCH_COUNT + 2;
 const QUICK_SWATCH_SIZE = 20;
 const QUICK_SWATCH_GAP = 5;
 const ADAPTIVE_SHADE_INDICES = [0, 5, 11, 17, 23] as const;
@@ -408,7 +408,7 @@ export function StylingPanel({
       closable
       defaultOrientation="vertical"
       hideLabels={{ horizontal: true }}
-      horizontalActionsLayout="column"
+      horizontalActionsLayout="row"
       maxCols={2}
       maxRows={2}
       minSize={STYLING_PANEL_MIN_SIZE}
@@ -417,12 +417,18 @@ export function StylingPanel({
         .map((element) => element.id)
         .join(":")}`}
       resizable
-      resizeAxes={{ horizontal: "horizontal", vertical: "both" }}
+      resizeAxes={{ horizontal: "vertical", vertical: "both" }}
       title={strings.stylePanel.colors}
     >
       {({ actions, chrome, orientation }) => (
         <aside
-          className={`kizkatt-style-panel kizkatt-style-panel--${orientation}`}
+          className={[
+            "kizkatt-style-panel",
+            `kizkatt-style-panel--${orientation}`,
+            orientation === "horizontal"
+              ? "kizkatt-style-panel--compact-columns"
+              : null
+          ].filter(Boolean).join(" ")}
           aria-label={strings.stylePanel.colors}
         >
           {chrome}
@@ -432,14 +438,16 @@ export function StylingPanel({
             label={strings.stylePanel.background}
           >
             <ColorSwatches
+              key={`background-${orientation}`}
               activeColor={style.backgroundColor}
               colors={getAdaptiveQuickColors("backgroundColor", theme)}
               disabled={backgroundControlDisabled}
+              flow={orientation === "horizontal" ? "vertical" : "horizontal"}
               label={strings.stylePanel.background}
               minimumColorCount={
                 orientation === "horizontal"
-                  ? HORIZONTAL_QUICK_SWATCH_COUNT
-                  : COMPACT_QUICK_SWATCH_COUNT
+                  ? COMPACT_QUICK_SWATCH_COUNT
+                  : EXPANDED_QUICK_SWATCH_COUNT
               }
               onColorSelect={(color) => {
                 applyColor("backgroundColor", color);
@@ -456,13 +464,15 @@ export function StylingPanel({
             label={strings.stylePanel.stroke}
           >
             <ColorSwatches
+              key={`stroke-${orientation}`}
               activeColor={style.strokeColor}
               colors={getAdaptiveQuickColors("strokeColor", theme)}
+              flow={orientation === "horizontal" ? "vertical" : "horizontal"}
               label={strings.stylePanel.stroke}
               minimumColorCount={
                 orientation === "horizontal"
-                  ? HORIZONTAL_QUICK_SWATCH_COUNT
-                  : COMPACT_QUICK_SWATCH_COUNT
+                  ? COMPACT_QUICK_SWATCH_COUNT
+                  : EXPANDED_QUICK_SWATCH_COUNT
               }
               onColorSelect={(color) => {
                 applyColor("strokeColor", color);
@@ -519,6 +529,7 @@ function ColorSwatches({
   activeColor,
   colors,
   disabled = false,
+  flow,
   label,
   minimumColorCount,
   onColorSelect,
@@ -527,6 +538,7 @@ function ColorSwatches({
   activeColor: string;
   colors: readonly string[];
   disabled?: boolean;
+  flow: "horizontal" | "vertical";
   label: string;
   minimumColorCount: number;
   onColorSelect: (color: string) => void;
@@ -554,10 +566,12 @@ function ColorSwatches({
     }
 
     const updateVisibleColorCount = () => {
-      const availableWidth = colorList.clientWidth;
-      const fittingColorCount = availableWidth > 0
+      const availableSpace = flow === "vertical"
+        ? colorList.clientHeight
+        : colorList.clientWidth;
+      const fittingColorCount = availableSpace > 0
         ? Math.floor(
-            (availableWidth + QUICK_SWATCH_GAP) /
+            (availableSpace + QUICK_SWATCH_GAP) /
               (QUICK_SWATCH_SIZE + QUICK_SWATCH_GAP)
           )
         : minimumColorCount;
@@ -584,7 +598,7 @@ function ColorSwatches({
     resizeObserver.observe(colorList);
 
     return () => resizeObserver.disconnect();
-  }, [minimumColorCount, quickColors.length]);
+  }, [flow, minimumColorCount, quickColors.length]);
 
   return (
     <div className="kizkatt-swatches kizkatt-quick-swatches">
