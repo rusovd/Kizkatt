@@ -159,6 +159,16 @@ export function KizkattGraphicEditorView({
     useState<SimpleTraceResult | null>(null);
   const [simpleTraceSettings, setSimpleTraceSettings] =
     useState<SimpleTraceSettings>({ ...DEFAULT_SIMPLE_TRACE_SETTINGS });
+  const openSimpleTrace = () => {
+    if (!simpleTraceControls) {
+      return;
+    }
+
+    setSimpleTraceDeleteOriginal(false);
+    setSimpleTraceError(null);
+    setSimpleTraceSettings({ ...DEFAULT_SIMPLE_TRACE_SETTINGS });
+    setSimpleTraceOpen(true);
+  };
   const {
     customPresets: customGradientPresets,
     deletePreset: deleteStoredGradientPreset,
@@ -561,16 +571,7 @@ export function KizkattGraphicEditorView({
         <Toolbar
           {...toolControls}
           canSimpleTrace={Boolean(simpleTraceControls)}
-          onSimpleTrace={() => {
-            if (!simpleTraceControls) {
-              return;
-            }
-
-            setSimpleTraceDeleteOriginal(false);
-            setSimpleTraceError(null);
-            setSimpleTraceSettings({ ...DEFAULT_SIMPLE_TRACE_SETTINGS });
-            setSimpleTraceOpen(true);
-          }}
+          onSimpleTrace={openSimpleTrace}
         />
       )}
 
@@ -583,7 +584,11 @@ export function KizkattGraphicEditorView({
 
       {state.isLoading && <EditorLoader label={strings.canvas.loading} />}
 
-      <CanvasContextMenu {...commandControls} />
+      <CanvasContextMenu
+        {...commandControls}
+        canSimpleTrace={Boolean(simpleTraceControls)}
+        onSimpleTrace={openSimpleTrace}
+      />
       <MainMenu {...documentControls} />
       {documentControls.sceneReplacementAction && (
         <SceneLoadConfirmationDialog

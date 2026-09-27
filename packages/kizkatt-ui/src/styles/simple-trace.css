@@ -1,5 +1,5 @@
 .kizkatt-simple-trace-dialog {
-  background: var(--kizkatt-panel-bg);
+  background: var(--kizkatt-control-bg, #23232d);
   border: 1px solid var(--kizkatt-border);
   border-radius: 12px;
   box-shadow: 0 22px 60px rgb(0 0 0 / 42%);

@@ -2821,6 +2821,22 @@ export function KizkattGraphicEditorController({
 
   const onCanvasContextMenu = (event: ReactMouseEvent<SVGSVGElement>) => {
     event.preventDefault();
+    const elementId = event.target instanceof Element
+      ? event.target.closest<SVGGElement>("[data-element-id]")?.dataset.elementId
+      : undefined;
+    const targetElement = elementId
+      ? canvasStateRef.current.elements.find((element) => element.id === elementId)
+      : undefined;
+
+    if (targetElement && isBitmapImageElement(targetElement)) {
+      replaceActiveState({
+        ...canvasStateRef.current,
+        selectedBend: undefined,
+        selectedIds: [targetElement.id],
+        selectedNodes: undefined
+      });
+    }
+
     setContextMenu({
       x: event.clientX,
       y: event.clientY

@@ -28,6 +28,7 @@ import {
   SelectAllIcon,
   SelectionContainIcon,
   SelectionIcon,
+  SimpleTraceIcon,
   SnapIcon,
   UngroupIcon,
   UpdateObjectBaseIcon
@@ -40,6 +41,7 @@ type CanvasContextMenuProps = {
   canCopySelection: boolean;
   canGroup: boolean;
   canRevertObjectBase: boolean;
+  canSimpleTrace: boolean;
   canUngroup: boolean;
   canUpdateObjectBase: boolean;
   contextMenu: ContextMenuState | null;
@@ -55,6 +57,7 @@ type CanvasContextMenuProps = {
   onRefreshPage: () => void;
   onRevertObjectBase: () => void;
   onSelectAll: () => void;
+  onSimpleTrace: () => void;
   onUpdateObjectBase: () => void;
   onUngroup: () => void;
   selectionAreaMode: SelectionAreaMode;
@@ -250,6 +253,7 @@ export function CanvasContextMenu({
   canCopySelection,
   canGroup,
   canRevertObjectBase,
+  canSimpleTrace,
   canUngroup,
   canUpdateObjectBase,
   contextMenu,
@@ -265,6 +269,7 @@ export function CanvasContextMenu({
   onRefreshPage,
   onRevertObjectBase,
   onSelectAll,
+  onSimpleTrace,
   onUpdateObjectBase,
   onUngroup,
   selectionAreaMode,
@@ -561,6 +566,18 @@ export function CanvasContextMenu({
               {strings.contextMenu.ungroup}
             </MenuButton>
           )}
+        </>
+      )}
+      {canSimpleTrace && (
+        <>
+          <div className="kizkatt-context-divider" />
+          <MenuButton
+            icon={SimpleTraceIcon}
+            title={tooltips.simpleTrace}
+            onClick={() => onCloseAndRun(onSimpleTrace)}
+          >
+            {strings.contextMenu.simpleTrace}
+          </MenuButton>
         </>
       )}
       {(canUpdateObjectBase || canRevertObjectBase) && (
